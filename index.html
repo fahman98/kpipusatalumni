@@ -105,12 +105,15 @@
     </div>
 
     <div id="dashboard-container" class="container mx-auto p-4 sm:p-6 lg:p-8">
-        <header class="text-center mb-8 relative">
-            <!-- Logout Button (Hidden by default) -->
+        <!-- Top Controls (Logout) -->
+        <div class="flex justify-end mb-2 h-8">
             <button id="admin-logout-btn"
-                class="hidden absolute top-0 right-0 bg-red-100 text-red-600 hover:bg-red-200 px-3 py-1 rounded-lg text-sm font-semibold transition-colors shadow-sm">
+                class="hidden bg-red-100 text-red-600 hover:bg-red-200 px-3 py-1 rounded-lg text-sm font-semibold transition-colors shadow-sm items-center">
                 <i class="fas fa-sign-out-alt mr-2"></i>Logout
             </button>
+        </div>
+
+        <header class="text-center mb-8 relative">
 
             <h1 id="main-title" class="text-2xl sm:text-3xl md:text-4xl font-bold text-brand-primary">Memuatkan
                 Dashboard...</h1>
