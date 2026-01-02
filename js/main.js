@@ -514,7 +514,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // PWA
+    // PWA & Install Prompt
+    let deferredPrompt;
+    const installPrompt = getEl('install-prompt');
+    const installBtn = getEl('install-app-btn');
+    const closeInstallBtn = getEl('install-close-btn');
+
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('./sw.js').then(
@@ -522,6 +527,37 @@ document.addEventListener('DOMContentLoaded', () => {
                 err => console.log('SW Failed')
             );
         });
+
+        // Handle PWA Install Prompt
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+
+            // Show Banner (Slide Up)
+            if (installPrompt) {
+                installPrompt.classList.remove('hidden');
+                setTimeout(() => installPrompt.classList.add('slide-up-show'), 100);
+            }
+        });
+
+        if (installBtn) {
+            installBtn.addEventListener('click', async () => {
+                if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                    const { outcome } = await deferredPrompt.userChoice;
+                    console.log(`User response: ${outcome}`);
+                    deferredPrompt = null;
+                }
+                // Hide banner
+                if (installPrompt) installPrompt.classList.remove('slide-up-show');
+            });
+        }
+
+        if (closeInstallBtn && installPrompt) {
+            closeInstallBtn.addEventListener('click', () => {
+                installPrompt.classList.remove('slide-up-show');
+            });
+        }
     }
 
     // Start App
