@@ -168,34 +168,7 @@ li:hover .item-actions {
     background: #a8a8a8; 
 }
 
-/* --- What-If Modal Styles --- */
-.what-if-input {
-    transition: all 0.2s;
-}
-.what-if-input:focus {
-    border-color: #0d47a1;
-    box-shadow: 0 0 0 3px rgba(13, 71, 161, 0.2);
-}
-.range-slider {
-    -webkit-appearance: none;
-    width: 100%;
-    height: 6px;
-    border-radius: 5px;
-    background: #d1d5db;
-    outline: none;
-    opacity: 0.7;
-    transition: opacity .2s;
-}
-.range-slider:hover { opacity: 1; }
-.range-slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: #0d47a1;
-    cursor: pointer;
-}
+
 
 /* --- HACKER TERMINAL STYLES --- */
 .terminal-window {

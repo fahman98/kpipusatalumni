@@ -1,11 +1,11 @@
 // --- JS/UI.JS ---
-import { 
-    updateKpiValueInFirestore, 
-    updateKpiDetailsList, 
-    updateKpiTargetListItem, 
-    updateKpiBreakdownList, 
+import {
+    updateKpiValueInFirestore,
+    updateKpiDetailsList,
+    updateKpiTargetListItem,
+    updateKpiBreakdownList,
     updateKpiProgressListItem,
-    kpiDataCache 
+    kpiDataCache
 } from './api.js';
 
 // Global UI State (Exported)
@@ -14,16 +14,16 @@ export let isEditMode = false;
 // Function to update edit mode
 export function setEditMode(mode) {
     isEditMode = mode;
-    
+
     // Toggle Add Button Container
     const addContainer = document.getElementById('add-kpi-container');
-    if(addContainer) addContainer.style.display = mode ? 'block' : 'none';
+    if (addContainer) addContainer.style.display = mode ? 'block' : 'none';
 
     // Toggle Empty State Actions
     const adminActions = document.getElementById('admin-setup-actions');
     const guestMsg = document.getElementById('guest-empty-msg');
-    if(adminActions) adminActions.style.display = mode ? 'flex' : 'none'; // Flex for layout
-    if(guestMsg) guestMsg.style.display = mode ? 'none' : 'block';
+    if (adminActions) adminActions.style.display = mode ? 'flex' : 'none'; // Flex for layout
+    if (guestMsg) guestMsg.style.display = mode ? 'none' : 'block';
 
     // Toggle Card Buttons
     const cards = document.querySelectorAll('.kpi-card');
@@ -31,12 +31,12 @@ export function setEditMode(mode) {
         const settingsBtn = card.querySelector('.settings-btn');
         const editValBtn = card.querySelector('.edit-kpi-btn');
         const infoBtn = card.querySelector('.info-btn');
-        
-        if(settingsBtn) settingsBtn.style.display = mode ? 'block' : 'none';
-        if(editValBtn) editValBtn.style.display = mode ? 'inline-block' : 'none';
-        
+
+        if (settingsBtn) settingsBtn.style.display = mode ? 'block' : 'none';
+        if (editValBtn) editValBtn.style.display = mode ? 'inline-block' : 'none';
+
         // Update Info Icon
-        if(mode) {
+        if (mode) {
             infoBtn.innerHTML = '<i class="fas fa-pencil-alt"></i>';
             infoBtn.title = "Edit Deskripsi";
         } else {
@@ -74,7 +74,7 @@ export function renderSkeletons() {
     if (!kpiGridContainer) return;
 
     kpiGridContainer.innerHTML = '';
-    const skeletonCount = 6; 
+    const skeletonCount = 6;
     for (let i = 0; i < skeletonCount; i++) {
         const skeletonHTML = `
             <div class="kpi-card bg-white p-6 rounded-2xl shadow-lg border border-gray-100 flex flex-col h-64">
@@ -105,20 +105,20 @@ export function createKpiCard(kpi) {
 
     cardElement.querySelector('.show-chart-btn').dataset.kpiId = kpi.id;
     const detailsBtn = cardElement.querySelector('.show-details-btn');
-    
+
     // Logic Butang Titik Tiga
     if (kpi.details) {
         detailsBtn.dataset.kpiId = kpi.id;
         detailsBtn.classList.remove('hidden');
-        detailsBtn.classList.add('flex'); 
+        detailsBtn.classList.add('flex');
     }
 
     cardElement.querySelector('.kpi-icon').classList.add(kpi.icon);
     cardElement.querySelector('.kpi-name').textContent = kpi.name;
-    
+
     // --- SETTINGS BUTTON (NEW) ---
     const settingsBtn = cardElement.querySelector('.settings-btn');
-    if(settingsBtn) {
+    if (settingsBtn) {
         settingsBtn.dataset.kpiId = kpi.id; // Store ID for click handler in main.js
         settingsBtn.style.display = isEditMode ? 'block' : 'none';
     }
@@ -129,7 +129,7 @@ export function createKpiCard(kpi) {
     const popoverText = cardElement.querySelector('.desc-text');
     const editDescModal = getEl('edit-desc-modal');
     const descInput = getEl('desc-input');
-    
+
     popoverText.textContent = kpi.description || "Tiada maklumat lanjut disediakan oleh admin.";
 
     if (isEditMode) {
@@ -137,11 +137,11 @@ export function createKpiCard(kpi) {
         infoBtn.title = "Edit Deskripsi KPI";
         infoBtn.onclick = (e) => {
             e.stopPropagation();
-            editDescModal.dataset.kpiId = kpi.id; 
+            editDescModal.dataset.kpiId = kpi.id;
             descInput.value = kpi.description || "";
             openModal(editDescModal, infoBtn);
         };
-        popover.remove(); 
+        popover.remove();
     } else {
         infoBtn.innerHTML = '<i class="fas fa-info-circle"></i>';
         infoBtn.title = "Lihat Info Lanjut";
@@ -153,7 +153,7 @@ export function createKpiCard(kpi) {
             popover.classList.toggle('hidden');
         };
         cardElement.addEventListener('mouseleave', () => {
-             popover.classList.add('hidden');
+            popover.classList.add('hidden');
         });
     }
 
@@ -177,14 +177,14 @@ export function createKpiCard(kpi) {
 
     cardElement.querySelector('.progress-bar').classList.add(getStatusColor(displayPercentage));
     cardElement.querySelector('.progress-bar').dataset.targetWidth = `${Math.min(displayPercentage, 100)}%`;
-    
+
     const targetDisplay = cardElement.querySelector('.kpi-target-display');
     if (kpi.isPercentage) {
         targetDisplay.remove();
     } else {
         const displayTarget = kpi.target;
         if (typeof displayTarget === 'number') {
-            const formattedTarget = displayTarget > 9999 ? `${(displayTarget/1000).toLocaleString()}k` : displayTarget.toLocaleString();
+            const formattedTarget = displayTarget > 9999 ? `${(displayTarget / 1000).toLocaleString()}k` : displayTarget.toLocaleString();
             targetDisplay.textContent = ` / ${formattedTarget}`;
         } else {
             targetDisplay.remove();
@@ -214,8 +214,8 @@ export function animateCardElements(card, kpi) {
     const animatedValueEl = card.querySelector('.animated-value');
     if (animatedValueEl) {
         let formatter = kpi.isPercentage ? val => `${val.toFixed(2)}%` :
-                        kpi.isCurrency ? val => `RM ${val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` :
-                        val => Math.floor(val).toLocaleString();
+            kpi.isCurrency ? val => `RM ${val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` :
+                val => Math.floor(val).toLocaleString();
         animateValue(animatedValueEl, 0, valueToAnimate, 1500, formatter);
     }
 
@@ -232,7 +232,7 @@ function handleEditKpi(cardElement, kpi) {
     const editBtn = cardElement.querySelector('.edit-kpi-btn');
     const paginationContainer = getEl('pagination');
 
-    if(editBtn) editBtn.style.display = 'none';
+    if (editBtn) editBtn.style.display = 'none';
 
     const input = document.createElement('input');
     input.type = 'number';
@@ -246,18 +246,18 @@ function handleEditKpi(cardElement, kpi) {
 
     const saveChanges = async () => {
         const newValue = parseFloat(input.value);
-        
+
         input.removeEventListener('blur', saveChanges);
         input.removeEventListener('keydown', handleKeydown);
 
         if (isNaN(newValue) || newValue === originalValue) {
             valueWrapper.innerHTML = `<span class="animated-value">${originalValue.toLocaleString()}</span>`;
-            if(editBtn) editBtn.style.display = 'inline-block';
+            if (editBtn) editBtn.style.display = 'inline-block';
             return;
         }
-        
+
         valueWrapper.innerHTML = `<i class="fas fa-spinner fa-spin text-brand-primary"></i>`;
-        
+
         const activeQuarterKey = `q${paginationContainer.querySelector('.active').dataset.quarter}`;
         await updateKpiValueInFirestore(activeQuarterKey, kpi.id, newValue);
     };
@@ -270,7 +270,7 @@ function handleEditKpi(cardElement, kpi) {
             input.removeEventListener('blur', saveChanges);
             input.removeEventListener('keydown', handleKeydown);
             valueWrapper.innerHTML = `<span class="animated-value">${originalValue.toLocaleString()}</span>`;
-            if(editBtn) editBtn.style.display = 'inline-block';
+            if (editBtn) editBtn.style.display = 'inline-block';
         }
     };
 
@@ -280,15 +280,15 @@ function handleEditKpi(cardElement, kpi) {
 
 export function showDetailsModal(kpiId, triggerElement) {
     const paginationContainer = getEl('pagination');
-    const detailsModal = getEl('details-modal'); 
-    
+    const detailsModal = getEl('details-modal');
+
     if (!paginationContainer || !detailsModal) {
         console.error("Critical elements missing");
         return;
     }
 
     const activeQuarter = `q${paginationContainer.querySelector('.active').dataset.quarter}`;
-    
+
     if (!kpiDataCache[activeQuarter] || !kpiDataCache[activeQuarter].processedKpis) {
         console.error("Data cache not ready for", activeQuarter);
         return;
@@ -384,7 +384,7 @@ export function showDetailsModal(kpiId, triggerElement) {
         (items || []).forEach(item => {
             const li = document.createElement('li');
             let percentage;
-            if(item.subItems) {
+            if (item.subItems) {
                 const subTotal = item.subItems.reduce((sum, sub) => sum + sub.value, 0);
                 percentage = item.subItems.length > 0 ? subTotal / item.subItems.length : 0;
             } else {
@@ -538,7 +538,7 @@ function handleEditListItem(liElement, kpiId, oldItemName) {
     };
 
     const handleKeydown = (e) => {
-        if (e.key === 'Enter') { e.preventDefault(); input.blur(); } 
+        if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
         else if (e.key === 'Escape') { cleanup(); }
     };
 
@@ -595,7 +595,7 @@ function handleModalEdit(editBtn, kpiId, itemName, subItemName = null) {
     input.type = 'number';
     input.className = 'w-20 bg-gray-100 border border-brand-primary rounded text-center font-bold text-gray-700 p-0.5';
     input.value = originalValue;
-    
+
     valueTextElement.style.display = 'none';
     valueWrapper.insertBefore(input, editBtn);
     input.focus();
@@ -611,14 +611,14 @@ function handleModalEdit(editBtn, kpiId, itemName, subItemName = null) {
         input.remove();
 
         if (isNaN(newValue) || newValue === originalValue) return;
-        
+
         valueTextElement.innerHTML = `<i class="fas fa-spinner fa-spin text-brand-primary"></i>`;
         const activeQuarterKey = `q${paginationContainer.querySelector('.active').dataset.quarter}`;
         await updateKpiProgressListItem(activeQuarterKey, kpiId, itemName, subItemName, newValue);
     };
 
     const handleKeydown = (e) => {
-        if (e.key === 'Enter') { e.preventDefault(); input.blur(); } 
+        if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
         else if (e.key === 'Escape') {
             input.removeEventListener('blur', saveChanges);
             input.removeEventListener('keydown', handleKeydown);
@@ -627,7 +627,7 @@ function handleModalEdit(editBtn, kpiId, itemName, subItemName = null) {
             input.remove();
         }
     };
-    
+
     input.addEventListener('blur', saveChanges);
     input.addEventListener('keydown', handleKeydown);
 }
@@ -640,7 +640,7 @@ export function filterDashboardCards(searchTerm, statusFilter) {
     cards.forEach(card => {
         const name = card.querySelector('.kpi-name').textContent.toLowerCase();
         const progressBar = card.querySelector('.progress-bar');
-        
+
         let status = 'all';
         if (progressBar.classList.contains('bg-status-good')) status = 'good';
         else if (progressBar.classList.contains('bg-status-ok')) status = 'ok';
@@ -659,93 +659,7 @@ export function filterDashboardCards(searchTerm, statusFilter) {
     });
 }
 
-// --- WHAT-IF CALCULATOR LOGIC (UI Generator) ---
 
-export function initWhatIfCalculator() {
-    const paginationContainer = getEl('pagination');
-    const whatIfBtn = getEl('what-if-btn');
-    const whatIfModal = getEl('what-if-modal');
-    const whatIfInputsContainer = getEl('what-if-inputs-container');
-
-    const activeQuarterKey = `q${paginationContainer.querySelector('.active').dataset.quarter}`;
-    const data = kpiDataCache[activeQuarterKey];
-    
-    if (!data || !data.processedKpis) {
-        showToastNotification("Data belum dimuatkan sepenuhnya.", "danger");
-        return;
-    }
-
-    whatIfInputsContainer.innerHTML = '';
-    
-    data.processedKpis.forEach(kpi => {
-        const currentValue = calculateKpiValue(kpi);
-        const currentPct = getKpiPercentage(kpi);
-        
-        let step = '1';
-        let displayTarget = kpi.target;
-
-        if (kpi.isPercentage) {
-            displayTarget = 100;
-            step = '0.1';
-        }
-
-        const card = document.createElement('div');
-        card.className = 'bg-white p-4 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow';
-        card.innerHTML = `
-            <div class="flex items-center justify-between mb-3">
-                <div class="flex items-center">
-                    <i class="fas ${kpi.icon} text-brand-primary mr-2 opacity-70"></i>
-                    <span class="font-semibold text-sm text-gray-700">${kpi.name}</span>
-                </div>
-                <span class="text-xs font-bold px-2 py-1 rounded bg-gray-100 text-gray-600">Target: ${displayTarget.toLocaleString()}</span>
-            </div>
-            <div class="space-y-2">
-                <div class="flex justify-between text-xs text-gray-500">
-                    <span>Simulasi Nilai:</span>
-                    <span class="dynamic-pct font-bold ${getStatusColor(currentPct).replace('bg-', 'text-')}">${currentPct.toFixed(1)}%</span>
-                </div>
-                <input type="range" class="range-slider" 
-                    min="0" max="${displayTarget * 1.5}" step="${step}" 
-                    value="${currentValue}" 
-                    data-target="${displayTarget}" 
-                    data-is-pct="${kpi.isPercentage}"
-                >
-                <input type="number" class="what-if-input w-full p-2 border border-gray-300 rounded text-center font-mono text-brand-primary font-bold" 
-                    value="${currentValue}" 
-                    data-original="${currentValue}"
-                    data-target="${displayTarget}"
-                    data-is-pct="${kpi.isPercentage}"
-                >
-            </div>
-        `;
-
-        const rangeInput = card.querySelector('input[type="range"]');
-        const numberInput = card.querySelector('input[type="number"]');
-        const pctDisplay = card.querySelector('.dynamic-pct');
-
-        rangeInput.addEventListener('input', (e) => {
-            numberInput.value = e.target.value;
-            updateLocalPct(e.target.value, displayTarget, kpi.isPercentage, pctDisplay);
-        });
-        
-        numberInput.addEventListener('input', (e) => {
-            rangeInput.value = e.target.value;
-            updateLocalPct(e.target.value, displayTarget, kpi.isPercentage, pctDisplay);
-        });
-
-        whatIfInputsContainer.appendChild(card);
-    });
-
-    if(window.calculateWhatIf) window.calculateWhatIf(); 
-    openModal(whatIfModal, whatIfBtn);
-}
-
-function updateLocalPct(val, target, isPct, element) {
-    let pct = isPct ? parseFloat(val) : (parseFloat(val) / target * 100);
-    if(isNaN(pct)) pct = 0;
-    element.textContent = `${pct.toFixed(1)}%`;
-    element.className = `dynamic-pct font-bold ${getStatusColor(pct).replace('bg-', 'text-')}`;
-}
 
 // --- HELPER FUNCTIONS (Exported) ---
 
@@ -773,7 +687,7 @@ export function getStatusColor(percentage) {
 
 export function showToastNotification(message, type = 'info') {
     if (toastTimeout) clearTimeout(toastTimeout);
-    
+
     const toast = getEl('toast-notification');
     const toastMessage = getEl('toast-message');
     const toastIcon = getEl('toast-icon');
@@ -783,13 +697,13 @@ export function showToastNotification(message, type = 'info') {
         danger: { class: 'text-red-500', icon: 'fa-exclamation-triangle', border: 'border-red-500' },
         info: { class: 'text-blue-500', icon: 'fa-info-circle', border: 'border-blue-500' }
     };
-    
+
     const config = types[type];
-    
+
     toast.className = `fixed right-4 top-4 bg-white rounded-lg shadow-xl border-l-4 overflow-hidden z-50 ${config.border}`;
     toastIcon.className = `fas ${config.icon} text-xl ${config.class}`;
     toastMessage.textContent = message;
-    
+
     requestAnimationFrame(() => {
         toast.classList.add('show');
     });
@@ -805,13 +719,13 @@ export function openModal(modalElement, triggerElement) {
     modalElement.classList.add('is-open');
     const firstFocusableElement = modalElement.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
     if (firstFocusableElement) firstFocusableElement.focus();
-    
-    if(modalElement.id === 'password-modal') {
-         const inputArea = document.getElementById('terminal-input-area');
-         if(inputArea && !inputArea.classList.contains('hidden')) {
-             const terminalInput = document.getElementById('email-input');
-             if(terminalInput && !terminalInput.classList.contains('input-disabled')) terminalInput.focus();
-         }
+
+    if (modalElement.id === 'password-modal') {
+        const inputArea = document.getElementById('terminal-input-area');
+        if (inputArea && !inputArea.classList.contains('hidden')) {
+            const terminalInput = document.getElementById('email-input');
+            if (terminalInput && !terminalInput.classList.contains('input-disabled')) terminalInput.focus();
+        }
     }
 }
 
@@ -819,7 +733,7 @@ export function closeModal(modalElement) {
     if (!modalElement) return;
     modalElement.classList.remove('is-open');
     if (lastFocusedElement) lastFocusedElement.focus();
-    
+
     if (modalElement.id === 'password-modal') {
         const event = new CustomEvent('modal-closed', { detail: { modalId: 'password-modal' } });
         document.dispatchEvent(event);

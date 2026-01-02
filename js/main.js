@@ -12,7 +12,7 @@ import {
     calculateKpiValue,
     filterDashboardCards,
     showDetailsModal,
-    initWhatIfCalculator
+    showDetailsModal
 } from './ui.js';
 
 import { 
@@ -28,7 +28,7 @@ import {
     updateKpiDescriptionInFirestore
 } from './api.js';
 
-import { renderGaugeChart, showHistoryChart, updateWhatIfChart } from './charts.js';
+import { renderGaugeChart, showHistoryChart } from './charts.js';
 import { handleAdminLogin, resetTerminalModal, runBootSequence, randomGlitch, runLogoutSequence } from './admin.js';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -53,14 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const emailInput = getEl('email-input');
     const passwordInput = getEl('password-input');
     
-    const whatIfBtn = getEl('what-if-btn');
-    const whatIfCalculateBtn = getEl('what-if-calculate-btn');
-    const whatIfResetBtn = getEl('what-if-reset-btn');
-    const whatIfModal = getEl('what-if-modal');
-    const whatIfModalClose = getEl('what-if-modal-close');
-    const whatIfResultDisplay = getEl('what-if-result-display');
-    const whatIfDiffDisplay = getEl('what-if-diff-display');
-    const whatIfProgressBar = getEl('what-if-progress-bar');
+
     
     const editDescModal = getEl('edit-desc-modal');
     const editDescModalClose = getEl('edit-desc-modal-close');
@@ -310,69 +303,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- WHAT-IF LOGIC ---
-    window.calculateWhatIf = function() {
-        const inputs = document.querySelectorAll('.what-if-input');
-        let totalCappedPct = 0;
-        let count = 0;
 
-        inputs.forEach(input => {
-            const val = parseFloat(input.value) || 0;
-            const target = parseFloat(input.dataset.target);
-            const isPct = input.dataset.isPct === 'true';
-            let pct = isPct ? val : (val / target * 100);
-            let capped = Math.min(pct, 100); 
-            totalCappedPct += capped;
-            count++;
-        });
-
-        const newOverall = count > 0 ? totalCappedPct / count : 0;
-        
-        if(whatIfResultDisplay) {
-            animateValue(whatIfResultDisplay, parseFloat(whatIfResultDisplay.textContent) || 0, newOverall, 500, val => `${val.toFixed(2)}%`);
-            let colorClass = 'text-red-600';
-            let barClass = 'bg-red-600';
-            if(newOverall >= 75) { colorClass = 'text-green-600'; barClass = 'bg-green-600'; }
-            else if(newOverall >= 30) { colorClass = 'text-yellow-500'; barClass = 'bg-yellow-500'; }
-            
-            whatIfResultDisplay.className = `text-5xl font-bold mb-2 transition-colors duration-500 ${colorClass}`;
-            if(whatIfProgressBar) {
-                whatIfProgressBar.className = `h-1 rounded-full transition-all duration-500 ${barClass}`;
-                whatIfProgressBar.style.width = `${Math.min(newOverall, 100)}%`;
-            }
-        }
-
-        const activeQuarterKey = `q${paginationContainer.querySelector('.active').dataset.quarter}`;
-        const actualOverall = kpiDataCache[activeQuarterKey] ? kpiDataCache[activeQuarterKey].overall : 0;
-        const diff = newOverall - actualOverall;
-        
-        let diffHTML = '';
-        if(Math.abs(diff) < 0.01) diffHTML = '<span class="text-gray-400">Tiada perubahan</span>';
-        else if(diff > 0) diffHTML = `<span class="text-green-600"><i class="fas fa-arrow-up mr-1"></i>+${diff.toFixed(2)}% dari asal</span>`;
-        else diffHTML = `<span class="text-red-500"><i class="fas fa-arrow-down mr-1"></i>${diff.toFixed(2)}% dari asal</span>`;
-        
-        if(whatIfDiffDisplay) whatIfDiffDisplay.innerHTML = diffHTML;
-        updateWhatIfChart(actualOverall, newOverall);
-    };
-
-    window.resetWhatIf = function() {
-        const inputs = document.querySelectorAll('.what-if-input');
-        const sliders = document.querySelectorAll('.range-slider');
-        const pctDisplays = document.querySelectorAll('.dynamic-pct');
-
-        inputs.forEach((input, idx) => {
-            input.value = input.dataset.original;
-            sliders[idx].value = input.dataset.original;
-            const target = parseFloat(input.dataset.target);
-            const isPct = input.dataset.isPct === 'true';
-            let pct = isPct ? parseFloat(input.value) : (parseFloat(input.value) / target * 100);
-            if(pctDisplays[idx]) {
-                pctDisplays[idx].textContent = `${pct.toFixed(1)}%`;
-                pctDisplays[idx].className = `dynamic-pct font-bold ${getStatusColor(pct).replace('bg-', 'text-')}`;
-            }
-        });
-        window.calculateWhatIf();
-    };
 
     // --- EVENT LISTENERS ---
     
@@ -413,11 +344,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (toastCloseBtn) toastCloseBtn.addEventListener('click', () => getEl('toast-notification').classList.remove('show'));
 
     // What-If
-    if (whatIfBtn) whatIfBtn.addEventListener('click', initWhatIfCalculator);
-    if (whatIfCalculateBtn) whatIfCalculateBtn.addEventListener('click', window.calculateWhatIf);
-    if (whatIfResetBtn) whatIfResetBtn.addEventListener('click', window.resetWhatIf);
-    if (whatIfModalClose) whatIfModalClose.addEventListener('click', () => closeModal(whatIfModal));
-    if (whatIfModal) whatIfModal.addEventListener('click', (e) => { if (e.target === whatIfModal) closeModal(whatIfModal); });
+
 
     // Modals
     [chartModal, detailsModal, editDescModal, addKpiModal, editStructureModal].forEach(modal => {

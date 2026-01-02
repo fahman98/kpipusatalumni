@@ -4,7 +4,7 @@ import { kpiDataCache, getKpiDataFromFirestore } from './api.js';
 
 let kpiChartInstance = null;
 let gaugeChartInstance = null;
-let whatIfChartInstance = null; // New Instance
+
 
 export function renderGaugeChart(value) {
     const overallGaugeCtx = document.getElementById('overall-gauge-chart').getContext('2d');
@@ -15,9 +15,9 @@ export function renderGaugeChart(value) {
         gaugeChartInstance.destroy();
     }
 
-    let gaugeColor = '#e53935'; 
-    if (value >= 75) gaugeColor = '#43a047'; 
-    else if (value >= 30) gaugeColor = '#fdd835'; 
+    let gaugeColor = '#e53935';
+    if (value >= 75) gaugeColor = '#43a047';
+    else if (value >= 30) gaugeColor = '#fdd835';
 
     const dataValue = Math.min(value, 100);
     const remainder = 100 - dataValue;
@@ -30,7 +30,7 @@ export function renderGaugeChart(value) {
                 data: [dataValue, remainder],
                 backgroundColor: [
                     gaugeColor,
-                    'rgba(255, 255, 255, 0.2)' 
+                    'rgba(255, 255, 255, 0.2)'
                 ],
                 borderWidth: 0,
                 hoverOffset: 4
@@ -39,9 +39,9 @@ export function renderGaugeChart(value) {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            rotation: -90, 
-            circumference: 180, 
-            cutout: '75%', 
+            rotation: -90,
+            circumference: 180,
+            cutout: '75%',
             plugins: {
                 legend: { display: false },
                 tooltip: { enabled: false }
@@ -50,59 +50,7 @@ export function renderGaugeChart(value) {
     });
 }
 
-// --- NEW FUNCTION FOR WHAT-IF CHART ---
-export function updateWhatIfChart(currentRate, newRate) {
-    const ctx = document.getElementById('what-if-chart');
-    if(!ctx) return;
 
-    if (whatIfChartInstance) {
-        // Update data only
-        whatIfChartInstance.data.datasets[0].data = [currentRate, newRate];
-        whatIfChartInstance.update();
-        return;
-    }
-
-    // Create new if not exists
-    whatIfChartInstance = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: ['Semasa', 'Unjuran'],
-            datasets: [{
-                label: 'Skor Keseluruhan (%)',
-                data: [currentRate, newRate],
-                borderColor: '#0d47a1',
-                backgroundColor: 'rgba(13, 71, 161, 0.1)',
-                borderWidth: 2,
-                pointBackgroundColor: ['#6b7280', '#0d47a1'], // Grey for current, Blue for new
-                pointRadius: 6,
-                fill: true,
-                tension: 0.3
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    max: 100,
-                    grid: { display: true, borderDash: [5, 5] }
-                },
-                x: {
-                    grid: { display: false }
-                }
-            },
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    callbacks: {
-                        label: (c) => `Skor: ${c.parsed.y.toFixed(2)}%`
-                    }
-                }
-            }
-        }
-    });
-}
 
 export async function showHistoryChart(kpiId, triggerElement) {
     const kpiHistoryChartCtx = document.getElementById('kpi-history-chart').getContext('2d');
@@ -127,7 +75,7 @@ export async function showHistoryChart(kpiId, triggerElement) {
         const chartTitle = `Pecahan Pencapaian ${quarterData.title}`;
         const labels = quarterData.processedKpis.map(kpi => kpi.name);
         const data = quarterData.processedKpis.map(kpi => getKpiPercentage(kpi));
-        
+
         chartModalTitle.textContent = chartTitle;
         kpiChartInstance = new Chart(kpiHistoryChartCtx, {
             type: 'pie',
@@ -156,19 +104,19 @@ export async function showHistoryChart(kpiId, triggerElement) {
         const valueData = [];
         const targetData = [];
         let kpiName = '', isPercentage = false;
-        
+
         results.forEach(data => {
             if (data && data.kpis) {
                 const kpi = data.kpis.find(k => k.id === kpiId);
                 if (kpi) {
                     valueData.push(calculateKpiValue(kpi));
-                    targetData.push(kpi.target); 
+                    targetData.push(kpi.target);
                     if (!kpiName) ({ name: kpiName, isPercentage } = kpi);
-                } else { 
-                    valueData.push(null); 
+                } else {
+                    valueData.push(null);
                     targetData.push(null);
                 }
-            } else { 
+            } else {
                 valueData.push(null);
                 targetData.push(null);
             }
@@ -176,7 +124,7 @@ export async function showHistoryChart(kpiId, triggerElement) {
 
         chartModalTitle.textContent = `Analisis Prestasi: ${kpiName}`;
         kpiChartInstance = new Chart(kpiHistoryChartCtx, {
-            type: 'bar', 
+            type: 'bar',
             data: {
                 labels: ['Suku 1', 'Suku 2', 'Suku 3', 'Suku 4'],
                 datasets: [
@@ -184,9 +132,9 @@ export async function showHistoryChart(kpiId, triggerElement) {
                         type: 'line',
                         label: 'Sasaran',
                         data: targetData,
-                        borderColor: '#ef4444', 
+                        borderColor: '#ef4444',
                         borderWidth: 2,
-                        borderDash: [5, 5], 
+                        borderDash: [5, 5],
                         pointBackgroundColor: '#ef4444',
                         fill: false,
                         tension: 0.1
@@ -195,28 +143,28 @@ export async function showHistoryChart(kpiId, triggerElement) {
                         type: 'bar',
                         label: 'Pencapaian Sebenar',
                         data: valueData,
-                        backgroundColor: 'rgba(13, 71, 161, 0.7)', 
+                        backgroundColor: 'rgba(13, 71, 161, 0.7)',
                         borderColor: '#0d47a1',
                         borderWidth: 1
                     }
                 ]
             },
             options: {
-                responsive: true, 
+                responsive: true,
                 maintainAspectRatio: false,
-                scales: { 
-                    y: { 
-                        beginAtZero: true, 
+                scales: {
+                    y: {
+                        beginAtZero: true,
                         grid: { color: '#f3f4f6' },
-                        ticks: { callback: value => isPercentage ? value.toFixed(2) + '%' : value } 
+                        ticks: { callback: value => isPercentage ? value.toFixed(2) + '%' : value }
                     },
                     x: {
                         grid: { display: false }
                     }
                 },
-                plugins: { 
-                    tooltip: { 
-                        mode: 'index', 
+                plugins: {
+                    tooltip: {
+                        mode: 'index',
                         intersect: false,
                         backgroundColor: 'rgba(255, 255, 255, 0.9)',
                         titleColor: '#1f2937',
