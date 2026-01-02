@@ -681,15 +681,50 @@ export function filterDashboardCards(searchTerm, statusFilter) {
 
 export function animateValue(element, start, end, duration, formatter) {
     let startTime = null;
+    // Add distinct style during animation
+    element.style.fontFamily = "'Courier New', monospace"; // Monospace for stability
+
     const step = (timestamp) => {
         if (!startTime) startTime = timestamp;
         const progress = Math.min((timestamp - startTime) / duration, 1);
-        const currentValue = progress * (end - start) + start;
-        element.innerHTML = formatter(currentValue);
+
+        // DECODING EFFECT
+        // Instead of smooth scroll, we add random "noise" that decreases over time.
+        // Noise factor shrinks as progress approaches 1.
+
         if (progress < 1) {
+            // Factor: How much noise? 
+            // We want it to look like it's "searching". 
+            // Range: 0 to 99 roughly.
+
+            // Phase 1: High noise (0% - 60%)
+            // Phase 2: Converging (60% - 100%)
+
+            let displayVal;
+
+            if (progress < 0.6) {
+                // Pure random chaos
+                displayVal = Math.random() * 100;
+            } else {
+                // Converging to strict value
+                // Interpolate from a Random point towards End
+                const subProgress = (progress - 0.6) / 0.4; // 0 to 1
+                const noise = (Math.random() - 0.5) * 20 * (1 - subProgress); // +/- 10 noise fading to 0
+                displayVal = end + noise;
+            }
+
+            // Prevent negative layout shifts if possible, but random is random.
+            element.innerHTML = formatter(Math.abs(displayVal));
+
+            // Visual glitch color
+            element.style.color = (Math.random() > 0.8) ? '#22c55e' : ''; // Occasional green flash
+
             window.requestAnimationFrame(step);
         } else {
+            // Final Frame
             element.innerHTML = formatter(end);
+            element.style.fontFamily = ""; // Reset font
+            element.style.color = ""; // Reset color
         }
     };
     window.requestAnimationFrame(step);
