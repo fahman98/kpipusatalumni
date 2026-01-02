@@ -103,7 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // 1. Set Title Serta-merta
         if (mainTitle) {
             const qMap = { 'q1': 'Suku Pertama', 'q2': 'Suku Kedua', 'q3': 'Suku Ketiga', 'q4': 'Suku Keempat' };
-            mainTitle.textContent = `Dashboard KPI ${selectedYear} - ${qMap[quarterKey]}`;
+            mainTitle.innerHTML = `Dashboard KPI ${selectedYear} <br> ${qMap[quarterKey]}`;
         }
 
         // 2. Reset View states
@@ -129,7 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (adminSetupActions) adminSetupActions.classList.add('hidden');
                 }
 
-                if (mainTitle) mainTitle.textContent = `Dashboard KPI ${selectedYear} - Tiada Data`;
+                if (mainTitle) mainTitle.innerHTML = `Dashboard KPI ${selectedYear} <br> Tiada Data`;
                 return;
             }
 
@@ -138,8 +138,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (mainContentWrapper) mainContentWrapper.classList.remove('hidden');
 
             // Update Title
-            if (mainTitle) mainTitle.textContent = `Dashboard KPI ${selectedYear} - ${currentData.title || quarterKey.toUpperCase()}`;
-            if (subTitle) subTitle.textContent = `Papan Pemuka Prestasi (${currentData.subtitle || ''})`;
+            if (mainTitle) mainTitle.innerHTML = `Dashboard KPI ${selectedYear} <br> ${currentData.title || quarterKey.toUpperCase()}`;
+            if (subTitle) subTitle.textContent = `(${currentData.subtitle || ''})`;
             if (footerNote && currentData.footerDate) {
                 footerNote.innerHTML = `Data dikemaskini pada ${currentData.footerDate}. Untuk maklumat lanjut, sila hubungi <a href="tel:+60134977187" class="text-brand-primary hover:underline font-semibold">Encik Fahman Mujib Bin Ramli</a>.`;
             }
