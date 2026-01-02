@@ -313,6 +313,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const year = e.target.value;
             setApiYear(year);
             updateDashboard(currentQuarter);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         });
     }
 
@@ -323,6 +324,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.querySelector('.quarter-btn.active').classList.remove('active');
                 e.target.classList.add('active');
                 updateDashboard(`q${e.target.dataset.quarter}`);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
             }
         });
     }
