@@ -742,3 +742,8 @@ body.dark-mode .theme-toggle-btn {
 .takwim-btn:active {
     transform: scale(0.95);
 }
+
+/* Install Banner Slide Up */
+.slide-up-show {
+    transform: translateY(0) !important;
+}
