@@ -287,16 +287,42 @@
             </div>
         </footer>
 
-        <!-- Takwim Floating Button -->
-        <a href="https://takwimalumni.vercel.app/" target="_blank" class="takwim-btn" aria-label="Buka Takwim"
-            title="Takwim Alumni">
+        <!-- Takwim Floating Button (Converted to Trigger Modal) -->
+        <button id="takwim-btn" class="takwim-btn" aria-label="Buka Takwim" title="Takwim Alumni">
             <i class="fas fa-calendar-alt"></i>
-        </a>
+        </button>
 
         <!-- Theme Toggle Floating Button -->
         <button id="theme-toggle" class="theme-toggle-btn" aria-label="Tukar Tema">
             <i class="fas fa-moon"></i>
         </button>
+    </div>
+
+    <!-- TAKWIM MODAL (Fullscreen Iframe) -->
+    <div id="takwim-modal"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80 hidden opacity-0 transition-opacity duration-300">
+        <div
+            class="relative w-full h-full sm:w-11/12 sm:h-5/6 bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col transform scale-95 transition-transform duration-300">
+
+            <!-- Modal Header -->
+            <div class="bg-brand-primary text-white px-4 py-3 flex justify-between items-center shrink-0">
+                <h3 class="font-bold text-lg"><i class="fas fa-calendar-alt mr-2"></i>Takwim Alumni</h3>
+                <button id="close-takwim-modal" class="text-white hover:text-gray-200 focus:outline-none text-xl p-2">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <!-- Iframe Container -->
+            <div class="flex-grow bg-gray-100 relative">
+                <div id="takwim-loading" class="absolute inset-0 flex items-center justify-center text-gray-500">
+                    <i class="fas fa-spinner fa-spin fa-2x mr-3"></i> Memuatkan Takwim...
+                </div>
+                <!-- Iframe 'src' will be set by JS only when opened to save data -->
+                <iframe id="takwim-frame"
+                    class="w-full h-full border-0 relative z-10 opacity-0 transition-opacity duration-500"
+                    allowfullscreen></iframe>
+            </div>
+        </div>
     </div>
 
     <div id="chart-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
