@@ -73,23 +73,39 @@ export function renderSkeletons() {
     const kpiGridContainer = getEl('kpi-grid-container');
     if (!kpiGridContainer) return;
 
+    // Optional: Hide empty state while skeleton is showing
+    const emptyState = getEl('empty-state-container');
+    if (emptyState) emptyState.classList.add('hidden');
+
     kpiGridContainer.innerHTML = '';
     const skeletonCount = 6;
     for (let i = 0; i < skeletonCount; i++) {
         const skeletonHTML = `
-            <div class="kpi-card bg-white p-6 rounded-2xl shadow-lg border border-gray-100 flex flex-col h-64">
+            <div class="kpi-card bg-white p-6 rounded-2xl shadow-lg border border-gray-100 flex flex-col h-full animate-pulse relative overflow-hidden">
+                <!-- Header Icon & Title -->
                 <div class="flex items-center mb-6">
-                    <div class="w-12 h-12 rounded-full skeleton"></div>
-                    <div class="ml-4 h-6 w-1/2 rounded skeleton"></div>
-                </div>
-                <div class="mt-auto space-y-4">
-                    <div class="h-10 w-2/3 rounded skeleton"></div>
-                    <div class="h-4 w-full rounded skeleton"></div>
-                    <div class="flex justify-between mt-4">
-                        <div class="h-6 w-8 rounded skeleton"></div>
-                        <div class="h-6 w-12 rounded skeleton"></div>
+                    <div class="w-12 h-12 rounded-full bg-gray-200"></div>
+                    <div class="ml-4 flex-1 space-y-2">
+                        <div class="h-5 bg-gray-200 rounded w-3/4"></div>
+                        <div class="h-3 bg-gray-100 rounded w-1/2"></div>
                     </div>
                 </div>
+                
+                <!-- Center Viz/Text -->
+                <div class="my-4 space-y-3">
+                    <div class="h-8 bg-gray-200 rounded w-1/3 mx-auto"></div>
+                    <div class="h-2 bg-gray-100 rounded w-full"></div>
+                    <div class="h-2 bg-gray-100 rounded w-5/6 mx-auto"></div>
+                </div>
+
+                <!-- Bottom Footer -->
+                <div class="mt-auto pt-4 border-t border-gray-50 flex justify-between items-center">
+                    <div class="h-4 bg-gray-200 rounded w-16"></div>
+                    <div class="h-8 bg-gray-200 rounded w-8"></div>
+                </div>
+                
+                <!-- Shimmer Effect Overlay -->
+                <div class="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/40 to-transparent"></div>
             </div>
         `;
         kpiGridContainer.insertAdjacentHTML('beforeend', skeletonHTML);
