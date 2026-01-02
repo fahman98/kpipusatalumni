@@ -468,6 +468,52 @@ document.addEventListener('DOMContentLoaded', () => {
     if (searchInput) searchInput.addEventListener('input', (e) => filterDashboardCards(e.target.value, statusFilter.value));
     if (statusFilter) statusFilter.addEventListener('change', (e) => filterDashboardCards(searchInput.value, e.target.value));
 
+    // --- TAKWIM MODAL LOGIC ---
+    const takwimBtn = getEl('takwim-btn');
+    const takwimModal = getEl('takwim-modal');
+    const closeTakwimBtn = getEl('close-takwim-modal');
+    const takwimFrame = getEl('takwim-frame');
+    const takwimLoading = getEl('takwim-loading');
+
+    if (takwimBtn && takwimModal) {
+        takwimBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            takwimModal.classList.remove('hidden');
+            // Small delay to allow display block to apply before opacity transition
+            setTimeout(() => {
+                takwimModal.classList.remove('opacity-0');
+                takwimModal.querySelector('div').classList.remove('scale-95');
+            }, 10);
+
+            // Load Iframe content only when opened
+            if (takwimFrame && !takwimFrame.src) {
+                takwimFrame.src = "https://takwimalumni.vercel.app/";
+                takwimFrame.onload = () => {
+                    takwimLoading.style.display = 'none';
+                    takwimFrame.classList.remove('opacity-0');
+                };
+            }
+        });
+
+        const closeTakwim = () => {
+            takwimModal.classList.add('opacity-0');
+            takwimModal.querySelector('div').classList.add('scale-95');
+            setTimeout(() => {
+                takwimModal.classList.add('hidden');
+            }, 300); // Wait for transition
+
+            // Optional: Reset src to stop content/save memory? 
+            // Better to keep it if user re-opens often. But for now let's keep it loaded.
+        };
+
+        if (closeTakwimBtn) closeTakwimBtn.addEventListener('click', closeTakwim);
+
+        // Close on background click
+        takwimModal.addEventListener('click', (e) => {
+            if (e.target === takwimModal) closeTakwim();
+        });
+    }
+
     // PWA
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
