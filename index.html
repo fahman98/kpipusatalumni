@@ -382,6 +382,33 @@
         </div>
     </div>
 
+    <!-- iOS INSTALL GUIDE MODAL -->
+    <div id="ios-install-modal"
+        class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black bg-opacity-60 hidden pointer-events-auto"
+        style="backdrop-filter: blur(2px);">
+        <div
+            class="bg-white dark:bg-gray-800 w-full sm:w-96 rounded-t-2xl sm:rounded-2xl p-6 pb-8 shadow-2xl transform transition-transform duration-300 translate-y-0">
+            <div class="flex justify-between items-start mb-4">
+                <h3 class="text-lg font-bold text-gray-900 dark:text-white">Install pada iPhone/iPad</h3>
+                <button id="close-ios-modal" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <div class="space-y-4 text-sm text-gray-600 dark:text-gray-300">
+                <p>1. Tekan butang <span class="font-bold text-blue-500"><i class="fas fa-share-square"></i>
+                        Share</span> di bar bawah browser (Safari).</p>
+                <p>2. Scroll ke bawah dan pilih <span class="font-bold text-gray-800 dark:text-white"><i
+                            class="far fa-plus-square"></i> Add to Home Screen</span>.</p>
+                <p>3. Tekan <span class="font-bold text-blue-500">Add</span> di bucu atas kanan.</p>
+            </div>
+
+            <div class="mt-6 flex justify-center">
+                <i class="fas fa-arrow-down text-blue-500 animate-bounce text-2xl"></i>
+            </div>
+        </div>
+    </div>
+
     <div id="details-modal"
         class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
         <div class="modal-content bg-white rounded-lg shadow-2xl w-full max-w-md p-6 flex flex-col max-h-[85vh]"

@@ -519,6 +519,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const installPrompt = getEl('install-prompt');
     const installBtn = getEl('install-app-btn');
     const closeInstallBtn = getEl('install-close-btn');
+    const iosModal = getEl('ios-install-modal');
+    const closeIosBtn = getEl('close-ios-modal');
+
+    // Helper: Detect iOS
+    const isIOS = () => {
+        return /iPhone|iPad|iPod/.test(navigator.userAgent) && !window.MSStream;
+    };
+
+    // Helper: Detect Standalone (Already Installed)
+    const isInStandaloneMode = () => {
+        return ('standalone' in window.navigator) && (window.navigator.standalone);
+    };
 
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
@@ -528,34 +540,75 @@ document.addEventListener('DOMContentLoaded', () => {
             );
         });
 
-        // Handle PWA Install Prompt
+        // 1. Android / Desktop (Chrome) - Auto Trigger
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
+            showInstallBanner();
+        });
 
-            // Show Banner (Slide Up)
+        // 2. iOS - Manual Trigger
+        if (isIOS() && !isInStandaloneMode()) {
+            // Wait a bit to emulate "app-like" delay
+            setTimeout(() => {
+                showInstallBanner(true); // true = isIOS
+            }, 3000);
+        }
+
+        function showInstallBanner(isIOSDevice = false) {
             if (installPrompt) {
                 installPrompt.classList.remove('hidden');
+
+                // Customize text for iOS
+                if (isIOSDevice) {
+                    installBtn.textContent = "Cara Install";
+                    const titleText = installPrompt.querySelector('h4');
+                    if (titleText) titleText.textContent = "Install App KPI (iOS)";
+                }
+
                 setTimeout(() => installPrompt.classList.add('slide-up-show'), 100);
             }
-        });
+        }
 
         if (installBtn) {
             installBtn.addEventListener('click', async () => {
+                // Scenario A: Android/Chrome (Auto)
                 if (deferredPrompt) {
                     deferredPrompt.prompt();
                     const { outcome } = await deferredPrompt.userChoice;
                     console.log(`User response: ${outcome}`);
                     deferredPrompt = null;
+                    hideInstallBanner();
                 }
-                // Hide banner
-                if (installPrompt) installPrompt.classList.remove('slide-up-show');
+                // Scenario B: iOS (Manual Guide)
+                else if (isIOS()) {
+                    if (iosModal) {
+                        iosModal.classList.remove('hidden');
+                        hideInstallBanner(); // Hide banner to clear view
+                    }
+                }
             });
         }
 
+        function hideInstallBanner() {
+            if (installPrompt) installPrompt.classList.remove('slide-up-show');
+        }
+
         if (closeInstallBtn && installPrompt) {
-            closeInstallBtn.addEventListener('click', () => {
-                installPrompt.classList.remove('slide-up-show');
+            closeInstallBtn.addEventListener('click', hideInstallBanner);
+        }
+
+        // Close iOS Modal
+        if (closeIosBtn) {
+            closeIosBtn.addEventListener('click', () => {
+                iosModal.classList.add('hidden');
+            });
+        }
+
+        // Close iOS Modal on BG click
+        if (iosModal) {
+            iosModal.addEventListener('click', (e) => {
+                if (e.target === iosModal) iosModal.classList.add('hidden');
             });
         }
     }
