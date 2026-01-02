@@ -1,9 +1,9 @@
 // --- JS/MAIN.JS ---
-import { 
-    renderSkeletons, 
-    createKpiCard, 
-    animateCardElements, 
-    getKpiPercentage, 
+import {
+    renderSkeletons,
+    createKpiCard,
+    animateCardElements,
+    getKpiPercentage,
     showToastNotification,
     openModal,
     closeModal,
@@ -12,12 +12,12 @@ import {
     calculateKpiValue,
     filterDashboardCards,
     showDetailsModal,
-    showDetailsModal
+
 } from './ui.js';
 
-import { 
-    subscribeToQuarterData, 
-    setApiYear, 
+import {
+    subscribeToQuarterData,
+    setApiYear,
     selectedYear,
     kpiDataCache,
     addNewKpi,
@@ -44,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const topAchiever = getEl('top-achiever');
     const mainFocus = getEl('main-focus');
     const modeIndicator = getEl('mode-indicator');
-    
+
     const adminLoginBtn = getEl('admin-login-btn');
     const adminLogoutBtn = getEl('admin-logout-btn');
     const passwordModal = getEl('password-modal');
@@ -52,15 +52,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const passwordSubmitBtn = getEl('password-submit-btn');
     const emailInput = getEl('email-input');
     const passwordInput = getEl('password-input');
-    
 
-    
+
+
     const editDescModal = getEl('edit-desc-modal');
     const editDescModalClose = getEl('edit-desc-modal-close');
     const saveDescBtn = getEl('save-desc-btn');
     const cancelDescBtn = getEl('cancel-desc-btn');
     const descInput = getEl('desc-input');
-    
+
     const kpiGridContainer = getEl('kpi-grid-container');
     const paginationContainer = getEl('pagination');
     const chartModal = getEl('chart-modal');
@@ -97,9 +97,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- MAIN FUNCTION: UPDATE DASHBOARD ---
-    window.updateDashboard = function(quarterKey) {
+    window.updateDashboard = function (quarterKey) {
         currentQuarter = quarterKey;
-        
+
         // 1. Set Title Serta-merta
         if (mainTitle) {
             const qMap = { 'q1': 'Suku Pertama', 'q2': 'Suku Kedua', 'q3': 'Suku Ketiga', 'q4': 'Suku Keempat' };
@@ -109,7 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // 2. Reset View states
         if (mainContentWrapper) mainContentWrapper.classList.add('hidden');
         if (emptyStateContainer) emptyStateContainer.classList.add('hidden');
-        
+
         // 3. Show skeletons only if cache is empty
         if (!kpiDataCache[quarterKey]) {
             renderSkeletons();
@@ -117,18 +117,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 4. Subscribe to Real-time Data
         subscribeToQuarterData(quarterKey, (currentData, previousData, isEmpty) => {
-            
+
             // Handle Empty Year State
             if (isEmpty) {
                 if (kpiGridContainer) kpiGridContainer.innerHTML = '';
                 if (emptyStateContainer) emptyStateContainer.classList.remove('hidden');
-                
-                if(isEditMode) {
+
+                if (isEditMode) {
                     if (adminSetupActions) adminSetupActions.classList.remove('hidden');
                 } else {
                     if (adminSetupActions) adminSetupActions.classList.add('hidden');
                 }
-                
+
                 if (mainTitle) mainTitle.textContent = `Dashboard KPI ${selectedYear} - Tiada Data`;
                 return;
             }
@@ -136,7 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Handle Data Exists State
             if (emptyStateContainer) emptyStateContainer.classList.add('hidden');
             if (mainContentWrapper) mainContentWrapper.classList.remove('hidden');
-            
+
             // Update Title
             if (mainTitle) mainTitle.textContent = `Dashboard KPI ${selectedYear} - ${currentData.title || quarterKey.toUpperCase()}`;
             if (subTitle) subTitle.textContent = `Papan Pemuka Prestasi (${currentData.subtitle || ''})`;
@@ -146,7 +146,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Process KPIs
             const processedKpis = processKpisWithTrends(currentData.kpis, previousData ? previousData.kpis : null);
-            kpiDataCache[quarterKey].processedKpis = processedKpis; 
+            kpiDataCache[quarterKey].processedKpis = processedKpis;
 
             let totalPct = 0;
             let count = 0;
@@ -154,48 +154,48 @@ document.addEventListener('DOMContentLoaded', () => {
             let bottomKpi = null;
             let maxPercentage = -1;
             let minPercentage = 999999;
-            
+
             if (kpiGridContainer) kpiGridContainer.innerHTML = '';
-            
+
             processedKpis.forEach((kpi, index) => {
                 const card = createKpiCard(kpi);
                 if (kpiGridContainer) kpiGridContainer.appendChild(card);
-                
+
                 card.style.animationDelay = `${index * 50}ms`;
                 animateCardElements(card, kpi);
 
                 // Attach Listeners
                 const editValBtn = card.querySelector('.edit-kpi-btn');
-                if(editValBtn) {
+                if (editValBtn) {
                     editValBtn.addEventListener('click', (e) => {
-                       e.stopPropagation();
-                       const currentVal = calculateKpiValue(kpi);
-                       const newVal = prompt(`Masukkan nilai baharu untuk "${kpi.name}":`, currentVal);
-                       if(newVal !== null && newVal.trim() !== "") {
-                           updateKpiValueInFirestore(quarterKey, kpi.id, parseFloat(newVal));
-                       }
+                        e.stopPropagation();
+                        const currentVal = calculateKpiValue(kpi);
+                        const newVal = prompt(`Masukkan nilai baharu untuk "${kpi.name}":`, currentVal);
+                        if (newVal !== null && newVal.trim() !== "") {
+                            updateKpiValueInFirestore(quarterKey, kpi.id, parseFloat(newVal));
+                        }
                     });
                 }
 
                 const settingsBtn = card.querySelector('.settings-btn');
-                if(settingsBtn) {
+                if (settingsBtn) {
                     settingsBtn.addEventListener('click', (e) => {
                         e.stopPropagation();
                         openEditStructureModal(kpi);
                     });
                 }
-                
+
                 const chartBtn = card.querySelector('.show-chart-btn');
-                if(chartBtn) {
+                if (chartBtn) {
                     chartBtn.addEventListener('click', (e) => {
                         e.stopPropagation();
                         showHistoryChart(kpi.id, chartBtn);
                     });
                 }
-                
+
                 const detailsBtn = card.querySelector('.show-details-btn');
-                if(detailsBtn && kpi.details) {
-                    detailsBtn.dataset.kpiId = kpi.id; 
+                if (detailsBtn && kpi.details) {
+                    detailsBtn.dataset.kpiId = kpi.id;
                     detailsBtn.addEventListener('click', (e) => {
                         e.stopPropagation();
                         showDetailsModal(kpi.id, detailsBtn);
@@ -222,10 +222,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (topKpi && topAchiever) topAchiever.textContent = `${topKpi.name} (${maxPercentage.toFixed(2)}%)`;
             if (bottomKpi && mainFocus) mainFocus.textContent = `${bottomKpi.name} (${minPercentage.toFixed(2)}%)`;
-            
+
             setEditMode(isEditMode);
 
-            if(searchInput && statusFilter) {
+            if (searchInput && statusFilter) {
                 filterDashboardCards(searchInput.value, statusFilter.value);
             }
         });
@@ -267,10 +267,10 @@ document.addEventListener('DOMContentLoaded', () => {
             // Get active quarter from DOM
             const activeBtn = paginationContainer ? paginationContainer.querySelector('.active') : null;
             const activeQuarterKey = activeBtn ? `q${activeBtn.dataset.quarter}` : 'q1';
-            
+
             // Force Sync API Year
             if (yearSelector) {
-                setApiYear(yearSelector.value); 
+                setApiYear(yearSelector.value);
             }
 
             if (user && !user.isAnonymous) {
@@ -279,7 +279,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (modeIndicator) modeIndicator.innerHTML = '<span class="inline-block bg-green-200 text-green-800 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-green-300">Mod Admin</span>';
                 if (adminLogoutBtn) adminLogoutBtn.classList.remove('hidden');
                 if (adminLoginBtn) adminLoginBtn.classList.add('hidden');
-                
+
                 showToastNotification(`Selamat datang, Admin (${user.email})`, "success");
             } else {
                 // GUEST MODE
@@ -287,17 +287,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (modeIndicator) modeIndicator.innerHTML = '<span class="inline-block bg-yellow-100 text-yellow-800 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-yellow-200">Mod Lihat Sahaja</span>';
                 if (adminLogoutBtn) adminLogoutBtn.classList.add('hidden');
                 if (adminLoginBtn) adminLoginBtn.classList.remove('hidden');
-                
+
                 // Hide admin specific elements immediately
-                if(adminSetupActions) adminSetupActions.classList.add('hidden');
+                if (adminSetupActions) adminSetupActions.classList.add('hidden');
 
                 // If not logged in at all, login anonymously
                 if (!user) {
-                    try { await firebase.auth().signInAnonymously(); } 
+                    try { await firebase.auth().signInAnonymously(); }
                     catch (error) { console.error("Anonymous auth error:", error); }
                 }
             }
-            
+
             // Trigger Load
             window.updateDashboard(activeQuarterKey);
         });
@@ -306,7 +306,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // --- EVENT LISTENERS ---
-    
+
     // Year Change
     if (yearSelector) {
         yearSelector.addEventListener('change', (e) => {
@@ -335,7 +335,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (chartBtn) showHistoryChart(chartBtn.dataset.kpiId, chartBtn);
             if (detailsBtn) {
                 const kpiId = detailsBtn.dataset.kpiId;
-                if(kpiId) showDetailsModal(kpiId, detailsBtn);
+                if (kpiId) showDetailsModal(kpiId, detailsBtn);
             }
         });
     }
@@ -348,10 +348,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Modals
     [chartModal, detailsModal, editDescModal, addKpiModal, editStructureModal].forEach(modal => {
-        if(!modal) return;
+        if (!modal) return;
         const closeBtn = modal.querySelector('button[aria-label="Tutup modal"]') || modal.querySelector('.text-2xl');
         modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(modal); });
-        if(closeBtn) closeBtn.addEventListener('click', () => closeModal(modal));
+        if (closeBtn) closeBtn.addEventListener('click', () => closeModal(modal));
     });
 
     // Admin & Auth
@@ -360,7 +360,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (passwordSubmitBtn) passwordSubmitBtn.addEventListener('click', handleAdminLogin);
     if (passwordInput) passwordInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); handleAdminLogin(); } });
     if (emailInput) emailInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); passwordInput.focus(); } });
-    
+
     // Logout with custom sequence
     if (adminLogoutBtn) {
         adminLogoutBtn.addEventListener('click', () => {
@@ -372,7 +372,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Admin Forms
     if (saveDescBtn) saveDescBtn.addEventListener('click', async () => {
         const id = editDescModal.dataset.kpiId;
-        if(id) {
+        if (id) {
             const text = descInput.value.trim();
             closeModal(editDescModal);
             await updateKpiDescriptionInFirestore(id, text);
@@ -398,7 +398,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 isCurrency: typeRadio.value === 'currency',
                 value: 0,
                 description: "KPI baru ditambah.",
-                details: { type: 'breakdownList', items: [] } 
+                details: { type: 'breakdownList', items: [] }
             };
             addNewKpi(newKpi);
             closeModal(addKpiModal);
@@ -431,12 +431,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    if(addKpiClose) addKpiClose.addEventListener('click', () => closeModal(addKpiModal));
-    if(editStructClose) editStructClose.addEventListener('click', () => closeModal(editStructureModal));
+    if (addKpiClose) addKpiClose.addEventListener('click', () => closeModal(addKpiModal));
+    if (editStructClose) editStructClose.addEventListener('click', () => closeModal(editStructureModal));
 
     // Filters
-    if(searchInput) searchInput.addEventListener('input', (e) => filterDashboardCards(e.target.value, statusFilter.value));
-    if(statusFilter) statusFilter.addEventListener('change', (e) => filterDashboardCards(searchInput.value, e.target.value));
+    if (searchInput) searchInput.addEventListener('input', (e) => filterDashboardCards(e.target.value, statusFilter.value));
+    if (statusFilter) statusFilter.addEventListener('change', (e) => filterDashboardCards(searchInput.value, e.target.value));
 
     // PWA
     if ('serviceWorker' in navigator) {
