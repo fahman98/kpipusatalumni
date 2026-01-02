@@ -1,17 +1,34 @@
 /* Custom styles untuk melengkapkan Tailwind */
 body {
     font-family: 'Inter', sans-serif;
-    transition: background-color: 0.3s, color: 0.3s;
+    transition: background-color 0.3s, color 0.3s;
 }
 
 /* Custom colors untuk tema */
-.bg-brand-primary { background-color: #0d47a1; }
-.text-brand-primary { color: #0d47a1; }
+.bg-brand-primary {
+    background-color: #0d47a1;
+}
+
+.text-brand-primary {
+    color: #0d47a1;
+}
 
 /* Warna Status */
-.bg-status-bad { background-color: #e53935; } /* Merah */
-.bg-status-ok { background-color: #fdd835; }  /* Kuning */
-.bg-status-good { background-color: #43a047; } /* Hijau */
+.bg-status-bad {
+    background-color: #e53935;
+}
+
+/* Merah */
+.bg-status-ok {
+    background-color: #fdd835;
+}
+
+/* Kuning */
+.bg-status-good {
+    background-color: #43a047;
+}
+
+/* Hijau */
 
 /* Animasi untuk kad */
 .kpi-card {
@@ -20,11 +37,12 @@ body {
     transform: translateY(20px);
     animation: card-fade-in 0.5s ease-out forwards;
     /* Pastikan relative untuk absolute positioning glowing dot */
-    position: relative; 
+    position: relative;
 }
+
 .kpi-card:hover {
     transform: translateY(-8px) scale(1.02);
-    z-index: 10; 
+    z-index: 10;
 }
 
 @keyframes card-fade-in {
@@ -38,6 +56,7 @@ body {
 .highlight-card {
     transition: transform 0.3s ease;
 }
+
 .highlight-card:hover {
     transform: scale(1.03);
 }
@@ -46,6 +65,7 @@ body {
 .kpi-icon {
     transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
+
 .kpi-card:hover .kpi-icon {
     transform: scale(1.2) rotate(-10deg);
 }
@@ -56,9 +76,19 @@ body {
 }
 
 @keyframes wiggle {
-    0%, 100% { transform: rotate(0); }
-    25% { transform: rotate(-12deg); }
-    75% { transform: rotate(12deg); }
+
+    0%,
+    100% {
+        transform: rotate(0);
+    }
+
+    25% {
+        transform: rotate(-12deg);
+    }
+
+    75% {
+        transform: rotate(12deg);
+    }
 }
 
 /* CSS untuk animasi progress bar */
@@ -72,6 +102,7 @@ body {
     color: white;
     border-color: #0d47a1;
 }
+
 .quarter-btn:active {
     transform: scale(0.95);
 }
@@ -82,15 +113,18 @@ body {
     opacity: 0;
     visibility: hidden;
 }
+
 .modal.is-open {
     opacity: 1;
     visibility: visible;
 }
+
 .modal .modal-content {
     transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease-in-out;
     transform: translateY(40px) scale(0.9);
     opacity: 0;
 }
+
 .modal.is-open .modal-content {
     transform: translateY(0) scale(1);
     opacity: 1;
@@ -106,8 +140,13 @@ body {
 }
 
 @keyframes shimmer {
-    0% { background-position: -800px 0; }
-    100% { background-position: 800px 0; }
+    0% {
+        background-position: -800px 0;
+    }
+
+    100% {
+        background-position: 800px 0;
+    }
 }
 
 /* --- Styling untuk Notifikasi Toast (Smoother) --- */
@@ -116,12 +155,14 @@ body {
     top: 24px;
     right: 24px;
     z-index: 100;
-    transform: translateX(150%); /* Start off-screen */
+    transform: translateX(150%);
+    /* Start off-screen */
     opacity: 0;
     transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55), opacity 0.3s ease;
     max-width: 320px;
     width: 100%;
 }
+
 #toast-notification.show {
     transform: translateX(0);
     opacity: 1;
@@ -129,18 +170,23 @@ body {
 
 /* Styling untuk butang edit KPI */
 .edit-kpi-btn {
-    display: none; /* Sembunyi secara default */
+    display: none;
+    /* Sembunyi secara default */
     margin-left: 8px;
-    color: #9ca3af; /* gray-400 */
+    color: #9ca3af;
+    /* gray-400 */
     font-size: 0.8rem;
     transition: color 0.2s;
 }
+
 .kpi-card:hover .edit-kpi-btn,
 li:hover .edit-kpi-btn {
     display: inline-block;
 }
+
 .edit-kpi-btn:hover {
-    color: #0d47a1; /* text-brand-primary */
+    color: #0d47a1;
+    /* text-brand-primary */
 }
 
 /* Styling untuk butang edit/delete dalam modal */
@@ -148,6 +194,7 @@ li:hover .edit-kpi-btn {
     display: none;
     transition: opacity 0.2s;
 }
+
 li:hover .item-actions {
     display: flex;
 }
@@ -156,16 +203,19 @@ li:hover .item-actions {
 #details-modal-content-area::-webkit-scrollbar {
     width: 6px;
 }
+
 #details-modal-content-area::-webkit-scrollbar-track {
-    background: #f1f1f1; 
+    background: #f1f1f1;
     border-radius: 4px;
 }
+
 #details-modal-content-area::-webkit-scrollbar-thumb {
-    background: #c1c1c1; 
+    background: #c1c1c1;
     border-radius: 4px;
 }
+
 #details-modal-content-area::-webkit-scrollbar-thumb:hover {
-    background: #a8a8a8; 
+    background: #a8a8a8;
 }
 
 
@@ -215,14 +265,14 @@ li:hover .item-actions {
     padding: 20px;
     position: relative;
     z-index: 1;
-    max-height: 400px; 
+    max-height: 400px;
     overflow-y: auto;
 }
 
 /* Hide scrollbar for terminal body but allow scroll */
 .terminal-body::-webkit-scrollbar {
     width: 0px;
-    background: transparent; 
+    background: transparent;
 }
 
 .terminal-text {
@@ -269,8 +319,15 @@ li:hover .item-actions {
 }
 
 @keyframes blink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0; }
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0;
+    }
 }
 
 .terminal-btn {
@@ -311,8 +368,15 @@ li:hover .item-actions {
 }
 
 @keyframes blink-urgent {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
 }
 
 .input-disabled {
@@ -322,12 +386,29 @@ li:hover .item-actions {
 
 /* --- GLITCH EFFECT ANIMATION --- */
 @keyframes glitch-anim {
-    0% { transform: translate(0); }
-    20% { transform: translate(-2px, 2px); }
-    40% { transform: translate(-2px, -2px); }
-    60% { transform: translate(2px, 2px); }
-    80% { transform: translate(2px, -2px); }
-    100% { transform: translate(0); }
+    0% {
+        transform: translate(0);
+    }
+
+    20% {
+        transform: translate(-2px, 2px);
+    }
+
+    40% {
+        transform: translate(-2px, -2px);
+    }
+
+    60% {
+        transform: translate(2px, 2px);
+    }
+
+    80% {
+        transform: translate(2px, -2px);
+    }
+
+    100% {
+        transform: translate(0);
+    }
 }
 
 .terminal-glitch {
@@ -340,9 +421,11 @@ li:hover .item-actions {
     transition: color 0.2s;
     cursor: pointer;
 }
+
 .info-btn:hover {
     color: #0d47a1;
 }
+
 .desc-popover {
     position: absolute;
     top: 60px;
@@ -358,9 +441,11 @@ li:hover .item-actions {
     color: #374151;
     line-height: 1.5;
 }
+
 .desc-popover.hidden {
     display: none;
 }
+
 .desc-popover::before {
     content: '';
     position: absolute;
@@ -387,6 +472,7 @@ li:hover .item-actions {
     color: #1f2937;
     transition: border-color 0.2s;
 }
+
 #desc-input:focus {
     outline: none;
     border-color: #0d47a1;
@@ -397,10 +483,13 @@ li:hover .item-actions {
 
 /* 1. Fixed Height Header: Ensures standardized vertical alignment */
 .kpi-header-fixed {
-    min-height: 72px; /* Reserve space for 2 lines of text + icon */
+    min-height: 72px;
+    /* Reserve space for 2 lines of text + icon */
     display: flex;
-    align-items: flex-start; /* Align top */
-    padding-right: 40px; /* Space for chart button */
+    align-items: flex-start;
+    /* Align top */
+    padding-right: 40px;
+    /* Space for chart button */
     margin-bottom: 16px;
     position: relative;
 }
@@ -409,24 +498,36 @@ li:hover .item-actions {
 .status-dot {
     height: 10px;
     width: 10px;
-    background-color: #22c55e; /* Green-500 */
+    background-color: #22c55e;
+    /* Green-500 */
     border-radius: 50%;
     display: inline-block;
     box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
     animation: pulse-green 2s infinite;
     position: absolute;
-    top: 26px; /* Align with chart button visually */
-    right: 50px; /* Left of the chart button */
+    top: 26px;
+    /* Align with chart button visually */
+    right: 50px;
+    /* Left of the chart button */
     z-index: 20;
 }
+
 .status-dot.hidden {
     display: none;
 }
 
 @keyframes pulse-green {
-    0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
-    70% { box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+    0% {
+        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+    }
+
+    70% {
+        box-shadow: 0 0 0 8px rgba(34, 197, 94, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+    }
 }
 
 /* --- NEW: Global Loading Spinner --- */
@@ -438,9 +539,11 @@ li:hover .item-actions {
     border-radius: 50%;
     border-top-color: #fff;
     animation: spin 1s ease-in-out infinite;
-    box-shadow: 0 0 15px rgba(0,0,0,0.2);
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
 }
 
 @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
 }
