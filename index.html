@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard KPI Pusat Alumni (Dinamik)</title>
+
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- Google Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+<!-- Font Awesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+<!-- PWA Manifest & Meta -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0d47a1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3063/3063835.png">
+
+<!-- Custom CSS -->
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-gray-100 relative">
+
+<!-- GLOBAL LOADING SPINNER OVERLAY -->
+<div id="global-loading-overlay" class="fixed inset-0 bg-black bg-opacity-70 z-[100] hidden flex flex-col items-center justify-center backdrop-blur-sm transition-opacity duration-300">
+    <div class="spinner-ring"></div>
+    <p id="loading-text" class="text-white mt-4 font-semibold text-lg tracking-wide animate-pulse">Sedang Memproses...</p>
+</div>
+
+<!-- MODAL PASSWORD HACKER TERMINAL STYLE -->
+<div id="password-modal" class="modal fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center p-4 z-50">
+    <div id="terminal-window" class="terminal-window">
+        <div class="terminal-header">
+            <span>ROOT_ACCESS // SECURE_SHELL</span>
+            <button id="password-modal-close" class="text-black hover:text-gray-700 font-bold px-2">X</button>
+        </div>
+        <div id="terminal-body" class="terminal-body">
+            <!-- Boot logs will appear here dynamically -->
+            
+            <div id="terminal-input-area" class="hidden">
+                <p class="terminal-text">> SECURE CONNECTION ESTABLISHED.</p>
+                <p class="terminal-text mb-2">> PLEASE AUTHENTICATE.</p>
+                
+                <!-- Input Email -->
+                <div class="terminal-input-line">
+                    <span class="terminal-prompt">login:</span>
+                    <input type="email" id="email-input" class="terminal-input" placeholder="admin@email.com" autocomplete="off">
+                </div>
+
+                <!-- Input Password -->
+                <div class="terminal-input-line mt-2">
+                    <span class="terminal-prompt">password:</span>
+                    <input type="password" id="password-input" class="terminal-input" placeholder="" autocomplete="off">
+                    <span class="blinking-cursor"></span>
+                </div>
+                
+                <div id="terminal-feedback" class="terminal-text mt-4 h-6 font-bold"></div>
+                
+                <button id="password-submit-btn" class="terminal-btn">
+                    > EXECUTE_LOGIN
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Structure -->
+<div id="toast-notification" class="bg-white rounded-lg shadow-xl border-l-4 overflow-hidden">
+    <div class="flex items-center p-4">
+        <div id="toast-icon-container" class="flex-shrink-0">
+            <i id="toast-icon" class="fas fa-info-circle text-xl"></i>
+        </div>
+        <div class="ml-3 w-0 flex-1">
+            <p id="toast-message" class="text-sm font-medium text-gray-900 leading-5"></p>
+        </div>
+        <div class="ml-4 flex-shrink-0 flex">
+            <button id="toast-close-btn" class="inline-flex text-gray-400 focus:outline-none focus:text-gray-500 transition ease-in-out duration-150">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="dashboard-container" class="container mx-auto p-4 sm:p-6 lg:p-8">
+    <header class="text-center mb-8 relative">
+        <!-- Logout Button (Hidden by default) -->
+        <button id="admin-logout-btn" class="hidden absolute top-0 right-0 bg-red-100 text-red-600 hover:bg-red-200 px-3 py-1 rounded-lg text-sm font-semibold transition-colors shadow-sm">
+            <i class="fas fa-sign-out-alt mr-2"></i>Logout
+        </button>
+
+        <h1 id="main-title" class="text-2xl sm:text-3xl md:text-4xl font-bold text-brand-primary">Memuatkan Dashboard...</h1>
+        
+        <!-- Year Selector (NEW) -->
+        <div class="flex justify-center items-center gap-2 mt-2">
+            <p id="sub-title" class="text-md md:text-lg text-gray-600">Papan Pemuka Prestasi</p>
+            <select id="year-selector" class="bg-white border border-gray-300 text-gray-700 font-bold py-1 px-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary cursor-pointer shadow-sm">
+                <option value="2025">2025</option>
+                <option value="2026">2026</option>
+                <option value="2027">2027</option>
+            </select>
+        </div>
+
+        <div id="mode-indicator" class="mt-2">
+            <span class="inline-block bg-yellow-100 text-yellow-800 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-yellow-200">Mod Lihat Sahaja</span>
+        </div>
+    </header>
+
+    <!-- Empty State / Clone Data Container (Hidden by default) -->
+    <div id="empty-state-container" class="hidden flex flex-col items-center justify-center p-8 bg-white rounded-xl shadow-lg border-2 border-dashed border-gray-300 mb-8 mt-4">
+        <div class="bg-gray-100 p-4 rounded-full mb-4">
+            <i class="fas fa-folder-open text-gray-400 text-5xl"></i>
+        </div>
+        <h3 class="text-xl font-bold text-gray-700 mb-2">Tiada Data Untuk Tahun Ini</h3>
+        <p class="text-gray-500 mb-6 text-center max-w-md">Pangkalan data untuk tahun yang dipilih belum mempunyai sebarang KPI. Anda boleh menyalin struktur dari tahun lepas atau mula baru.</p>
+        
+        <div id="admin-setup-actions" class="hidden flex flex-col sm:flex-row gap-4 w-full justify-center">
+            <button id="clone-prev-year-btn" class="bg-white border-2 border-brand-primary text-brand-primary px-6 py-3 rounded-lg font-bold hover:bg-blue-50 transition-all flex items-center justify-center shadow-sm">
+                <i class="fas fa-copy mr-2"></i>Copy Struktur 2025
+            </button>
+            <button id="start-fresh-btn" class="bg-green-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-green-700 transition-all flex items-center justify-center shadow-md">
+                <i class="fas fa-plus-circle mr-2"></i>Mula Kosong (Manual)
+            </button>
+        </div>
+        <p class="mt-4 text-xs text-red-400 italic" id="guest-empty-msg">Sila log masuk sebagai Admin untuk menguruskan data tahun ini.</p>
+    </div>
+
+    <div id="main-content-wrapper" class="hidden">
+        <!-- Gauge Chart Area -->
+        <div id="overall-highlight" class="relative bg-brand-primary text-white p-4 rounded-2xl text-center mb-8 shadow-2xl shadow-blue-900/20 flex flex-col items-center justify-center overflow-hidden">
+            <button id="show-overall-chart-btn" class="absolute top-4 right-4 text-white/70 hover:text-white text-xl z-10" aria-label="Lihat Pecahan Pencapaian" title="Lihat Pecahan Pencapaian">
+                <i class="fas fa-chart-pie"></i>
+            </button>
+            <h2 class="text-xl sm:text-2xl font-semibold opacity-90 mb-2 relative z-10">Pencapaian Keseluruhan</h2>
+            
+            <div class="relative w-full max-w-[300px] h-[160px] flex justify-center">
+                <canvas id="overall-gauge-chart"></canvas>
+                <div class="absolute bottom-0 left-0 w-full text-center mb-2">
+                    <div id="gauge-value-text" class="text-4xl sm:text-5xl font-bold text-white drop-shadow-md">0.00%</div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="legend-container" class="flex flex-wrap justify-center items-center gap-4 sm:gap-6 mb-8 text-sm text-gray-700">
+            <div class="flex items-center">
+                <span class="w-4 h-4 rounded-full bg-status-good mr-2 border border-gray-300"></span>
+                <span>Cemerlang ( &ge; 75%)</span>
+            </div>
+            <div class="flex items-center">
+                <span class="w-4 h-4 rounded-full bg-status-ok mr-2 border border-gray-300"></span>
+                <span>Sederhana (30% - 74%)</span>
+            </div>
+            <div class="flex items-center">
+                <span class="w-4 h-4 rounded-full bg-status-bad mr-2 border border-gray-300"></span>
+                <span>Perlu Perhatian ( &lt; 30%)</span>
+            </div>
+        </div>
+
+        <div id="highlights-container" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div class="highlight-card bg-green-100 border-l-4 border-green-500 text-green-800 p-5 rounded-r-lg shadow-md flex items-center">
+                <i class="fas fa-trophy fa-2x mr-4 text-green-500"></i>
+                <div>
+                    <h4 class="font-bold text-lg">Pencapaian Tertinggi</h4>
+                    <p id="top-achiever" class="text-md"></p>
+                </div>
+            </div>
+            <div class="highlight-card bg-red-100 border-l-4 border-red-500 text-red-800 p-5 rounded-r-lg shadow-md flex items-center">
+                <i class="fas fa-bullseye fa-2x mr-4 text-red-500"></i>
+                <div>
+                    <h4 class="font-bold text-lg">Perlu Tumpuan Utama</h4>
+                    <p id="main-focus" class="text-md"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SEARCH & FILTER CONTROLS -->
+    <div id="search-filter-container" class="mb-6 bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col sm:flex-row gap-4 justify-between items-center">
+        <!-- Search Input -->
+        <div class="relative w-full sm:w-2/3">
+            <input type="text" id="dashboard-search-input" placeholder="Cari nama KPI..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent transition-all">
+            <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+        </div>
+        
+        <!-- Filter Dropdown -->
+        <div class="w-full sm:w-1/3">
+            <select id="dashboard-status-filter" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary bg-white text-gray-700 cursor-pointer">
+                <option value="all">Semua Status</option>
+                <option value="good">🟢 Cemerlang (≥ 75%)</option>
+                <option value="ok">🟡 Sederhana (30% - 74%)</option>
+                <option value="bad">🔴 Perlu Perhatian (< 30%)</option>
+            </select>
+        </div>
+    </div>
+
+    <div id="kpi-grid-container" class="relative grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Content or Skeleton will be injected here -->
+    </div>
+
+    <!-- Add KPI Button (Admin Only) -->
+    <div id="add-kpi-container" class="hidden mt-8 text-center">
+        <button id="open-add-kpi-modal-btn" class="bg-gray-800 text-white px-8 py-3 rounded-xl font-bold hover:bg-gray-900 shadow-xl transform hover:scale-105 transition-all border border-gray-700">
+            <i class="fas fa-plus-circle mr-2"></i>Tambah KPI Baru
+        </button>
+    </div>
+
+    <nav aria-label="Navigasi suku tahunan" class="flex justify-center gap-2 mt-12">
+        <div id="pagination">
+            <button class="quarter-btn active border-2 border-gray-400 text-gray-700 font-semibold py-2 px-6 rounded-lg transition-all" data-quarter="1">S1</button>
+            <button class="quarter-btn border-2 border-gray-400 text-gray-700 font-semibold py-2 px-6 rounded-lg transition-all" data-quarter="2">S2</button>
+            <button class="quarter-btn border-2 border-gray-400 text-gray-700 font-semibold py-2 px-6 rounded-lg transition-all" data-quarter="3">S3</button>
+            <button class="quarter-btn border-2 border-gray-400 text-gray-700 font-semibold py-2 px-6 rounded-lg transition-all" data-quarter="4">S4</button>
+        </div>
+    </nav>
+
+    <footer class="text-center mt-12 pt-4 border-t border-gray-300 mb-12">
+        <p id="footer-note" class="text-xs text-gray-500 mb-4">
+            Data dikemaskini pada... Untuk maklumat lanjut, sila hubungi <a href="tel:+60134977187" class="text-brand-primary hover:underline font-semibold">Encik Fahman Mujib Bin Ramli</a>.
+        </p>
+        
+        <!-- Footer Actions -->
+        <div class="flex flex-wrap justify-center gap-3 items-center">
+             <button id="what-if-btn" class="bg-blue-50 hover:bg-blue-100 text-brand-primary font-semibold py-2 px-4 rounded-lg transition-all text-xs border border-blue-200">
+                <i class="fas fa-magic mr-1"></i> Simulasi "What-If"
+            </button>
+
+            <!-- Admin Login Trigger -->
+            <button id="admin-login-btn" class="text-gray-400 hover:text-gray-600 font-semibold py-2 px-4 rounded-lg transition-all text-xs">
+                <i class="fas fa-terminal mr-1"></i> TERMINAL LOGIN
+            </button>
+        </div>
+    </footer>
+</div>
+
+<div id="chart-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div class="modal-content bg-white rounded-lg shadow-2xl w-full max-w-3xl p-6" role="dialog" aria-modal="true" aria-labelledby="chart-modal-title">
+        <div class="flex justify-between items-center mb-4">
+            <h3 id="chart-modal-title" class="text-xl font-bold text-brand-primary">Sejarah Prestasi</h3>
+            <button id="chart-modal-close" class="text-gray-500 hover:text-red-600 text-2xl font-bold" aria-label="Tutup modal">&times;</button>
+        </div>
+        <div class="h-[400px] w-full">
+            <canvas id="kpi-history-chart"></canvas>
+        </div>
+    </div>
+</div>
+
+<div id="details-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div class="modal-content bg-white rounded-lg shadow-2xl w-full max-w-md p-6 flex flex-col max-h-[85vh]" role="dialog" aria-modal="true" aria-labelledby="details-modal-title">
+        <div class="flex justify-between items-center mb-4 flex-shrink-0">
+            <h3 id="details-modal-title" class="text-xl font-bold text-brand-primary">Butiran</h3>
+            <button id="details-modal-close" class="text-gray-500 hover:text-red-600 text-2xl font-bold" aria-label="Tutup modal">&times;</button>
+        </div>
+        <div id="details-modal-content-area" class="overflow-y-auto pr-2">
+            <p id="details-modal-description" class="mb-4 text-gray-700"></p>
+            <ul id="details-list" class="space-y-3 text-gray-800">
+                </ul>
+             <div id="details-add-new-wrapper" class="mt-4"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Description Modal -->
+<div id="edit-desc-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div class="modal-content bg-white rounded-lg shadow-2xl w-full max-w-lg p-6" role="dialog" aria-modal="true">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold text-brand-primary">Edit Deskripsi KPI</h3>
+            <button id="edit-desc-modal-close" class="text-gray-500 hover:text-red-600 text-2xl font-bold">&times;</button>
+        </div>
+        <p class="mb-2 text-sm text-gray-600">Masukkan penjelasan lengkap untuk KPI ini:</p>
+        <textarea id="desc-input" placeholder="Tulis deskripsi di sini..."></textarea>
+        <div class="flex justify-end gap-2">
+            <button id="cancel-desc-btn" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Batal</button>
+            <button id="save-desc-btn" class="px-4 py-2 bg-brand-primary text-white rounded-lg hover:bg-blue-800 font-bold">Simpan Perubahan</button>
+        </div>
+    </div>
+</div>
+
+<!-- What-If Calculator Modal -->
+<div id="what-if-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div class="modal-content bg-white rounded-lg shadow-2xl w-full max-w-4xl p-0 flex flex-col max-h-[90vh]" role="dialog" aria-modal="true">
+        <!-- Header -->
+        <div class="bg-brand-primary text-white p-4 rounded-t-lg flex justify-between items-center">
+            <div>
+                <h3 class="text-xl font-bold"><i class="fas fa-magic mr-2"></i>Simulasi Unjuran "What-If"</h3>
+                <p class="text-sm text-blue-200 opacity-90">Ubah nilai KPI untuk melihat potensi kesan kepada skor keseluruhan.</p>
+            </div>
+            <button id="what-if-modal-close" class="text-white hover:text-red-300 text-2xl font-bold">&times;</button>
+        </div>
+
+        <!-- Body -->
+        <div class="p-6 overflow-y-auto flex-grow bg-gray-50">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Controls Panel -->
+                <div class="lg:col-span-2 space-y-4" id="what-if-inputs-container">
+                    <!-- KPI Inputs will be generated here -->
+                </div>
+
+                <!-- Result Panel -->
+                <div class="lg:col-span-1">
+                    <div class="bg-white p-6 rounded-xl shadow-lg sticky top-0 border border-gray-200">
+                        <h4 class="text-gray-500 font-semibold text-sm uppercase tracking-wider mb-2">Unjuran Keseluruhan</h4>
+                        <div id="what-if-result-display" class="text-5xl font-bold text-gray-800 mb-2 transition-colors duration-500">0.00%</div>
+                        <div id="what-if-diff-display" class="text-sm font-semibold mb-6"></div>
+                        
+                        <div class="h-1 w-full bg-gray-200 rounded-full mb-6">
+                            <div id="what-if-progress-bar" class="h-1 bg-gray-800 rounded-full transition-all duration-500" style="width: 0%"></div>
+                        </div>
+
+                        <!-- CANVAS FOR LINE CHART -->
+                        <div class="h-48 w-full mb-4">
+                            <canvas id="what-if-chart"></canvas>
+                        </div>
+
+                        <div class="space-y-2">
+                            <button id="what-if-calculate-btn" class="w-full bg-brand-primary hover:bg-blue-800 text-white font-bold py-3 px-4 rounded-lg transition-all shadow-md transform active:scale-95">
+                                <i class="fas fa-calculator mr-2"></i>Kira Unjuran
+                            </button>
+                            <button id="what-if-reset-btn" class="w-full bg-white border-2 border-gray-300 text-gray-600 hover:bg-gray-50 font-bold py-2 px-4 rounded-lg transition-all">
+                                <i class="fas fa-undo mr-2"></i>Reset Semula
+                            </button>
+                        </div>
+                        <p class="text-xs text-gray-400 mt-4 text-center italic">Nota: Simulasi ini tidak menyimpan data ke pangkalan data.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Add New KPI (NEW) -->
+<div id="add-kpi-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div class="modal-content bg-white rounded-lg shadow-2xl w-full max-w-lg p-6" role="dialog" aria-modal="true">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold text-brand-primary">Tambah KPI Baru</h3>
+            <button id="add-kpi-modal-close" class="text-gray-500 hover:text-red-600 text-2xl font-bold">&times;</button>
+        </div>
+        <form id="add-kpi-form" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Nama KPI</label>
+                <input type="text" id="new-kpi-name" class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-brand-primary focus:border-brand-primary" required placeholder="Contoh: Program Alumni 2026">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Sasaran Tahunan (Target)</label>
+                <input type="number" id="new-kpi-target" class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-brand-primary focus:border-brand-primary" required placeholder="100">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Ikon (FontAwesome)</label>
+                <select id="new-kpi-icon" class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-brand-primary focus:border-brand-primary">
+                    <option value="fa-users">👥 Users (Orang)</option>
+                    <option value="fa-chart-line">📈 Chart (Graf)</option>
+                    <option value="fa-money-bill-wave">💰 Money (Duit)</option>
+                    <option value="fa-handshake">🤝 Handshake (Kolaborasi)</option>
+                    <option value="fa-bullhorn">📢 Bullhorn (Hebahan)</option>
+                    <option value="fa-trophy">🏆 Trophy (Pencapaian)</option>
+                    <option value="fa-globe-asia">🌍 Globe (Global)</option>
+                    <option value="fa-graduation-cap">🎓 Cap (Graduasi)</option>
+                    <option value="fa-star">⭐ Star (Ikon)</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Jenis Data</label>
+                <div class="flex gap-4 mt-1">
+                    <label class="inline-flex items-center">
+                        <input type="radio" name="kpi-type" value="number" checked class="form-radio text-brand-primary">
+                        <span class="ml-2">Nombor Biasa</span>
+                    </label>
+                    <label class="inline-flex items-center">
+                        <input type="radio" name="kpi-type" value="percentage" class="form-radio text-brand-primary">
+                        <span class="ml-2">Peratus (%)</span>
+                    </label>
+                    <label class="inline-flex items-center">
+                        <input type="radio" name="kpi-type" value="currency" class="form-radio text-brand-primary">
+                        <span class="ml-2">Mata Wang (RM)</span>
+                    </label>
+                </div>
+            </div>
+            <button type="submit" class="w-full bg-brand-primary text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-800 transition-all mt-4">
+                Simpan KPI
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Edit/Delete KPI Structure (NEW) -->
+<div id="edit-structure-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div class="modal-content bg-white rounded-lg shadow-2xl w-full max-w-lg p-6" role="dialog" aria-modal="true">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold text-brand-primary">Tetapan KPI</h3>
+            <button id="edit-structure-modal-close" class="text-gray-500 hover:text-red-600 text-2xl font-bold">&times;</button>
+        </div>
+        <form id="edit-structure-form" class="space-y-4">
+            <input type="hidden" id="edit-structure-id">
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Nama KPI</label>
+                <input type="text" id="edit-structure-name" class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-brand-primary focus:border-brand-primary">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Sasaran (Target)</label>
+                <input type="number" id="edit-structure-target" class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-brand-primary focus:border-brand-primary">
+            </div>
+            <div class="bg-yellow-50 p-3 rounded-lg text-sm text-yellow-800 border border-yellow-200">
+                <i class="fas fa-exclamation-triangle mr-1"></i> Perhatian: Perubahan ini akan memberi kesan kepada semua suku tahun bagi tahun yang dipilih.
+            </div>
+            <div class="flex gap-2 mt-6">
+                <button type="button" id="delete-kpi-btn" class="flex-1 bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-800 transition-all">
+                    <i class="fas fa-trash-alt mr-2"></i>Padam KPI
+                </button>
+                <button type="submit" class="flex-1 bg-brand-primary text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-800 transition-all">
+                    Simpan Perubahan
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<template id="kpi-card-template">
+    <div class="kpi-card bg-white p-6 rounded-2xl shadow-lg shadow-gray-500/10 flex flex-col relative group">
+        <!-- Settings Button (Admin Only) - Absolute Top Left -->
+        <button class="settings-btn absolute top-4 left-4 text-gray-300 hover:text-gray-600 hidden z-20" aria-label="Tetapan KPI">
+            <i class="fas fa-cog text-lg"></i>
+        </button>
+
+        <!-- Chart Button (Position Absolute) -->
+        <button class="show-chart-btn absolute top-4 right-4 text-gray-400 hover:text-brand-primary" aria-label="Lihat Sejarah Prestasi" title="Lihat Sejarah Prestasi">
+            <i class="fas fa-chart-line"></i>
+        </button>
+        
+        <!-- Glowing Dot (Replaces Badge) -->
+        <div class="status-dot hidden" title="Status: Lengkap"></div>
+
+        <!-- NEW FIXED HEADER STRUCTURE -->
+        <div class="kpi-header-fixed">
+            <i class="kpi-icon fas text-2xl sm:text-3xl text-brand-primary w-12 text-center mt-1"></i>
+            <h3 class="kpi-name ml-4 text-base sm:text-lg font-semibold text-gray-800 leading-tight"></h3>
+            
+            <!-- Info/Edit Button -->
+            <button class="info-btn ml-2 mt-1 text-gray-400 hover:text-brand-primary focus:outline-none" aria-label="Maklumat Lanjut">
+                <i class="fas fa-info-circle"></i>
+            </button>
+            
+            <!-- Description Popover -->
+            <div class="desc-popover hidden">
+                <p class="desc-text text-sm text-gray-600"></p>
+            </div>
+        </div>
+
+        <!-- Content Section (Numbers) - Pushed down by fixed header -->
+        <div class="mt-auto">
+            <div class="flex flex-wrap justify-between items-baseline gap-x-2">
+                <p class="kpi-value-display text-2xl sm:text-3xl md:text-4xl font-bold text-brand-primary leading-tight flex items-center">
+                    <span class="value-wrapper">
+                        <span class="animated-value"></span>
+                    </span>
+                    <span class="kpi-target-display text-base sm:text-lg md:text-xl font-medium text-gray-500"></span>
+                    <button class="edit-kpi-btn" aria-label="Edit Nilai"><i class="fas fa-pencil-alt"></i></button>
+                </p>
+                <span class="kpi-trend flex items-center font-semibold text-sm sm:text-base"></span>
+            </div>
+             <div class="trend-wrapper-complete flex justify-end mt-1"></div>
+        </div>
+        <div class="w-full bg-gray-200 rounded-full h-2.5 mt-4">
+            <div class="progress-bar h-2.5 rounded-full" style="width: 0%"></div>
+        </div>
+        <div class="flex justify-between items-center mt-1">
+            <div class="details-btn-wrapper w-8 h-8">
+                <button class="show-details-btn text-gray-500 hover:text-brand-primary rounded-full w-full h-full items-center justify-center hover:bg-gray-100 transition-all hidden" aria-label="Lihat Butiran" title="Lihat Butiran">
+                    <i class="fas fa-ellipsis-h"></i>
+                </button>
+            </div>
+            <p class="kpi-percentage-display text-right text-sm font-semibold text-gray-600">0.00%</p>
+        </div>
+    </div>
+</template>
+
+<!-- SCRIPT LOADING ORDER: CONFIG -> DATA -> MODULES (Via Main) -->
+<script src="config.js"></script>
+<script src="data-seed.js"></script>
+
+<!-- Load Main Script as Module -->
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
