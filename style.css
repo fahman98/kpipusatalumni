@@ -131,15 +131,30 @@ body {
 }
 
 /* --- Skeleton Loading Animation --- */
-.skeleton {
-    background: #e5e7eb;
-    background-image: linear-gradient(to right, #e5e7eb 0%, #f3f4f6 20%, #e5e7eb 40%, #e5e7eb 100%);
-    background-repeat: no-repeat;
-    background-size: 800px 104px;
-    animation: shimmer 1.5s infinite linear forwards;
+.animate-[shimmer_1.5s_infinite] {
+    animation: shimmer 1.5s infinite linear;
 }
 
 @keyframes shimmer {
+    0% {
+        transform: translateX(-100%);
+    }
+
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+/* Base Skeleton Pulse Overlay if needed */
+.skeleton-loading {
+    background: #f3f4f6;
+    background-image: linear-gradient(to right, #f3f4f6 0%, #e5e7eb 20%, #f3f4f6 40%, #f3f4f6 100%);
+    background-repeat: no-repeat;
+    background-size: 800px 104px;
+    animation: shimmer-bg 1.5s infinite linear forwards;
+}
+
+@keyframes shimmer-bg {
     0% {
         background-position: -800px 0;
     }
@@ -147,6 +162,18 @@ body {
     100% {
         background-position: 800px 0;
     }
+}
+
+/* Dark Mode Tweaks for Skeleton in UI.js (Tailwind classes handle most, this helps overrides) */
+body.dark-mode .animate-pulse .bg-gray-200,
+body.dark-mode .animate-pulse .bg-gray-100 {
+    background-color: #374151;
+    /* gray-700 */
+}
+
+body.dark-mode .animate-pulse .border-gray-50 {
+    border-color: #4b5563;
+    /* gray-600 */
 }
 
 /* --- Styling untuk Notifikasi Toast (Smoother) --- */
