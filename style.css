@@ -547,3 +547,116 @@ li:hover .item-actions {
         transform: rotate(360deg);
     }
 }
+
+/* --- DARK MODE STYLES --- */
+body.dark-mode {
+    background-color: #111827;
+    /* gray-900 */
+    color: #f3f4f6;
+    /* gray-100 */
+}
+
+/* Card Backgrounds */
+body.dark-mode .bg-white,
+body.dark-mode .modal-content,
+body.dark-mode select {
+    background-color: #1f2937;
+    /* gray-800 */
+    color: #f3f4f6;
+    border-color: #374151;
+    /* gray-700 */
+}
+
+body.dark-mode .bg-blue-50 {
+    background-color: #1e3a8a;
+    /* darker blue */
+    color: #93c5fd;
+    border-color: #1e40af;
+}
+
+body.dark-mode .bg-gray-50 {
+    background-color: #111827;
+}
+
+/* Text Colors */
+body.dark-mode .text-gray-900,
+body.dark-mode .text-gray-800,
+body.dark-mode .text-gray-700,
+body.dark-mode .text-gray-600 {
+    color: #e5e7eb;
+    /* gray-200 */
+}
+
+body.dark-mode .text-gray-500,
+body.dark-mode .text-gray-400 {
+    color: #9ca3af;
+    /* gray-400 */
+}
+
+body.dark-mode .text-brand-primary {
+    color: #60a5fa;
+    /* blue-400 */
+}
+
+/* Headings & specific texts */
+body.dark-mode #main-title {
+    color: #60a5fa;
+}
+
+/* Shadows & Borders */
+body.dark-mode .shadow-sm,
+body.dark-mode .shadow-md,
+body.dark-mode .shadow-lg,
+body.dark-mode .shadow-xl,
+body.dark-mode .shadow-2xl {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+}
+
+/* Inputs & Form Elements */
+body.dark-mode input,
+body.dark-mode textarea {
+    background-color: #374151;
+    color: #fff;
+    border-color: #4b5563;
+}
+
+body.dark-mode select option {
+    background-color: #1f2937;
+    color: #fff;
+}
+
+/* Footer & Buttons */
+body.dark-mode footer {
+    border-top-color: #374151;
+}
+
+/* Toggle Button Style */
+.theme-toggle-btn {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: 50%;
+    background: #ffffff;
+    color: #111827;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    z-index: 40;
+}
+
+body.dark-mode .theme-toggle-btn {
+    background: #374151;
+    color: #fbbf24;
+    /* yellow-400 for moon/sun */
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+}
+
+.theme-toggle-btn:hover {
+    transform: scale(1.1);
+}

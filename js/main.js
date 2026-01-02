@@ -434,6 +434,36 @@ document.addEventListener('DOMContentLoaded', () => {
     if (addKpiClose) addKpiClose.addEventListener('click', () => closeModal(addKpiModal));
     if (editStructClose) editStructClose.addEventListener('click', () => closeModal(editStructureModal));
 
+    // --- DARK MODE LOGIC ---
+    const themeToggleBtn = getEl('theme-toggle');
+    const themeIcon = themeToggleBtn.querySelector('i');
+
+    // Check local storage or system preference
+    const savedTheme = localStorage.getItem('theme');
+    const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+    if (savedTheme === 'dark' || (!savedTheme && systemDark)) {
+        document.body.classList.add('dark-mode');
+        themeIcon.classList.remove('fa-moon');
+        themeIcon.classList.add('fa-sun');
+    }
+
+    themeToggleBtn.addEventListener('click', () => {
+        document.body.classList.toggle('dark-mode');
+        const isDark = document.body.classList.contains('dark-mode');
+
+        // Update Icon
+        if (isDark) {
+            themeIcon.classList.remove('fa-moon');
+            themeIcon.classList.add('fa-sun');
+            localStorage.setItem('theme', 'dark');
+        } else {
+            themeIcon.classList.remove('fa-sun');
+            themeIcon.classList.add('fa-moon');
+            localStorage.setItem('theme', 'light');
+        }
+    });
+
     // Filters
     if (searchInput) searchInput.addEventListener('input', (e) => filterDashboardCards(e.target.value, statusFilter.value));
     if (statusFilter) statusFilter.addEventListener('change', (e) => filterDashboardCards(searchInput.value, e.target.value));
