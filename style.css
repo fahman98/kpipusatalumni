@@ -131,7 +131,7 @@ body {
 }
 
 /* --- Skeleton Loading Animation --- */
-.animate-[shimmer_1.5s_infinite] {
+.skeleton-shimmer {
     animation: shimmer 1.5s infinite linear;
 }
 

@@ -105,7 +105,7 @@ export function renderSkeletons() {
                 </div>
                 
                 <!-- Shimmer Effect Overlay -->
-                <div class="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/40 to-transparent"></div>
+                <div class="absolute inset-0 -translate-x-full skeleton-shimmer bg-gradient-to-r from-transparent via-white/40 to-transparent"></div>
             </div>
         `;
         kpiGridContainer.insertAdjacentHTML('beforeend', skeletonHTML);
