@@ -1,18 +1,18 @@
 // --- JS/API.JS ---
-import { 
-    isEditMode, 
-    showToastNotification, 
-    closeModal, 
-    showDetailsModal, 
-    showLoading, 
-    hideLoading  
+import {
+    isEditMode,
+    showToastNotification,
+    closeModal,
+    showDetailsModal,
+    showLoading,
+    hideLoading
 } from './ui.js';
 
 // Cache Exported
 export let kpiDataCache = {};
 
 // Variable Global untuk Tahun (Default 2025)
-export let selectedYear = "2025"; 
+export let selectedYear = "2025";
 
 export function setApiYear(year) {
     selectedYear = year || "2025"; // Fallback to 2025 if empty
@@ -28,7 +28,7 @@ const getAppId = () => {
     // Check if firebase config exists globally
     if (typeof appId !== 'undefined') return appId;
     // Fallback based on config.js pattern if appId variable isn't visible yet
-    return "dashboard-alumni-kpi"; 
+    return "dashboard-alumni-kpi";
 };
 
 // --- FUNGSI REAL-TIME LISTENER ---
@@ -43,7 +43,7 @@ export function subscribeToQuarterData(quarterKey, onUpdateCallback) {
         showToastNotification("Tiada sambungan internet.", "danger");
     }
 
-    showLoading("Menyambung...");
+
 
     const currentQuarterNum = parseInt(quarterKey.replace('q', ''));
     let previousQuarterKey = null;
@@ -55,7 +55,7 @@ export function subscribeToQuarterData(quarterKey, onUpdateCallback) {
     const basePath = `artifacts/${getAppId()}/public/data/kpi-${selectedYear}`;
 
     // Fetch previous quarter once (for trend)
-    const prevQuarterPromise = previousQuarterKey 
+    const prevQuarterPromise = previousQuarterKey
         ? db.collection(basePath).doc(previousQuarterKey).get()
         : Promise.resolve(null);
 
@@ -64,13 +64,13 @@ export function subscribeToQuarterData(quarterKey, onUpdateCallback) {
 
         // 2. Start Real-time Listener
         const docRef = db.collection(basePath).doc(quarterKey);
-        
+
         activeListener = docRef.onSnapshot((docSnap) => {
-            hideLoading(); 
+            hideLoading();
 
             if (docSnap.exists) {
                 const currentData = docSnap.data();
-                
+
                 // Update Cache
                 kpiDataCache[quarterKey] = currentData;
                 if (previousData && previousQuarterKey) {
@@ -78,16 +78,16 @@ export function subscribeToQuarterData(quarterKey, onUpdateCallback) {
                 }
 
                 // Callback to UI (false = not empty)
-                onUpdateCallback(currentData, previousData, false); 
+                onUpdateCallback(currentData, previousData, false);
             } else {
                 console.log(`Dokumen untuk ${selectedYear} ${quarterKey} tidak dijumpai.`);
                 // Return flag empty untuk handle UI
-                onUpdateCallback(null, null, true); 
+                onUpdateCallback(null, null, true);
             }
         }, (error) => {
             console.error("Ralat Sync:", error);
             hideLoading();
-            if(error.code !== 'permission-denied') {
+            if (error.code !== 'permission-denied') {
                 showToastNotification("Terputus hubungan dengan server.", "danger");
             }
         });
@@ -101,7 +101,7 @@ export function subscribeToQuarterData(quarterKey, onUpdateCallback) {
 // Fungsi untuk Charts.js (Fetch Once)
 export async function getKpiDataFromFirestore(quarterKey) {
     if (kpiDataCache[quarterKey]) {
-        return kpiDataCache[quarterKey]; 
+        return kpiDataCache[quarterKey];
     }
 
     try {
@@ -110,7 +110,7 @@ export async function getKpiDataFromFirestore(quarterKey) {
 
         if (docSnap.exists) {
             const data = docSnap.data();
-            kpiDataCache[quarterKey] = data; 
+            kpiDataCache[quarterKey] = data;
             return data;
         } else {
             return { placeholder: true };
@@ -126,7 +126,7 @@ export async function getKpiDataFromFirestore(quarterKey) {
 // 1. ADD NEW KPI (To all 4 quarters of selected year)
 export async function addNewKpi(kpiData) {
     if (!isEditMode) return;
-    
+
     if (!navigator.onLine) {
         showToastNotification("Tiada sambungan internet.", "danger");
         return;
@@ -141,31 +141,31 @@ export async function addNewKpi(kpiData) {
             const qKey = `q${i}`;
             const docRef = db.collection(basePath).doc(qKey);
             const doc = await docRef.get();
-            
+
             let currentKpis = [];
             let title = "";
             let subtitle = "";
 
-            if(i===1) { title = "Suku Pertama"; subtitle = `(Januari - Mac ${selectedYear})`; }
-            if(i===2) { title = "Suku Kedua"; subtitle = `(April - Jun ${selectedYear})`; }
-            if(i===3) { title = "Suku Ketiga"; subtitle = `(Julai - September ${selectedYear})`; }
-            if(i===4) { title = "Suku Keempat"; subtitle = `(Oktober - Disember ${selectedYear})`; }
+            if (i === 1) { title = "Suku Pertama"; subtitle = `(Januari - Mac ${selectedYear})`; }
+            if (i === 2) { title = "Suku Kedua"; subtitle = `(April - Jun ${selectedYear})`; }
+            if (i === 3) { title = "Suku Ketiga"; subtitle = `(Julai - September ${selectedYear})`; }
+            if (i === 4) { title = "Suku Keempat"; subtitle = `(Oktober - Disember ${selectedYear})`; }
 
-            if(doc.exists) {
+            if (doc.exists) {
                 const data = doc.data();
                 currentKpis = data.kpis || [];
-                if(data.title) title = data.title;
-                if(data.subtitle) subtitle = data.subtitle;
+                if (data.title) title = data.title;
+                if (data.subtitle) subtitle = data.subtitle;
             }
 
             // Push new KPI
             currentKpis.push(kpiData);
 
-            batch.set(docRef, { 
+            batch.set(docRef, {
                 title: title,
                 subtitle: subtitle,
                 kpis: currentKpis,
-                footerDate: new Date().toLocaleDateString('ms-MY', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute:'2-digit' })
+                footerDate: new Date().toLocaleDateString('ms-MY', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
             }, { merge: true });
         }
 
@@ -195,11 +195,11 @@ export async function updateKpiStructure(kpiId, newName, newTarget) {
         for (let i = 1; i <= 4; i++) {
             const docRef = db.collection(basePath).doc(`q${i}`);
             const doc = await docRef.get();
-            if(!doc.exists) continue;
+            if (!doc.exists) continue;
 
             const data = doc.data();
             const kpis = data.kpis.map(k => {
-                if(k.id === kpiId) {
+                if (k.id === kpiId) {
                     return { ...k, name: newName, target: parseFloat(newTarget) };
                 }
                 return k;
@@ -224,7 +224,7 @@ export async function updateKpiStructure(kpiId, newName, newTarget) {
 // 3. DELETE KPI
 export async function deleteKpi(kpiId) {
     if (!isEditMode) return;
-    if(!confirm("Adakah anda pasti mahu memadam KPI ini dari SEMUA suku tahun?")) return;
+    if (!confirm("Adakah anda pasti mahu memadam KPI ini dari SEMUA suku tahun?")) return;
 
     showLoading("Memadam KPI...");
     const batch = db.batch();
@@ -234,7 +234,7 @@ export async function deleteKpi(kpiId) {
         for (let i = 1; i <= 4; i++) {
             const docRef = db.collection(basePath).doc(`q${i}`);
             const doc = await docRef.get();
-            if(!doc.exists) continue;
+            if (!doc.exists) continue;
 
             const data = doc.data();
             const filteredKpis = data.kpis.filter(k => k.id !== kpiId);
@@ -267,8 +267,8 @@ export async function cloneFromYear(sourceYear) {
         for (let i = 1; i <= 4; i++) {
             const qKey = `q${i}`;
             const sourceDoc = await db.collection(sourcePath).doc(qKey).get();
-            
-            if(sourceDoc.exists) {
+
+            if (sourceDoc.exists) {
                 const data = sourceDoc.data();
                 // Reset values to 0 for new year
                 const cleanKpis = data.kpis.map(k => ({
@@ -278,13 +278,13 @@ export async function cloneFromYear(sourceYear) {
                 }));
 
                 const targetDocRef = db.collection(targetPath).doc(qKey);
-                
+
                 let title = `Suku ${i}`;
                 let subtitle = `(${selectedYear})`;
-                if(i===1) { title = "Suku Pertama"; subtitle = `(Januari - Mac ${selectedYear})`; }
-                if(i===2) { title = "Suku Kedua"; subtitle = `(April - Jun ${selectedYear})`; }
-                if(i===3) { title = "Suku Ketiga"; subtitle = `(Julai - September ${selectedYear})`; }
-                if(i===4) { title = "Suku Keempat"; subtitle = `(Oktober - Disember ${selectedYear})`; }
+                if (i === 1) { title = "Suku Pertama"; subtitle = `(Januari - Mac ${selectedYear})`; }
+                if (i === 2) { title = "Suku Kedua"; subtitle = `(April - Jun ${selectedYear})`; }
+                if (i === 3) { title = "Suku Ketiga"; subtitle = `(Julai - September ${selectedYear})`; }
+                if (i === 4) { title = "Suku Keempat"; subtitle = `(Oktober - Disember ${selectedYear})`; }
 
                 batch.set(targetDocRef, {
                     title: title,
@@ -331,7 +331,7 @@ export async function updateKpiValueInFirestore(quarterKey, kpiId, newValue) {
         }
         await batch.commit();
         showToastNotification('Nilai dikemaskini!', 'success');
-    } catch (e) { 
+    } catch (e) {
         console.error(e);
         showToastNotification("Ralat simpan.", "danger");
     } finally {
@@ -345,21 +345,21 @@ export async function updateKpiDescriptionInFirestore(kpiId, text) {
     const batch = db.batch();
     showLoading("Menyimpan...");
     try {
-        for(let i=1; i<=4; i++){
+        for (let i = 1; i <= 4; i++) {
             const ref = db.collection(basePath).doc(`q${i}`);
             const doc = await ref.get();
-            if(doc.exists) {
+            if (doc.exists) {
                 const kpis = doc.data().kpis;
-                const idx = kpis.findIndex(k=>k.id===kpiId);
-                if(idx>-1) {
+                const idx = kpis.findIndex(k => k.id === kpiId);
+                if (idx > -1) {
                     kpis[idx].description = text;
-                    batch.update(ref, {kpis});
+                    batch.update(ref, { kpis });
                 }
             }
         }
         await batch.commit();
         showToastNotification('Deskripsi disimpan!', 'success');
-    } catch(e){
+    } catch (e) {
         console.error(e);
         showToastNotification("Ralat simpan.", "danger");
     } finally {
@@ -383,7 +383,7 @@ export async function updateKpiDetailsList(quarterKey, kpiId, itemName, isChecke
             if (kpiIndex === -1) continue;
             const achieved = data.kpis[kpiIndex].details.achieved || [];
             const idx = achieved.indexOf(itemName);
-            if (isChecked) { if (idx === -1) achieved.push(itemName); } 
+            if (isChecked) { if (idx === -1) achieved.push(itemName); }
             else { if (idx > -1) achieved.splice(idx, 1); }
             data.kpis[kpiIndex].details.achieved = achieved;
             batch.update(docRef, { kpis: data.kpis });
