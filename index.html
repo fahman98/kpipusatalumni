@@ -105,14 +105,7 @@
     </div>
 
     <div id="dashboard-container" class="container mx-auto p-4 sm:p-6 lg:p-8">
-        <!-- Top Controls (Logout) -->
-        <div class="flex justify-end mb-2 h-8">
-            <button id="admin-logout-btn"
-                class="hidden bg-red-100 text-red-600 hover:bg-red-200 px-3 py-1 rounded-lg text-sm font-semibold transition-colors shadow-sm items-center">
-                <i class="fas fa-sign-out-alt mr-2"></i>Logout
-            </button>
-        </div>
-
+        <!-- Header -->
         <header class="text-center mb-8 relative">
 
             <h1 id="main-title" class="text-2xl sm:text-3xl md:text-4xl font-bold text-brand-primary">Memuatkan
@@ -276,6 +269,11 @@
             <!-- Footer Actions -->
             <div class="flex flex-wrap justify-center gap-3 items-center">
 
+                <!-- Logout Button (Moved here) -->
+                <button id="admin-logout-btn"
+                    class="hidden bg-red-100 text-red-600 hover:bg-red-200 px-3 py-1 rounded-lg text-sm font-semibold transition-colors shadow-sm items-center border border-red-200">
+                    <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                </button>
 
                 <!-- Admin Login Trigger -->
                 <button id="admin-login-btn"
