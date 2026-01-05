@@ -59,7 +59,7 @@ export function renderGaugeChart(value) {
             // Draw Needle
             ctx.beginPath();
             ctx.moveTo(0, -2);
-            ctx.lineTo(height / 2 - 35, 0); // Shortened Length of needle to avoid text overlap
+            ctx.lineTo(height / 2 - 10, 0); // Restore Length of needle to overlap text
             ctx.lineTo(0, 2);
             ctx.fillStyle = '#fff';
             ctx.fill();
