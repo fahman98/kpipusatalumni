@@ -15,64 +15,7 @@ export function renderGaugeChart(value) {
         gaugeChartInstance.destroy();
     }
 
-    // Needle Plugin
-    const needlePlugin = {
-        id: 'needle',
-        afterDatasetDraw(chart, args, options) {
-            const { ctx, config, data, chartArea: { top, bottom, left, right, width, height } } = chart;
-            ctx.save();
 
-            const dataTotal = 100; // Fixed total for percentage
-            const needleValue = value;
-            const needleAngle = Math.PI + (1 / dataTotal * needleValue * Math.PI); // Map 0-100 to PI-2PI (though rotation handles the offset)
-
-            // Center of chart
-            const cx = width / 2;
-            const cy = chart._metasets[0].data[0].y; // Approximate center Y based on arc
-
-            // Translate to center
-            ctx.translate(cx, cy);
-
-            // Calculate rotation. 
-            // -90deg rotation in config means 0 is at top? No.
-            // Config: rotation: -90, circumference: 180.
-            // This means the arc goes from -PI to 0 (top-left to top-right visually if not rotated? Wait.)
-            // ChartJS standard: 0 is right (3 o'clock). 
-            // Rotation -90 (or 270) brings 0 to top (12 o'clock).
-            // Circumference 180 means it draws half circle.
-            // We want 0% at left (9 o'clock) and 100% at right (3 o'clock).
-            // Standard Doughnut: Start at 12. 
-            // Rotation -90 -> Start at 9. 
-            // So 0 degrees = 9 o'clock. 180 degrees = 3 o'clock.
-
-            // Mapping Value (0-100) to Radians (0 - PI)
-            // But we rotated -90deg (which is -PI/2). 
-            // Let's use simple math: 0% = -PI (points left), 50% = -PI/2 (up), 100% = 0 (right).
-
-            // Correct approach for Needle Angle:
-            // 0%  -> Angle -PI
-            // 100% -> Angle 0
-            const angle = Math.PI + ((value / 100) * Math.PI);
-
-            ctx.rotate(angle);
-
-            // Draw Needle
-            ctx.beginPath();
-            ctx.moveTo(0, -2);
-            ctx.lineTo(height / 2 - 10, 0); // Restore Length of needle to overlap text
-            ctx.lineTo(0, 2);
-            ctx.fillStyle = '#fff';
-            ctx.fill();
-
-            // Needle Dot
-            ctx.beginPath();
-            ctx.arc(0, 0, 5, 0, Math.PI * 2);
-            ctx.fillStyle = '#fff';
-            ctx.fill();
-
-            ctx.restore();
-        }
-    };
 
     // Create Gradient
     const gradient = overallGaugeCtx.createLinearGradient(0, 0, 300, 0); // Left to Right
@@ -109,7 +52,7 @@ export function renderGaugeChart(value) {
                 animateRotate: true
             }
         },
-        plugins: [needlePlugin]
+        plugins: []
     });
 }
 
