@@ -147,10 +147,10 @@ export async function addNewKpi(kpiData) {
             let title = "";
             let subtitle = "";
 
-            if (i === 1) { title = "Suku Pertama"; subtitle = `(Januari - Mac ${selectedYear})`; }
-            if (i === 2) { title = "Suku Kedua"; subtitle = `(April - Jun ${selectedYear})`; }
-            if (i === 3) { title = "Suku Ketiga"; subtitle = `(Julai - September ${selectedYear})`; }
-            if (i === 4) { title = "Suku Keempat"; subtitle = `(Oktober - Disember ${selectedYear})`; }
+            if (i === 1) { title = "Suku Pertama"; subtitle = `Januari - Mac ${selectedYear}`; }
+            if (i === 2) { title = "Suku Kedua"; subtitle = `April - Jun ${selectedYear}`; }
+            if (i === 3) { title = "Suku Ketiga"; subtitle = `Julai - September ${selectedYear}`; }
+            if (i === 4) { title = "Suku Keempat"; subtitle = `Oktober - Disember ${selectedYear}`; }
 
             if (doc.exists) {
                 const data = doc.data();
