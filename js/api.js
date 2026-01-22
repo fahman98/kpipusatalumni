@@ -276,12 +276,23 @@ export async function cloneFromYear(sourceYear) {
             if (sourceDoc.exists) {
                 const data = sourceDoc.data();
                 // Reset values to 0 for new year
+                // Helper to reset item values recursively
+                const resetItemValues = (items) => {
+                    return items.map(item => {
+                        const newItem = { ...item, value: 0 };
+                        if (item.subItems && Array.isArray(item.subItems)) {
+                            newItem.subItems = resetItemValues(item.subItems);
+                        }
+                        return newItem;
+                    });
+                };
+
                 const cleanKpis = data.kpis.map(k => ({
                     ...k,
                     value: 0,
                     details: k.details ? {
                         ...k.details,
-                        items: k.details.items ? k.details.items.map(item => ({ ...item, value: 0 })) : [],
+                        items: k.details.items ? resetItemValues(k.details.items) : [],
                         achieved: []
                     } : null
                 }));
