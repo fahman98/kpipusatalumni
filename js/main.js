@@ -387,6 +387,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (startFreshBtn) startFreshBtn.addEventListener('click', () => openModal(addKpiModal));
     if (openAddKpiBtn) openAddKpiBtn.addEventListener('click', () => { getEl('add-kpi-form').reset(); openModal(addKpiModal); });
 
+    // Expose for Re-Sync Button
+    window.clone2025 = () => cloneFromYear("2025");
+
     if (addKpiForm) {
         addKpiForm.addEventListener('submit', (e) => {
             e.preventDefault();
