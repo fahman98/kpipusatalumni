@@ -571,6 +571,30 @@ export async function updateKpiProgressListItem(quarterKey, kpiId, itemName, sub
             } else {
                 data.kpis[kpiIndex].details.items[itemIndex].value = newValue;
             }
+
+            // Recalculate Main Value (Weighted Average)
+            const kpi = data.kpis[kpiIndex];
+            if (kpi.details && kpi.details.items) {
+                let totalScore = 0;
+                let totalItems = kpi.details.items.length;
+
+                kpi.details.items.forEach(item => {
+                    let itemScore = 0;
+                    if (item.subItems && item.subItems.length > 0) {
+                        const subTotal = item.subItems.reduce((acc, sub) => acc + sub.value, 0);
+                        // Average of sub-items represents this item's completion
+                        itemScore = subTotal / item.subItems.length;
+                    } else {
+                        itemScore = item.value;
+                    }
+                    totalScore += itemScore;
+                });
+
+                // If the main KPI is "Penerbitan" (Percentage based), the Value IS the average percentage
+                if (kpi.isPercentage) {
+                    kpi.value = totalScore / totalItems;
+                }
+            }
             batch.update(docRef, { kpis: data.kpis });
         }
         await batch.commit();
