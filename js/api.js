@@ -274,7 +274,11 @@ export async function cloneFromYear(sourceYear) {
                 const cleanKpis = data.kpis.map(k => ({
                     ...k,
                     value: 0,
-                    details: k.details ? { ...k.details, items: [], achieved: [] } : null
+                    details: k.details ? {
+                        ...k.details,
+                        items: k.details.items ? k.details.items.map(item => ({ ...item, value: 0 })) : [],
+                        achieved: []
+                    } : null
                 }));
 
                 const targetDocRef = db.collection(targetPath).doc(qKey);
