@@ -233,8 +233,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const overall = count > 0 ? totalPct / count : 0;
             renderGaugeChart(overall);
 
-            if (topKpi && topAchiever) topAchiever.textContent = `${topKpi.name} (${maxPercentage.toFixed(2)}%)`;
-            if (bottomKpi && mainFocus) mainFocus.textContent = `${bottomKpi.name} (${minPercentage.toFixed(2)}%)`;
+            // Logic for Empty Data / All Zeros
+            if (maxPercentage <= 0) {
+                if (topAchiever) topAchiever.textContent = "Tiada Rekod (0%)";
+                if (mainFocus) mainFocus.textContent = "Tiada Rekod (0%)";
+            } else {
+                if (topKpi && topAchiever) topAchiever.textContent = `${topKpi.name} (${maxPercentage.toFixed(2)}%)`;
+                if (bottomKpi && mainFocus) mainFocus.textContent = `${bottomKpi.name} (${minPercentage.toFixed(2)}%)`;
+            }
 
             setEditMode(isEditMode);
 
