@@ -5,7 +5,8 @@ import {
     closeModal,
     showDetailsModal,
     showLoading,
-    hideLoading
+    hideLoading,
+    showConfirmModal
 } from './ui.js';
 
 // Cache Exported
@@ -227,37 +228,43 @@ export async function updateKpiStructure(kpiId, newName, newTarget) {
 }
 
 // 3. DELETE KPI
-export async function deleteKpi(kpiId) {
+// 3. DELETE KPI
+export function deleteKpi(kpiId) {
     if (!isEditMode) return;
-    if (!confirm("Adakah anda pasti mahu memadam KPI ini dari SEMUA suku tahun?")) return;
 
-    showLoading("Memadam KPI...");
-    const batch = db.batch();
-    const basePath = `artifacts/${getAppId()}/public/data/kpi-${selectedYear}`;
+    showConfirmModal(
+        "Padam KPI?",
+        "Adakah anda pasti mahu memadam KPI ini dari SEMUA suku tahun? Tindakan ini tidak boleh diundur.",
+        async () => {
+            showLoading("Memadam KPI...");
+            const batch = db.batch();
+            const basePath = `artifacts/${getAppId()}/public/data/kpi-${selectedYear}`;
 
-    try {
-        for (let i = 1; i <= 4; i++) {
-            const docRef = db.collection(basePath).doc(`q${i}`);
-            const doc = await docRef.get();
-            if (!doc.exists) continue;
+            try {
+                for (let i = 1; i <= 4; i++) {
+                    const docRef = db.collection(basePath).doc(`q${i}`);
+                    const doc = await docRef.get();
+                    if (!doc.exists) continue;
 
-            const data = doc.data();
-            const filteredKpis = data.kpis.filter(k => k.id !== kpiId);
+                    const data = doc.data();
+                    const filteredKpis = data.kpis.filter(k => k.id !== kpiId);
 
-            batch.update(docRef, { kpis: filteredKpis });
+                    batch.update(docRef, { kpis: filteredKpis });
+                }
+                await batch.commit();
+                showToastNotification("KPI berjaya dipadam.", "success");
+            } catch (e) {
+                console.error(e);
+                if (e.code === 'permission-denied') {
+                    showToastNotification("AKSES DITOLAK.", "danger");
+                } else {
+                    showToastNotification("Gagal memadam.", "danger");
+                }
+            } finally {
+                hideLoading();
+            }
         }
-        await batch.commit();
-        showToastNotification("KPI berjaya dipadam.", "success");
-    } catch (e) {
-        console.error(e);
-        if (e.code === 'permission-denied') {
-            showToastNotification("AKSES DITOLAK.", "danger");
-        } else {
-            showToastNotification("Gagal memadam.", "danger");
-        }
-    } finally {
-        hideLoading();
-    }
+    );
 }
 
 // 4. CLONE FROM PREVIOUS YEAR
