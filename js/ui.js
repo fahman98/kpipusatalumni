@@ -69,6 +69,38 @@ export function hideLoading() {
     }
 }
 
+// --- CONFIRM MODAL ---
+export function showConfirmModal(title, message, onConfirm) {
+    const modal = document.getElementById('confirm-modal');
+    const titleEl = document.getElementById('confirm-modal-title');
+    const msgEl = document.getElementById('confirm-modal-message');
+    const okBtn = document.getElementById('confirm-modal-ok-btn');
+    const cancelBtn = document.getElementById('confirm-modal-cancel-btn');
+
+    if (!modal || !titleEl || !msgEl || !okBtn || !cancelBtn) return;
+
+    titleEl.textContent = title;
+    msgEl.textContent = message;
+
+    // Reset Listeners (Clone to remove old listeners)
+    const newOk = okBtn.cloneNode(true);
+    okBtn.parentNode.replaceChild(newOk, okBtn);
+
+    const newCancel = cancelBtn.cloneNode(true);
+    cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
+
+    newOk.addEventListener('click', () => {
+        onConfirm();
+        modal.classList.add('hidden');
+    });
+
+    newCancel.addEventListener('click', () => {
+        modal.classList.add('hidden');
+    });
+
+    modal.classList.remove('hidden');
+}
+
 export function renderSkeletons() {
     const kpiGridContainer = getEl('kpi-grid-container');
     if (!kpiGridContainer) return;
