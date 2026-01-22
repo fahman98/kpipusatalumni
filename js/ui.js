@@ -287,7 +287,10 @@ export function createKpiCard(kpi) {
 
     const editBtn = cardElement.querySelector('.edit-kpi-btn');
     if (isEditMode && kpi.hasOwnProperty('value')) {
-        // Validation handled in main.js
+        // Hide edit button if KPI has sub-items/list (Value is calculated)
+        if (kpi.details && (kpi.details.items || (kpi.details.targetList && kpi.details.targetList.length > 0))) {
+            if (editBtn) editBtn.remove();
+        }
     } else {
         if (editBtn) editBtn.remove();
     }
