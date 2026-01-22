@@ -303,7 +303,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 // GUEST MODE
                 setEditMode(false);
-                if (modeIndicator) modeIndicator.innerHTML = '<span class="inline-block bg-yellow-100 text-yellow-800 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-yellow-200">Mod Lihat Sahaja</span>';
+                if (modeIndicator) modeIndicator.innerHTML = '<span class="inline-block bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-blue-200"><i class="fas fa-eye mr-1"></i>Paparan Awam</span>';
                 if (adminLogoutBtn) adminLogoutBtn.classList.add('hidden');
                 if (adminLoginBtn) adminLoginBtn.classList.remove('hidden');
 
