@@ -13,6 +13,7 @@ import {
     filterDashboardCards,
     showDetailsModal,
     showConfirmModal,
+    showInputModal,
 
 } from './ui.js';
 
@@ -170,11 +171,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (editValBtn) {
                     editValBtn.addEventListener('click', (e) => {
                         e.stopPropagation();
-                        const currentVal = calculateKpiValue(kpi);
-                        const newVal = prompt(`Masukkan nilai baharu untuk "${kpi.name}":`, currentVal);
-                        if (newVal !== null && newVal.trim() !== "") {
-                            updateKpiValueInFirestore(quarterKey, kpi.id, parseFloat(newVal));
+                        // prevent edit if has details
+                        if (kpi.details && (kpi.details.items || (kpi.details.targetList && kpi.details.targetList.length > 0))) {
+                            return; // Validation handled by disabling button logic in UI, but double check
                         }
+                        const currentVal = calculateKpiValue(kpi);
+
+                        showInputModal(
+                            `Kemaskini Nilai: ${kpi.name}`,
+                            "Masukkan nilai pencapaian terkini:",
+                            currentVal,
+                            (newVal) => {
+                                if (newVal !== null && newVal.trim() !== "") {
+                                    updateKpiValueInFirestore(quarterKey, kpi.id, parseFloat(newVal));
+                                }
+                            }
+                        );
                     });
                 }
 
