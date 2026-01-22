@@ -12,6 +12,7 @@ import {
     calculateKpiValue,
     filterDashboardCards,
     showDetailsModal,
+    showConfirmModal,
 
 } from './ui.js';
 
@@ -389,6 +390,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Expose for Re-Sync Button
     window.clone2025 = () => cloneFromYear("2025");
+
+    // Re-Clone Button with Custom Modal
+    const reCloneBtn = document.getElementById('re-clone-btn');
+    if (reCloneBtn) {
+        reCloneBtn.addEventListener('click', () => {
+            showConfirmModal(
+                "Reset Data 2026?",
+                "AMARAN: Ini akan memadam SEMUA data 2026 dan menyalin semula struktur asal dari 2025. Data 2026 yang sedia ada akan hilang kekal. Teruskan?",
+                () => window.clone2025()
+            );
+        });
+    }
 
     if (addKpiForm) {
         addKpiForm.addEventListener('submit', (e) => {
