@@ -200,7 +200,12 @@ export async function updateKpiStructure(kpiId, newName, newTarget) {
             const data = doc.data();
             const kpis = data.kpis.map(k => {
                 if (k.id === kpiId) {
-                    return { ...k, name: newName, target: parseFloat(newTarget) };
+                    let finalTarget = parseFloat(newTarget);
+                    // If KPI has a checklist, ignore manual target and use list length
+                    if (k.details && Array.isArray(k.details.targetList) && k.details.targetList.length > 0) {
+                        finalTarget = k.details.targetList.length;
+                    }
+                    return { ...k, name: newName, target: finalTarget };
                 }
                 return k;
             });
