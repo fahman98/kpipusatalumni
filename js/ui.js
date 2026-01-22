@@ -101,6 +101,52 @@ export function showConfirmModal(title, message, onConfirm) {
     modal.classList.remove('hidden');
 }
 
+// --- INPUT MODAL ---
+export function showInputModal(title, message, currentValue, onConfirm) {
+    const modal = document.getElementById('input-modal');
+    const titleEl = document.getElementById('input-modal-title');
+    const msgEl = document.getElementById('input-modal-message');
+    const inputEl = document.getElementById('input-modal-field');
+    const okBtn = document.getElementById('input-modal-ok-btn');
+    const cancelBtn = document.getElementById('input-modal-cancel-btn');
+
+    if (!modal || !inputEl || !okBtn || !cancelBtn) return;
+
+    titleEl.textContent = title;
+    msgEl.textContent = message;
+    inputEl.value = currentValue || '';
+
+    // Reset Listeners
+    const newOk = okBtn.cloneNode(true);
+    okBtn.parentNode.replaceChild(newOk, okBtn);
+
+    const newCancel = cancelBtn.cloneNode(true);
+    cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
+
+    const closeModal = () => modal.classList.add('hidden');
+
+    newOk.addEventListener('click', () => {
+        const val = inputEl.value;
+        onConfirm(val);
+        closeModal();
+    });
+
+    newCancel.addEventListener('click', closeModal);
+
+    // Enter key support
+    inputEl.onkeydown = (e) => {
+        if (e.key === 'Enter') {
+            const val = inputEl.value;
+            onConfirm(val);
+            closeModal();
+        }
+    };
+
+    modal.classList.remove('hidden');
+    // Focus input after small delay
+    setTimeout(() => inputEl.focus(), 100);
+}
+
 export function renderSkeletons() {
     const kpiGridContainer = getEl('kpi-grid-container');
     if (!kpiGridContainer) return;
