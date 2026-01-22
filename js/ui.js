@@ -547,7 +547,7 @@ function handleEditListItem(liElement, kpiId, oldItemName) {
             itemNameSpan.style.display = 'inline';
             input.remove();
             const activeQuarterKey = `q${paginationContainer.querySelector('.active').dataset.quarter}`;
-            await updateKpiTargetListItem(activeQuarterKey, kpi.id, { oldName: oldItemName, newName: newItemName }, 'edit');
+            await updateKpiTargetListItem(activeQuarterKey, kpiId, { oldName: oldItemName, newName: newItemName }, 'edit');
         } else {
             cleanup();
         }
