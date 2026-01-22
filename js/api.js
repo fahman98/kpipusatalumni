@@ -432,8 +432,8 @@ export async function updateKpiTargetListItem(quarterKey, kpiId, payload, action
             kpi.details.targetList = targetList;
             kpi.details.achieved = achieved;
 
-            // SYNC TARGET WITH LIST LENGTH
-            if (kpi.format === 'count') {
+            // SYNC TARGET WITH LIST LENGTH (Force sync if list exists)
+            if (Array.isArray(targetList)) {
                 kpi.target = targetList.length;
             }
 
