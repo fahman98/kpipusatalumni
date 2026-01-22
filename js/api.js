@@ -390,6 +390,12 @@ export async function updateKpiDetailsList(quarterKey, kpiId, itemName, isChecke
             if (isChecked) { if (idx === -1) achieved.push(itemName); }
             else { if (idx > -1) achieved.splice(idx, 1); }
             data.kpis[kpiIndex].details.achieved = achieved;
+
+            // SYNC VALUE WITH ACHIEVED COUNT
+            if (data.kpis[kpiIndex].details.targetList) {
+                data.kpis[kpiIndex].value = achieved.length;
+            }
+
             batch.update(docRef, { kpis: data.kpis });
         }
         await batch.commit();
