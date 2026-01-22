@@ -415,32 +415,66 @@ export async function updateKpiTargetListItem(quarterKey, kpiId, payload, action
     const batch = db.batch();
     showLoading("Menyimpan...");
     try {
-        for (let i = startQuarterNum; i <= 4; i++) {
+        // 1. Get Source Doc (Start Quarter)
+        const sourceDocRef = db.collection(basePath).doc(`q${startQuarterNum}`);
+        const sourceDoc = await sourceDocRef.get();
+        if (!sourceDoc.exists) throw new Error("Source quarter not found");
+
+        const sourceData = sourceDoc.data();
+        const kpiIndex = sourceData.kpis.findIndex(k => k.id === kpiId);
+        if (kpiIndex === -1) throw new Error("KPI not found in source");
+
+        const sourceKpi = sourceData.kpis[kpiIndex];
+        const targetList = sourceKpi.details.targetList || [];
+        const achieved = sourceKpi.details.achieved || [];
+
+        // 2. Apply Action to Source First
+        if (action === 'add') { if (!targetList.includes(payload)) targetList.push(payload); }
+        else if (action === 'delete') {
+            const tIdx = targetList.indexOf(payload); if (tIdx > -1) targetList.splice(tIdx, 1);
+            const aIdx = achieved.indexOf(payload); if (aIdx > -1) achieved.splice(aIdx, 1);
+        }
+        else if (action === 'edit') {
+            const tIdx = targetList.indexOf(payload.oldName); if (tIdx > -1) targetList[tIdx] = payload.newName;
+            const aIdx = achieved.indexOf(payload.oldName); if (aIdx > -1) achieved[aIdx] = payload.newName;
+        }
+
+        sourceKpi.details.targetList = targetList;
+        sourceKpi.details.achieved = achieved;
+        if (Array.isArray(targetList)) sourceKpi.target = targetList.length;
+
+        batch.update(sourceDocRef, { kpis: sourceData.kpis });
+
+        // 3. Propagate to Future Quarters (Overwrite List)
+        for (let i = startQuarterNum + 1; i <= 4; i++) {
             const docRef = db.collection(basePath).doc(`q${i}`);
             const doc = await docRef.get();
             if (!doc.exists) continue;
+
             const data = doc.data();
-            const kpiIndex = data.kpis.findIndex(k => k.id === kpiId);
-            if (kpiIndex === -1) continue;
-            const kpi = data.kpis[kpiIndex];
-            const targetList = kpi.details.targetList || [];
-            const achieved = kpi.details.achieved || [];
+            const idx = data.kpis.findIndex(k => k.id === kpiId);
+            if (idx === -1) continue;
 
-            if (action === 'add') { if (!targetList.includes(payload)) targetList.push(payload); }
-            else if (action === 'delete') {
-                const tIdx = targetList.indexOf(payload); if (tIdx > -1) targetList.splice(tIdx, 1);
-                const aIdx = achieved.indexOf(payload); if (aIdx > -1) achieved.splice(aIdx, 1);
-            }
-            else if (action === 'edit') {
-                const tIdx = targetList.indexOf(payload.oldName); if (tIdx > -1) targetList[tIdx] = payload.newName;
-                const aIdx = achieved.indexOf(payload.oldName); if (aIdx > -1) achieved[aIdx] = payload.newName;
-            }
-            kpi.details.targetList = targetList;
-            kpi.details.achieved = achieved;
+            // Overwrite targetList from Source
+            data.kpis[idx].details.targetList = [...targetList];
 
-            // SYNC TARGET WITH LIST LENGTH (Force sync if list exists)
-            if (Array.isArray(targetList)) {
-                kpi.target = targetList.length;
+            // Sync Value/Target
+            if (Array.isArray(targetList)) data.kpis[idx].target = targetList.length;
+
+            // Handle Achieved (Rename/Cleanup)
+            let qAchieved = data.kpis[idx].details.achieved || [];
+            if (action === 'edit') {
+                const aIdx = qAchieved.indexOf(payload.oldName);
+                if (aIdx > -1) qAchieved[aIdx] = payload.newName;
+            }
+            // Filter achieved to ensure only valid items remain
+            qAchieved = qAchieved.filter(item => targetList.includes(item));
+
+            data.kpis[idx].details.achieved = qAchieved;
+
+            // Sync Value Count
+            if (data.kpis[idx].details.targetList) {
+                data.kpis[idx].value = qAchieved.length;
             }
 
             batch.update(docRef, { kpis: data.kpis });
