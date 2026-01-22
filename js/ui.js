@@ -287,12 +287,9 @@ export function createKpiCard(kpi) {
 
     const editBtn = cardElement.querySelector('.edit-kpi-btn');
     if (isEditMode && kpi.hasOwnProperty('value')) {
-        editBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            handleEditKpi(cardElement, kpi);
-        });
+        // Validation handled in main.js
     } else {
-        editBtn.remove();
+        if (editBtn) editBtn.remove();
     }
 
     return cardElement;
