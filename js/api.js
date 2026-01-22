@@ -11,11 +11,11 @@ import {
 // Cache Exported
 export let kpiDataCache = {};
 
-// Variable Global untuk Tahun (Default 2025)
-export let selectedYear = "2025";
+// Variable Global untuk Tahun (Default 2026)
+export let selectedYear = "2026";
 
 export function setApiYear(year) {
-    selectedYear = year || "2025"; // Fallback to 2025 if empty
+    selectedYear = year || "2026"; // Fallback to 2026 if empty
     kpiDataCache = {}; // Reset cache bila tukar tahun
     console.log("API Year Set To:", selectedYear);
 }
