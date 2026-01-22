@@ -431,6 +431,12 @@ export async function updateKpiTargetListItem(quarterKey, kpiId, payload, action
             }
             kpi.details.targetList = targetList;
             kpi.details.achieved = achieved;
+
+            // SYNC TARGET WITH LIST LENGTH
+            if (kpi.format === 'count') {
+                kpi.target = targetList.length;
+            }
+
             batch.update(docRef, { kpis: data.kpis });
         }
         await batch.commit();
