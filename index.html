@@ -315,371 +315,352 @@
                     class="text-gray-400 hover:text-gray-600 font-semibold py-2 px-4 rounded-lg transition-all text-xs">
                     <i class="fas fa-terminal mr-1"></i> TERMINAL LOGIN
                 </button>
+                <!-- Theme Toggle Floating Button -->
+                <button id="theme-toggle" class="theme-toggle-btn" aria-label="Tukar Tema">
+                    <i class="fas fa-moon"></i>
+                </button>
             </div>
         </footer>
 
-        <!-- Takwim Floating Button (Converted to Trigger Modal) -->
-        <button id="takwim-btn" class="takwim-btn" aria-label="Buka Takwim" title="Takwim Alumni">
-            <i class="fas fa-calendar-alt"></i>
-        </button>
 
-        <!-- Theme Toggle Floating Button -->
-        <button id="theme-toggle" class="theme-toggle-btn" aria-label="Tukar Tema">
-            <i class="fas fa-moon"></i>
-        </button>
-    </div>
 
-    <!-- TAKWIM MODAL (Fullscreen Iframe) -->
-    <div id="takwim-modal"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80 hidden opacity-0 transition-opacity duration-300">
-        <div
-            class="relative w-full h-full sm:w-11/12 sm:h-5/6 bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col transform scale-95 transition-transform duration-300">
+        <div id="chart-modal"
+            class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div class="modal-content bg-white rounded-lg shadow-2xl w-full max-w-3xl p-6" role="dialog"
+                aria-modal="true" aria-labelledby="chart-modal-title">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 id="chart-modal-title" class="text-xl font-bold text-brand-primary">Sejarah Prestasi</h3>
+                    <button id="chart-modal-close" class="text-gray-500 hover:text-red-600 text-2xl font-bold"
+                        aria-label="Tutup modal">&times;</button>
+                </div>
+                <div class="h-[400px] w-full">
+                    <canvas id="kpi-history-chart"></canvas>
+                </div>
+            </div>
+        </div>
 
-            <!-- Modal Header -->
-            <div class="bg-brand-primary text-white px-4 py-3 flex justify-between items-center shrink-0">
-                <h3 class="font-bold text-lg"><i class="fas fa-calendar-alt mr-2"></i>Takwim Alumni</h3>
-                <button id="close-takwim-modal" class="text-white hover:text-gray-200 focus:outline-none text-xl p-2">
-                    <i class="fas fa-times"></i>
+        <!-- PWA INSTALL PROMPT BANNER -->
+        <div id="install-prompt"
+            class="fixed bottom-0 left-0 w-full bg-white dark:bg-gray-800 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-40 transform translate-y-full transition-transform duration-500 ease-in-out px-6 py-4 flex flex-col sm:flex-row justify-between items-center border-t border-gray-200 dark:border-gray-700 hidden">
+            <div class="flex items-center mb-3 sm:mb-0">
+                <div class="p-3 bg-white rounded-xl mr-4 shadow-sm border border-gray-100">
+                    <img src="https://cdn-icons-png.flaticon.com/512/8921/8921024.png" alt="App Icon"
+                        class="w-8 h-8 object-contain">
+                </div>
+                <div>
+                    <h4 class="font-bold text-gray-800 dark:text-gray-100 text-sm sm:text-base">Install App KPI
+                        Alumni
+                    </h4>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Akses lebih pantas & paparan penuh tanpa
+                        browser
+                        bar.</p>
+                </div>
+            </div>
+            <div class="flex gap-3 w-full sm:w-auto">
+                <button id="install-close-btn"
+                    class="flex-1 sm:flex-none px-4 py-2 text-gray-500 font-semibold hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-sm transition-colors">
+                    Nanti Dulu
+                </button>
+                <button id="install-app-btn"
+                    class="flex-1 sm:flex-none px-6 py-2 bg-brand-primary text-white font-bold rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all text-sm">
+                    Install Sekarang
                 </button>
             </div>
+        </div>
 
-            <!-- Iframe Container -->
-            <div class="flex-grow bg-gray-100 relative">
-                <div id="takwim-loading" class="absolute inset-0 flex items-center justify-center text-gray-500">
-                    <i class="fas fa-spinner fa-spin fa-2x mr-3"></i> Memuatkan Takwim...
+        <!-- iOS INSTALL GUIDE MODAL -->
+        <div id="ios-install-modal"
+            class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black bg-opacity-60 hidden pointer-events-auto"
+            style="backdrop-filter: blur(2px);">
+            <div
+                class="bg-white dark:bg-gray-800 w-full sm:w-96 rounded-t-2xl sm:rounded-2xl p-6 pb-8 shadow-2xl transform transition-transform duration-300 translate-y-0">
+                <div class="flex justify-between items-start mb-4">
+                    <h3 class="text-lg font-bold text-gray-900 dark:text-white">Install pada iPhone/iPad</h3>
+                    <button id="close-ios-modal" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
                 </div>
-                <!-- Iframe 'src' will be set by JS only when opened to save data -->
-                <iframe id="takwim-frame"
-                    class="w-full h-full border-0 relative z-10 opacity-0 transition-opacity duration-500"
-                    allowfullscreen></iframe>
-            </div>
-        </div>
-    </div>
 
-    <div id="chart-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div class="modal-content bg-white rounded-lg shadow-2xl w-full max-w-3xl p-6" role="dialog" aria-modal="true"
-            aria-labelledby="chart-modal-title">
-            <div class="flex justify-between items-center mb-4">
-                <h3 id="chart-modal-title" class="text-xl font-bold text-brand-primary">Sejarah Prestasi</h3>
-                <button id="chart-modal-close" class="text-gray-500 hover:text-red-600 text-2xl font-bold"
-                    aria-label="Tutup modal">&times;</button>
-            </div>
-            <div class="h-[400px] w-full">
-                <canvas id="kpi-history-chart"></canvas>
-            </div>
-        </div>
-    </div>
+                <div class="space-y-4 text-sm text-gray-600 dark:text-gray-300">
+                    <p>1. Tekan butang <span class="font-bold text-blue-500"><i class="fas fa-share-square"></i>
+                            Share</span> di bar bawah browser (Safari).</p>
+                    <p>2. Scroll ke bawah dan pilih <span class="font-bold text-gray-800 dark:text-white"><i
+                                class="far fa-plus-square"></i> Add to Home Screen</span>.</p>
+                    <p>3. Tekan <span class="font-bold text-blue-500">Add</span> di bucu atas kanan.</p>
+                </div>
 
-    <!-- PWA INSTALL PROMPT BANNER -->
-    <div id="install-prompt"
-        class="fixed bottom-0 left-0 w-full bg-white dark:bg-gray-800 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-40 transform translate-y-full transition-transform duration-500 ease-in-out px-6 py-4 flex flex-col sm:flex-row justify-between items-center border-t border-gray-200 dark:border-gray-700 hidden">
-        <div class="flex items-center mb-3 sm:mb-0">
-            <div class="p-3 bg-white rounded-xl mr-4 shadow-sm border border-gray-100">
-                <img src="https://cdn-icons-png.flaticon.com/512/8921/8921024.png" alt="App Icon"
-                    class="w-8 h-8 object-contain">
-            </div>
-            <div>
-                <h4 class="font-bold text-gray-800 dark:text-gray-100 text-sm sm:text-base">Install App KPI Alumni</h4>
-                <p class="text-xs text-gray-500 dark:text-gray-400">Akses lebih pantas & paparan penuh tanpa browser
-                    bar.</p>
+                <div class="mt-6 flex justify-center">
+                    <i class="fas fa-arrow-down text-blue-500 animate-bounce text-2xl"></i>
+                </div>
             </div>
         </div>
-        <div class="flex gap-3 w-full sm:w-auto">
-            <button id="install-close-btn"
-                class="flex-1 sm:flex-none px-4 py-2 text-gray-500 font-semibold hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-sm transition-colors">
-                Nanti Dulu
-            </button>
-            <button id="install-app-btn"
-                class="flex-1 sm:flex-none px-6 py-2 bg-brand-primary text-white font-bold rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all text-sm">
-                Install Sekarang
-            </button>
-        </div>
-    </div>
 
-    <!-- iOS INSTALL GUIDE MODAL -->
-    <div id="ios-install-modal"
-        class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black bg-opacity-60 hidden pointer-events-auto"
-        style="backdrop-filter: blur(2px);">
-        <div
-            class="bg-white dark:bg-gray-800 w-full sm:w-96 rounded-t-2xl sm:rounded-2xl p-6 pb-8 shadow-2xl transform transition-transform duration-300 translate-y-0">
-            <div class="flex justify-between items-start mb-4">
-                <h3 class="text-lg font-bold text-gray-900 dark:text-white">Install pada iPhone/iPad</h3>
-                <button id="close-ios-modal" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
-                    <i class="fas fa-times text-xl"></i>
+        <div id="details-modal"
+            class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div class="modal-content bg-white rounded-lg shadow-2xl w-full max-w-md p-6 flex flex-col max-h-[85vh]"
+                role="dialog" aria-modal="true" aria-labelledby="details-modal-title">
+                <div class="flex justify-between items-center mb-4 flex-shrink-0">
+                    <h3 id="details-modal-title" class="text-xl font-bold text-brand-primary">Butiran</h3>
+                    <button id="details-modal-close" class="text-gray-500 hover:text-red-600 text-2xl font-bold"
+                        aria-label="Tutup modal">&times;</button>
+                </div>
+                <div id="details-modal-content-area" class="overflow-y-auto pr-2">
+                    <p id="details-modal-description" class="mb-4 text-gray-700"></p>
+                    <ul id="details-list" class="space-y-3 text-gray-800">
+                    </ul>
+                    <div id="details-add-new-wrapper" class="mt-4"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Description Modal -->
+        <div id="edit-desc-modal"
+            class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div class="modal-content bg-white rounded-lg shadow-2xl w-full max-w-lg p-6" role="dialog"
+                aria-modal="true">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold text-brand-primary">Edit Deskripsi KPI</h3>
+                    <button id="edit-desc-modal-close"
+                        class="text-gray-500 hover:text-red-600 text-2xl font-bold">&times;</button>
+                </div>
+                <p class="mb-2 text-sm text-gray-600">Masukkan penjelasan lengkap untuk KPI ini:</p>
+                <textarea id="desc-input" placeholder="Tulis deskripsi di sini..."></textarea>
+                <div class="flex justify-end gap-2">
+                    <button id="cancel-desc-btn"
+                        class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Batal</button>
+                    <button id="save-desc-btn"
+                        class="px-4 py-2 bg-brand-primary text-white rounded-lg hover:bg-blue-800 font-bold">Simpan
+                        Perubahan</button>
+                </div>
+            </div>
+        </div>
+
+
+
+        <!-- Modal: Add New KPI (NEW) -->
+        <div id="add-kpi-modal"
+            class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div class="modal-content bg-white rounded-lg shadow-2xl w-full max-w-lg p-6" role="dialog"
+                aria-modal="true">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold text-brand-primary">Tambah KPI Baru</h3>
+                    <button id="add-kpi-modal-close"
+                        class="text-gray-500 hover:text-red-600 text-2xl font-bold">&times;</button>
+                </div>
+                <form id="add-kpi-form" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Nama KPI</label>
+                        <input type="text" id="new-kpi-name"
+                            class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-brand-primary focus:border-brand-primary"
+                            required placeholder="Contoh: Program Alumni 2026">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Sasaran Tahunan (Target)</label>
+                        <input type="number" id="new-kpi-target"
+                            class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-brand-primary focus:border-brand-primary"
+                            required placeholder="100">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Ikon (FontAwesome)</label>
+                        <select id="new-kpi-icon"
+                            class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-brand-primary focus:border-brand-primary">
+                            <option value="fa-users">👥 Users (Orang)</option>
+                            <option value="fa-chart-line">📈 Chart (Graf)</option>
+                            <option value="fa-money-bill-wave">💰 Money (Duit)</option>
+                            <option value="fa-handshake">🤝 Handshake (Kolaborasi)</option>
+                            <option value="fa-bullhorn">📢 Bullhorn (Hebahan)</option>
+                            <option value="fa-trophy">🏆 Trophy (Pencapaian)</option>
+                            <option value="fa-globe-asia">🌍 Globe (Global)</option>
+                            <option value="fa-graduation-cap">🎓 Cap (Graduasi)</option>
+                            <option value="fa-star">⭐ Star (Ikon)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Jenis Data</label>
+                        <div class="flex gap-4 mt-1">
+                            <label class="inline-flex items-center">
+                                <input type="radio" name="kpi-type" value="number" checked
+                                    class="form-radio text-brand-primary">
+                                <span class="ml-2">Nombor Biasa</span>
+                            </label>
+                            <label class="inline-flex items-center">
+                                <input type="radio" name="kpi-type" value="percentage"
+                                    class="form-radio text-brand-primary">
+                                <span class="ml-2">Peratus (%)</span>
+                            </label>
+                            <label class="inline-flex items-center">
+                                <input type="radio" name="kpi-type" value="currency"
+                                    class="form-radio text-brand-primary">
+                                <span class="ml-2">Mata Wang (RM)</span>
+                            </label>
+                        </div>
+                    </div>
+                    <button type="submit"
+                        class="w-full bg-brand-primary text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-800 transition-all mt-4">
+                        Simpan KPI
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Modal: Edit/Delete KPI Structure (NEW) -->
+        <div id="edit-structure-modal"
+            class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div class="modal-content bg-white rounded-lg shadow-2xl w-full max-w-lg p-6" role="dialog"
+                aria-modal="true">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold text-brand-primary">Tetapan KPI</h3>
+                    <button id="edit-structure-modal-close"
+                        class="text-gray-500 hover:text-red-600 text-2xl font-bold">&times;</button>
+                </div>
+                <form id="edit-structure-form" class="space-y-4">
+                    <input type="hidden" id="edit-structure-id">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Nama KPI</label>
+                        <input type="text" id="edit-structure-name"
+                            class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-brand-primary focus:border-brand-primary">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Sasaran (Target)</label>
+                        <input type="number" id="edit-structure-target"
+                            class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-brand-primary focus:border-brand-primary">
+                    </div>
+                    <div class="bg-yellow-50 p-3 rounded-lg text-sm text-yellow-800 border border-yellow-200">
+                        <i class="fas fa-exclamation-triangle mr-1"></i> Perhatian: Perubahan ini akan memberi kesan
+                        kepada
+                        semua suku tahun bagi tahun yang dipilih.
+                    </div>
+                    <div class="flex gap-2 mt-6">
+                        <button type="button" id="delete-kpi-btn"
+                            class="flex-1 bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-800 transition-all">
+                            <i class="fas fa-trash-alt mr-2"></i>Padam KPI
+                        </button>
+                        <button type="submit"
+                            class="flex-1 bg-brand-primary text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-800 transition-all">
+                            Simpan Perubahan
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <template id="kpi-card-template">
+            <div class="kpi-card bg-white p-6 rounded-2xl shadow-lg shadow-gray-500/10 flex flex-col relative group">
+                <!-- Settings Button (Admin Only) - Absolute Top Left -->
+                <button class="settings-btn absolute top-4 left-4 text-gray-300 hover:text-gray-600 hidden z-20"
+                    aria-label="Tetapan KPI">
+                    <i class="fas fa-cog text-lg"></i>
                 </button>
-            </div>
 
-            <div class="space-y-4 text-sm text-gray-600 dark:text-gray-300">
-                <p>1. Tekan butang <span class="font-bold text-blue-500"><i class="fas fa-share-square"></i>
-                        Share</span> di bar bawah browser (Safari).</p>
-                <p>2. Scroll ke bawah dan pilih <span class="font-bold text-gray-800 dark:text-white"><i
-                            class="far fa-plus-square"></i> Add to Home Screen</span>.</p>
-                <p>3. Tekan <span class="font-bold text-blue-500">Add</span> di bucu atas kanan.</p>
-            </div>
+                <!-- Chart Button (Position Absolute) -->
+                <button class="show-chart-btn absolute top-4 right-4 text-gray-400 hover:text-brand-primary"
+                    aria-label="Lihat Sejarah Prestasi" title="Lihat Sejarah Prestasi">
+                    <i class="fas fa-chart-line"></i>
+                </button>
 
-            <div class="mt-6 flex justify-center">
-                <i class="fas fa-arrow-down text-blue-500 animate-bounce text-2xl"></i>
-            </div>
-        </div>
-    </div>
+                <!-- Glowing Dot (Replaces Badge) -->
+                <div class="status-dot hidden" title="Status: Lengkap"></div>
 
-    <div id="details-modal"
-        class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div class="modal-content bg-white rounded-lg shadow-2xl w-full max-w-md p-6 flex flex-col max-h-[85vh]"
-            role="dialog" aria-modal="true" aria-labelledby="details-modal-title">
-            <div class="flex justify-between items-center mb-4 flex-shrink-0">
-                <h3 id="details-modal-title" class="text-xl font-bold text-brand-primary">Butiran</h3>
-                <button id="details-modal-close" class="text-gray-500 hover:text-red-600 text-2xl font-bold"
-                    aria-label="Tutup modal">&times;</button>
-            </div>
-            <div id="details-modal-content-area" class="overflow-y-auto pr-2">
-                <p id="details-modal-description" class="mb-4 text-gray-700"></p>
-                <ul id="details-list" class="space-y-3 text-gray-800">
-                </ul>
-                <div id="details-add-new-wrapper" class="mt-4"></div>
-            </div>
-        </div>
-    </div>
+                <!-- NEW FIXED HEADER STRUCTURE -->
+                <div class="kpi-header-fixed">
+                    <i class="kpi-icon fas text-2xl sm:text-3xl text-brand-primary w-12 text-center mt-1"></i>
+                    <h3 class="kpi-name ml-4 text-base sm:text-lg font-semibold text-gray-800 leading-tight"></h3>
 
-    <!-- Edit Description Modal -->
-    <div id="edit-desc-modal"
-        class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div class="modal-content bg-white rounded-lg shadow-2xl w-full max-w-lg p-6" role="dialog" aria-modal="true">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-bold text-brand-primary">Edit Deskripsi KPI</h3>
-                <button id="edit-desc-modal-close"
-                    class="text-gray-500 hover:text-red-600 text-2xl font-bold">&times;</button>
-            </div>
-            <p class="mb-2 text-sm text-gray-600">Masukkan penjelasan lengkap untuk KPI ini:</p>
-            <textarea id="desc-input" placeholder="Tulis deskripsi di sini..."></textarea>
-            <div class="flex justify-end gap-2">
-                <button id="cancel-desc-btn"
-                    class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Batal</button>
-                <button id="save-desc-btn"
-                    class="px-4 py-2 bg-brand-primary text-white rounded-lg hover:bg-blue-800 font-bold">Simpan
-                    Perubahan</button>
-            </div>
-        </div>
-    </div>
+                    <!-- Info/Edit Button -->
+                    <button class="info-btn ml-2 mt-1 text-gray-400 hover:text-brand-primary focus:outline-none"
+                        aria-label="Maklumat Lanjut">
+                        <i class="fas fa-info-circle"></i>
+                    </button>
 
-
-
-    <!-- Modal: Add New KPI (NEW) -->
-    <div id="add-kpi-modal"
-        class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div class="modal-content bg-white rounded-lg shadow-2xl w-full max-w-lg p-6" role="dialog" aria-modal="true">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-bold text-brand-primary">Tambah KPI Baru</h3>
-                <button id="add-kpi-modal-close"
-                    class="text-gray-500 hover:text-red-600 text-2xl font-bold">&times;</button>
-            </div>
-            <form id="add-kpi-form" class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Nama KPI</label>
-                    <input type="text" id="new-kpi-name"
-                        class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-brand-primary focus:border-brand-primary"
-                        required placeholder="Contoh: Program Alumni 2026">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Sasaran Tahunan (Target)</label>
-                    <input type="number" id="new-kpi-target"
-                        class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-brand-primary focus:border-brand-primary"
-                        required placeholder="100">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Ikon (FontAwesome)</label>
-                    <select id="new-kpi-icon"
-                        class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-brand-primary focus:border-brand-primary">
-                        <option value="fa-users">👥 Users (Orang)</option>
-                        <option value="fa-chart-line">📈 Chart (Graf)</option>
-                        <option value="fa-money-bill-wave">💰 Money (Duit)</option>
-                        <option value="fa-handshake">🤝 Handshake (Kolaborasi)</option>
-                        <option value="fa-bullhorn">📢 Bullhorn (Hebahan)</option>
-                        <option value="fa-trophy">🏆 Trophy (Pencapaian)</option>
-                        <option value="fa-globe-asia">🌍 Globe (Global)</option>
-                        <option value="fa-graduation-cap">🎓 Cap (Graduasi)</option>
-                        <option value="fa-star">⭐ Star (Ikon)</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Jenis Data</label>
-                    <div class="flex gap-4 mt-1">
-                        <label class="inline-flex items-center">
-                            <input type="radio" name="kpi-type" value="number" checked
-                                class="form-radio text-brand-primary">
-                            <span class="ml-2">Nombor Biasa</span>
-                        </label>
-                        <label class="inline-flex items-center">
-                            <input type="radio" name="kpi-type" value="percentage"
-                                class="form-radio text-brand-primary">
-                            <span class="ml-2">Peratus (%)</span>
-                        </label>
-                        <label class="inline-flex items-center">
-                            <input type="radio" name="kpi-type" value="currency" class="form-radio text-brand-primary">
-                            <span class="ml-2">Mata Wang (RM)</span>
-                        </label>
+                    <!-- Description Popover -->
+                    <div class="desc-popover hidden">
+                        <p class="desc-text text-sm text-gray-600"></p>
                     </div>
                 </div>
-                <button type="submit"
-                    class="w-full bg-brand-primary text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-800 transition-all mt-4">
-                    Simpan KPI
-                </button>
-            </form>
-        </div>
-    </div>
 
-    <!-- Modal: Edit/Delete KPI Structure (NEW) -->
-    <div id="edit-structure-modal"
-        class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div class="modal-content bg-white rounded-lg shadow-2xl w-full max-w-lg p-6" role="dialog" aria-modal="true">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-bold text-brand-primary">Tetapan KPI</h3>
-                <button id="edit-structure-modal-close"
-                    class="text-gray-500 hover:text-red-600 text-2xl font-bold">&times;</button>
-            </div>
-            <form id="edit-structure-form" class="space-y-4">
-                <input type="hidden" id="edit-structure-id">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Nama KPI</label>
-                    <input type="text" id="edit-structure-name"
-                        class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-brand-primary focus:border-brand-primary">
+                <!-- Content Section (Numbers) - Pushed down by fixed header -->
+                <div class="mt-auto">
+                    <div class="flex flex-wrap justify-between items-baseline gap-x-2">
+                        <p
+                            class="kpi-value-display text-2xl sm:text-3xl md:text-4xl font-bold text-brand-primary leading-tight flex items-center">
+                            <span class="value-wrapper">
+                                <span class="animated-value"></span>
+                            </span>
+                            <span
+                                class="kpi-target-display text-base sm:text-lg md:text-xl font-medium text-gray-500"></span>
+                            <button class="edit-kpi-btn" aria-label="Edit Nilai"><i
+                                    class="fas fa-pencil-alt"></i></button>
+                        </p>
+                        <span class="kpi-trend flex items-center font-semibold text-sm sm:text-base"></span>
+                    </div>
+                    <div class="trend-wrapper-complete flex justify-end mt-1"></div>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Sasaran (Target)</label>
-                    <input type="number" id="edit-structure-target"
-                        class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-brand-primary focus:border-brand-primary">
+                <div class="w-full bg-gray-200 rounded-full h-2.5 mt-4">
+                    <div class="progress-bar h-2.5 rounded-full" style="width: 0%"></div>
                 </div>
-                <div class="bg-yellow-50 p-3 rounded-lg text-sm text-yellow-800 border border-yellow-200">
-                    <i class="fas fa-exclamation-triangle mr-1"></i> Perhatian: Perubahan ini akan memberi kesan kepada
-                    semua suku tahun bagi tahun yang dipilih.
-                </div>
-                <div class="flex gap-2 mt-6">
-                    <button type="button" id="delete-kpi-btn"
-                        class="flex-1 bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-800 transition-all">
-                        <i class="fas fa-trash-alt mr-2"></i>Padam KPI
-                    </button>
-                    <button type="submit"
-                        class="flex-1 bg-brand-primary text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-800 transition-all">
-                        Simpan Perubahan
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <template id="kpi-card-template">
-        <div class="kpi-card bg-white p-6 rounded-2xl shadow-lg shadow-gray-500/10 flex flex-col relative group">
-            <!-- Settings Button (Admin Only) - Absolute Top Left -->
-            <button class="settings-btn absolute top-4 left-4 text-gray-300 hover:text-gray-600 hidden z-20"
-                aria-label="Tetapan KPI">
-                <i class="fas fa-cog text-lg"></i>
-            </button>
-
-            <!-- Chart Button (Position Absolute) -->
-            <button class="show-chart-btn absolute top-4 right-4 text-gray-400 hover:text-brand-primary"
-                aria-label="Lihat Sejarah Prestasi" title="Lihat Sejarah Prestasi">
-                <i class="fas fa-chart-line"></i>
-            </button>
-
-            <!-- Glowing Dot (Replaces Badge) -->
-            <div class="status-dot hidden" title="Status: Lengkap"></div>
-
-            <!-- NEW FIXED HEADER STRUCTURE -->
-            <div class="kpi-header-fixed">
-                <i class="kpi-icon fas text-2xl sm:text-3xl text-brand-primary w-12 text-center mt-1"></i>
-                <h3 class="kpi-name ml-4 text-base sm:text-lg font-semibold text-gray-800 leading-tight"></h3>
-
-                <!-- Info/Edit Button -->
-                <button class="info-btn ml-2 mt-1 text-gray-400 hover:text-brand-primary focus:outline-none"
-                    aria-label="Maklumat Lanjut">
-                    <i class="fas fa-info-circle"></i>
-                </button>
-
-                <!-- Description Popover -->
-                <div class="desc-popover hidden">
-                    <p class="desc-text text-sm text-gray-600"></p>
+                <div class="flex justify-between items-center mt-1">
+                    <div class="details-btn-wrapper w-8 h-8">
+                        <button
+                            class="show-details-btn text-gray-500 hover:text-brand-primary rounded-full w-full h-full items-center justify-center hover:bg-gray-100 transition-all hidden"
+                            aria-label="Lihat Butiran" title="Lihat Butiran">
+                            <i class="fas fa-ellipsis-h"></i>
+                        </button>
+                    </div>
+                    <p class="kpi-percentage-display text-right text-sm font-semibold text-gray-600">0.00%</p>
                 </div>
             </div>
+        </template>
 
-            <!-- Content Section (Numbers) - Pushed down by fixed header -->
-            <div class="mt-auto">
-                <div class="flex flex-wrap justify-between items-baseline gap-x-2">
-                    <p
-                        class="kpi-value-display text-2xl sm:text-3xl md:text-4xl font-bold text-brand-primary leading-tight flex items-center">
-                        <span class="value-wrapper">
-                            <span class="animated-value"></span>
-                        </span>
-                        <span
-                            class="kpi-target-display text-base sm:text-lg md:text-xl font-medium text-gray-500"></span>
-                        <button class="edit-kpi-btn" aria-label="Edit Nilai"><i class="fas fa-pencil-alt"></i></button>
-                    </p>
-                    <span class="kpi-trend flex items-center font-semibold text-sm sm:text-base"></span>
-                </div>
-                <div class="trend-wrapper-complete flex justify-end mt-1"></div>
-            </div>
-            <div class="w-full bg-gray-200 rounded-full h-2.5 mt-4">
-                <div class="progress-bar h-2.5 rounded-full" style="width: 0%"></div>
-            </div>
-            <div class="flex justify-between items-center mt-1">
-                <div class="details-btn-wrapper w-8 h-8">
-                    <button
-                        class="show-details-btn text-gray-500 hover:text-brand-primary rounded-full w-full h-full items-center justify-center hover:bg-gray-100 transition-all hidden"
-                        aria-label="Lihat Butiran" title="Lihat Butiran">
-                        <i class="fas fa-ellipsis-h"></i>
-                    </button>
-                </div>
-                <p class="kpi-percentage-display text-right text-sm font-semibold text-gray-600">0.00%</p>
-            </div>
-        </div>
-    </template>
-
-    <!-- SCRIPT LOADING ORDER: CONFIG -> DATA -> MODULES (Via Main) -->
-    <script src="config.js"></script>
-    <script src="data-seed.js"></script>
+        <!-- SCRIPT LOADING ORDER: CONFIG -> DATA -> MODULES (Via Main) -->
+        <script src="config.js"></script>
+        <script src="data-seed.js"></script>
 
 
 
 
-    <!-- Custom Confirmation Modal -->
-    <div id="confirm-modal" class="fixed inset-0 z-[60] hidden overflow-y-auto" aria-labelledby="modal-title"
-        role="dialog" aria-modal="true">
-        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
-            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-            <div
-                class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full border-4 border-red-100">
-                <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                    <div class="sm:flex sm:items-start">
-                        <div
-                            class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
-                            <svg class="h-6 w-6 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none"
-                                viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                            </svg>
-                        </div>
-                        <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                            <h3 class="text-lg leading-6 font-bold text-gray-900" id="confirm-modal-title">Amaran Sistem
-                            </h3>
-                            <div class="mt-2">
-                                <p class="text-sm text-gray-500" id="confirm-modal-message">Adakah anda pasti? Tindakan
-                                    ini tidak boleh diundur.</p>
+        <!-- Custom Confirmation Modal -->
+        <div id="confirm-modal" class="fixed inset-0 z-[60] hidden overflow-y-auto" aria-labelledby="modal-title"
+            role="dialog" aria-modal="true">
+            <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
+                <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+                <div
+                    class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full border-4 border-red-100">
+                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                        <div class="sm:flex sm:items-start">
+                            <div
+                                class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+                                <svg class="h-6 w-6 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none"
+                                    viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                            </div>
+                            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                                <h3 class="text-lg leading-6 font-bold text-gray-900" id="confirm-modal-title">
+                                    Amaran
+                                    Sistem
+                                </h3>
+                                <div class="mt-2">
+                                    <p class="text-sm text-gray-500" id="confirm-modal-message">Adakah anda pasti?
+                                        Tindakan
+                                        ini tidak boleh diundur.</p>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-                <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse gap-2">
-                    <button type="button" id="confirm-modal-ok-btn"
-                        class="w-full inline-flex justify-center rounded-lg border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm">Teruskan</button>
-                    <button type="button" id="confirm-modal-cancel-btn"
-                        class="mt-3 w-full inline-flex justify-center rounded-lg border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">Batal</button>
+                    <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse gap-2">
+                        <button type="button" id="confirm-modal-ok-btn"
+                            class="w-full inline-flex justify-center rounded-lg border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm">Teruskan</button>
+                        <button type="button" id="confirm-modal-cancel-btn"
+                            class="mt-3 w-full inline-flex justify-center rounded-lg border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">Batal</button>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Load Main Script as Module -->
-    <script type="module" src="js/main.js?v=2.0"></script>
+        <!-- Load Main Script as Module -->
+        <script type="module" src="js/main.js?v=2.0"></script>
 </body>
 
 </html>
