@@ -717,3 +717,81 @@ body.dark-mode .theme-toggle-btn {
 .slide-up-show {
     transform: translateY(0) !important;
 }
+
+/* ===== MOBILE BOTTOM SHEET ===== */
+/* Show modals as bottom sheets on mobile devices */
+@media (max-width: 640px) {
+
+    /* Bottom Sheet Container */
+    .modal {
+        align-items: flex-end !important;
+        padding: 0 !important;
+    }
+
+    /* Modal Content transforms to bottom sheet */
+    .modal-content {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        border-radius: 24px 24px 0 0 !important;
+        max-height: 85vh;
+        overflow-y: auto;
+        transform: translateY(100%);
+        transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+        box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.3) !important;
+    }
+
+    /* When modal is visible, slide up */
+    .modal:not(.hidden) .modal-content {
+        transform: translateY(0);
+    }
+
+    /* Drag Handle */
+    .modal-content::before {
+        content: '';
+        position: absolute;
+        top: 12px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 40px;
+        height: 4px;
+        background: #cbd5e0;
+        border-radius: 2px;
+        z-index: 10;
+    }
+
+    /* Dark mode drag handle */
+    body.dark-mode .modal-content::before {
+        background: #4a5568;
+    }
+
+    /* Add padding top for drag handle space */
+    .modal-content>div:first-child {
+        padding-top: 24px !important;
+    }
+
+    /* Faster slide animation for backdrop */
+    .modal {
+        transition: opacity 0.2s ease;
+    }
+}
+
+/* Bottom Sheet Swipe Indicator Animation */
+@keyframes handle-pulse {
+
+    0%,
+    100% {
+        opacity: 0.5;
+        transform: translateX(-50%) scaleX(1);
+    }
+
+    50% {
+        opacity: 0.8;
+        transform: translateX(-50%) scaleX(1.2);
+    }
+}
+
+/* Pulse animation on first load (optional enhancement) */
+.modal:not(.hidden) .modal-content::before {
+    animation: handle-pulse 1.5s ease-in-out 0.5s 2;
+}
