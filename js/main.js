@@ -233,43 +233,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const overall = count > 0 ? totalPct / count : 0;
             renderGaugeChart(overall);
 
-            // Logic for Empty Data / All Zeros
-            if (maxPercentage <= 0) {
-                // Top Achievement Card
-                document.getElementById('top-achiever-pct').textContent = '0.00%';
-                document.getElementById('top-achiever').textContent = 'Tiada Rekod';
-                document.getElementById('top-achiever-achieved').textContent = '0';
-                document.getElementById('top-achiever-target').textContent = '/ 0';
-                document.getElementById('top-achiever-bar').style.width = '0%';
-
-                // Need Focus Card
-                document.getElementById('main-focus-pct').textContent = '0.00%';
-                document.getElementById('main-focus').textContent = 'Tiada Rekod';
-                document.getElementById('main-focus-achieved').textContent = '0';
-                document.getElementById('main-focus-target').textContent = '/ 0';
-                document.getElementById('main-focus-bar').style.width = '0%';
-            } else {
-                // Top Achievement Card
-                if (topKpi) {
-                    const topValue = calculateKpiValue(topKpi);
-                    document.getElementById('top-achiever-pct').textContent = `${maxPercentage.toFixed(2)}%`;
-                    document.getElementById('top-achiever').textContent = topKpi.name;
-                    document.getElementById('top-achiever-achieved').textContent = topValue;
-                    document.getElementById('top-achiever-target').textContent = `/ ${topKpi.target}`;
-                    document.getElementById('top-achiever-bar').style.width = `${Math.min(maxPercentage, 100)}%`;
-                }
-
-                // Need Focus Card
-                if (bottomKpi) {
-                    const bottomValue = calculateKpiValue(bottomKpi);
-                    document.getElementById('main-focus-pct').textContent = `${minPercentage.toFixed(2)}%`;
-                    document.getElementById('main-focus').textContent = bottomKpi.name;
-                    document.getElementById('main-focus-achieved').textContent = bottomValue;
-                    document.getElementById('main-focus-target').textContent = `/ ${bottomKpi.target}`;
-                    document.getElementById('main-focus-bar').style.width = `${Math.min(minPercentage, 100)}%`;
-                }
-            }
-
             setEditMode(isEditMode);
 
             if (searchInput && statusFilter) {
