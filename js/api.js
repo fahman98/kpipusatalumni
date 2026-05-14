@@ -374,6 +374,36 @@ export async function cloneFromYear(sourceYear) {
 
 // --- STANDARD UPDATE FUNCTIONS ---
 
+export async function saveBulkKpiValues(kpiId, valuesObj) {
+    if (!isEditMode) return;
+    const basePath = `artifacts/${getAppId()}/public/data/kpi-${selectedYear}`;
+    const batch = db.batch();
+    showLoading("Menyimpan nilai semua suku...");
+    try {
+        for (let i = 1; i <= 4; i++) {
+            const qKey = `q${i}`;
+            if (valuesObj[qKey] === undefined) continue;
+            const docRef = db.collection(basePath).doc(qKey);
+            const doc = await docRef.get();
+            if (!doc.exists) continue;
+            const data = doc.data();
+            const kpiIndex = data.kpis.findIndex(k => k.id === kpiId);
+            if (kpiIndex > -1) {
+                data.kpis[kpiIndex].value = valuesObj[qKey];
+                batch.update(docRef, { kpis: data.kpis });
+            }
+        }
+        await batch.commit();
+        await writeAuditLog('BULK_UPDATE_VALUES', { kpiId, values: valuesObj });
+        showToastNotification('Nilai semua suku dikemaskini!', 'success');
+    } catch (e) {
+        console.error(e);
+        showToastNotification("Ralat simpan nilai bulk.", "danger");
+    } finally {
+        hideLoading();
+    }
+}
+
 export async function updateKpiValueInFirestore(quarterKey, kpiId, newValue) {
     if (!isEditMode) return;
     const basePath = `artifacts/${getAppId()}/public/data/kpi-${selectedYear}`;

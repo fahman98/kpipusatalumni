@@ -27,7 +27,9 @@ import {
     deleteKpi,
     cloneFromYear,
     updateKpiValueInFirestore,
-    updateKpiDescriptionInFirestore
+    updateKpiDescriptionInFirestore,
+    getKpiDataFromFirestore,
+    saveBulkKpiValues
 } from './api.js';
 
 import { renderGaugeChart, showHistoryChart, destroyKpiChart } from './charts.js';
@@ -79,6 +81,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchInput = getEl('dashboard-search-input');
     const statusFilter = getEl('dashboard-status-filter');
 
+    const bulkEditModal = getEl('bulk-edit-modal');
+    const exportPdfBtn = getEl('export-pdf-btn');
+    const notifyBtn = getEl('notify-btn');
+    const offlineBanner = getEl('offline-banner');
+
     // CRUD Forms
     const addKpiForm = getEl('add-kpi-form');
     const openAddKpiBtn = getEl('open-add-kpi-modal-btn');
@@ -101,9 +108,12 @@ document.addEventListener('DOMContentLoaded', () => {
         setApiYear(yearSelector.value || "2025");
     }
 
+    const initiallyLoadedQuarters = new Set();
+
     // --- MAIN FUNCTION: UPDATE DASHBOARD ---
     window.updateDashboard = function (quarterKey) {
         currentQuarter = quarterKey;
+        initiallyLoadedQuarters.delete(quarterKey);
 
         // 1. Set Title Serta-merta
         if (mainTitle) {
@@ -174,6 +184,16 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             kpiDataCache[quarterKey].processedKpis = processedKpis;
+
+            // Push notification on real-time updates (not on first load)
+            if (!initiallyLoadedQuarters.has(quarterKey)) {
+                initiallyLoadedQuarters.add(quarterKey);
+            } else if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+                new Notification('KPI Dikemaskini', {
+                    body: `Data ${selectedYear} ${currentData.title || quarterKey.toUpperCase()} telah dikemaskini.`,
+                    icon: 'https://cdn-icons-png.flaticon.com/512/8921/8921024.png'
+                });
+            }
 
             let totalPct = 0;
             let count = 0;
@@ -356,6 +376,7 @@ document.addEventListener('DOMContentLoaded', () => {
         yearSelector.addEventListener('change', (e) => {
             const year = e.target.value;
             setApiYear(year);
+            initiallyLoadedQuarters.clear();
             updateDashboard(currentQuarter);
             window.scrollTo({ top: 0, behavior: 'smooth' });
         });
@@ -683,6 +704,153 @@ document.addEventListener('DOMContentLoaded', () => {
     if (printBtn) {
         printBtn.addEventListener('click', () => window.print());
     }
+
+    // --- EXPORT PDF ---
+    if (exportPdfBtn) {
+        exportPdfBtn.addEventListener('click', () => {
+            const data = kpiDataCache[currentQuarter];
+            if (!data || !data.processedKpis) {
+                showToastNotification('Tiada data untuk dieksport.', 'danger');
+                return;
+            }
+            const jsPDFLib = window.jspdf && window.jspdf.jsPDF;
+            if (!jsPDFLib) {
+                showToastNotification('PDF library tidak tersedia.', 'danger');
+                return;
+            }
+            const doc = new jsPDFLib();
+            const quarterTitle = data.title || currentQuarter.toUpperCase();
+            doc.setFontSize(14);
+            doc.setTextColor(13, 71, 161);
+            doc.text('Laporan KPI Pusat Alumni UPSI', 14, 15);
+            doc.setFontSize(11);
+            doc.setTextColor(60, 60, 60);
+            doc.text(`Tahun: ${selectedYear}   |   ${quarterTitle}`, 14, 23);
+            doc.autoTable({
+                startY: 30,
+                head: [['Nama KPI', 'Nilai', 'Sasaran', 'Peratus (%)']],
+                body: data.processedKpis.map(kpi => [
+                    kpi.name,
+                    calculateKpiValue(kpi).toFixed(2),
+                    kpi.target,
+                    getKpiPercentage(kpi).toFixed(2) + '%'
+                ]),
+                styles: { fontSize: 10, cellPadding: 4 },
+                headStyles: { fillColor: [13, 71, 161], textColor: [255, 255, 255], fontStyle: 'bold' },
+                alternateRowStyles: { fillColor: [240, 244, 252] }
+            });
+            doc.save(`KPI_${selectedYear}_${currentQuarter.toUpperCase()}.pdf`);
+        });
+    }
+
+    // --- PUSH NOTIFICATIONS ---
+    if (notifyBtn) {
+        notifyBtn.addEventListener('click', async () => {
+            if (!('Notification' in window)) {
+                showToastNotification('Browser anda tidak menyokong notifikasi.', 'danger');
+                return;
+            }
+            if (Notification.permission === 'granted') {
+                showToastNotification('Notifikasi sudah diaktifkan.', 'success');
+            } else if (Notification.permission === 'denied') {
+                showToastNotification('Notifikasi disekat. Sila benarkan dalam tetapan browser.', 'danger');
+            } else {
+                const permission = await Notification.requestPermission();
+                if (permission === 'granted') {
+                    showToastNotification('Notifikasi diaktifkan!', 'success');
+                    notifyBtn.innerHTML = '<i class="fas fa-bell mr-2"></i>Notifikasi Aktif';
+                } else {
+                    showToastNotification('Kebenaran notifikasi ditolak.', 'danger');
+                }
+            }
+        });
+    }
+
+    // --- BULK EDIT ---
+    const openBulkEditBtn = getEl('open-bulk-edit-btn');
+    if (openBulkEditBtn) {
+        openBulkEditBtn.addEventListener('click', async () => {
+            const kpiId = getEl('edit-structure-id').value;
+            if (!kpiId) return;
+            const kpiName = getEl('edit-structure-name').value;
+            const nameEl = getEl('bulk-edit-kpi-name');
+            if (nameEl) nameEl.textContent = `KPI: ${kpiName}`;
+
+            for (let i = 1; i <= 4; i++) {
+                const qKey = `q${i}`;
+                const input = getEl(`bulk-q${i}-input`);
+                if (!input) continue;
+                let val = '';
+                const cached = kpiDataCache[qKey];
+                if (cached && cached.kpis) {
+                    const kpi = cached.kpis.find(k => k.id === kpiId);
+                    if (kpi) val = kpi.value ?? '';
+                } else {
+                    try {
+                        const fetched = await getKpiDataFromFirestore(qKey);
+                        if (fetched && fetched.kpis) {
+                            const kpi = fetched.kpis.find(k => k.id === kpiId);
+                            if (kpi) val = kpi.value ?? '';
+                        }
+                    } catch (e) { /* leave blank */ }
+                }
+                input.value = val;
+            }
+
+            closeModal(editStructureModal);
+            if (bulkEditModal) bulkEditModal.classList.remove('hidden');
+        });
+    }
+
+    const bulkEditSaveBtn = getEl('bulk-edit-save-btn');
+    if (bulkEditSaveBtn) {
+        bulkEditSaveBtn.addEventListener('click', async () => {
+            const kpiId = getEl('edit-structure-id').value;
+            if (!kpiId) return;
+            const valuesObj = {};
+            let hasError = false;
+            for (let i = 1; i <= 4; i++) {
+                const input = getEl(`bulk-q${i}-input`);
+                if (!input || input.value === '') continue;
+                const parsed = parseFloat(input.value);
+                if (isNaN(parsed) || parsed < 0) {
+                    showToastNotification(`Nilai Suku ${i} tidak sah.`, 'danger');
+                    hasError = true;
+                    break;
+                }
+                valuesObj[`q${i}`] = parsed;
+            }
+            if (hasError) return;
+            await saveBulkKpiValues(kpiId, valuesObj);
+            if (bulkEditModal) bulkEditModal.classList.add('hidden');
+        });
+    }
+
+    const bulkEditCancelBtn = getEl('bulk-edit-cancel-btn');
+    const bulkEditCloseBtn = getEl('bulk-edit-modal-close');
+    if (bulkEditCancelBtn) bulkEditCancelBtn.addEventListener('click', () => { if (bulkEditModal) bulkEditModal.classList.add('hidden'); });
+    if (bulkEditCloseBtn) bulkEditCloseBtn.addEventListener('click', () => { if (bulkEditModal) bulkEditModal.classList.add('hidden'); });
+    if (bulkEditModal) {
+        bulkEditModal.addEventListener('click', (e) => {
+            if (e.target === bulkEditModal) bulkEditModal.classList.add('hidden');
+        });
+    }
+
+    // --- OFFLINE PERSISTENCE & INDICATOR ---
+    if (typeof db !== 'undefined') {
+        db.enablePersistence({ synchronizeTabs: false }).catch(err => {
+            if (err.code !== 'failed-precondition' && err.code !== 'unimplemented') {
+                console.error('Persistence error:', err);
+            }
+        });
+    }
+
+    window.addEventListener('online', () => {
+        if (offlineBanner) offlineBanner.classList.add('hidden');
+    });
+    window.addEventListener('offline', () => {
+        if (offlineBanner) offlineBanner.classList.remove('hidden');
+    });
 
     // Start App
     initializeApp();

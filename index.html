@@ -30,6 +30,10 @@
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+    <!-- jsPDF + AutoTable (PDF Export) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.6.0/jspdf.plugin.autotable.min.js"></script>
+
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
@@ -56,6 +60,12 @@
             Memproses...</p>
     </div>
 
+    <!-- Offline Banner -->
+    <div id="offline-banner"
+        class="hidden fixed top-0 left-0 right-0 z-[70] bg-yellow-500 text-white text-sm font-semibold text-center py-2">
+        <i class="fas fa-wifi-slash mr-2" aria-hidden="true"></i>Tiada sambungan internet — paparan data cache
+    </div>
+
     <!-- MODAL PASSWORD HACKER TERMINAL STYLE -->
     <div id="password-modal"
         class="modal fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center p-4 z-50">
@@ -73,22 +83,23 @@
 
                     <!-- Input Email -->
                     <div class="terminal-input-line">
-                        <span class="terminal-prompt">login:</span>
+                        <label for="email-input" class="terminal-prompt">login:</label>
                         <input type="email" id="email-input" class="terminal-input" placeholder="admin@email.com"
-                            autocomplete="off">
+                            autocomplete="off" aria-label="Emel Admin" aria-required="true">
                     </div>
 
                     <!-- Input Password -->
                     <div class="terminal-input-line mt-2">
-                        <span class="terminal-prompt">password:</span>
+                        <label for="password-input" class="terminal-prompt">password:</label>
                         <input type="password" id="password-input" class="terminal-input" placeholder=""
-                            autocomplete="off">
-                        <span class="blinking-cursor"></span>
+                            autocomplete="off" aria-label="Kata Laluan Admin" aria-required="true">
+                        <span class="blinking-cursor" aria-hidden="true"></span>
                     </div>
 
-                    <div id="terminal-feedback" class="terminal-text mt-4 h-6 font-bold"></div>
+                    <div id="terminal-feedback" class="terminal-text mt-4 h-6 font-bold"
+                        aria-live="polite" role="status"></div>
 
-                    <button id="password-submit-btn" class="terminal-btn">
+                    <button id="password-submit-btn" class="terminal-btn" type="button">
                         > EXECUTE_LOGIN
                     </button>
                 </div>
@@ -197,17 +208,20 @@
 
             <div id="legend-container"
                 class="flex flex-wrap justify-center items-center gap-4 sm:gap-6 mb-8 text-sm text-gray-700">
-                <div class="flex items-center">
-                    <span class="w-4 h-4 rounded-full bg-status-good mr-2 border border-gray-300"></span>
-                    <span>Cemerlang ( &ge; 75%)</span>
+                <div class="flex items-center gap-1">
+                    <span class="w-4 h-4 rounded-full bg-status-good border border-gray-300 flex-shrink-0" aria-hidden="true"></span>
+                    <i class="fas fa-check-circle text-green-600 text-xs" aria-hidden="true"></i>
+                    <span>Cemerlang (&ge;75%)</span>
                 </div>
-                <div class="flex items-center">
-                    <span class="w-4 h-4 rounded-full bg-status-ok mr-2 border border-gray-300"></span>
-                    <span>Sederhana (30% - 74%)</span>
+                <div class="flex items-center gap-1">
+                    <span class="w-4 h-4 rounded-full bg-status-ok border border-gray-300 flex-shrink-0" aria-hidden="true"></span>
+                    <i class="fas fa-minus-circle text-yellow-500 text-xs" aria-hidden="true"></i>
+                    <span>Sederhana (30%–74%)</span>
                 </div>
-                <div class="flex items-center">
-                    <span class="w-4 h-4 rounded-full bg-status-bad mr-2 border border-gray-300"></span>
-                    <span>Perlu Perhatian ( &lt; 30%)</span>
+                <div class="flex items-center gap-1">
+                    <span class="w-4 h-4 rounded-full bg-status-bad border border-gray-300 flex-shrink-0" aria-hidden="true"></span>
+                    <i class="fas fa-exclamation-circle text-red-500 text-xs" aria-hidden="true"></i>
+                    <span>Perlu Perhatian (&lt;30%)</span>
                 </div>
             </div>
         </div>
@@ -291,6 +305,14 @@
                 <button id="print-btn"
                     class="flex items-center bg-blue-100 text-blue-700 hover:bg-blue-200 px-3 py-1 rounded-lg text-sm font-semibold transition-colors shadow-sm border border-blue-200">
                     <i class="fas fa-print mr-2"></i>Cetak
+                </button>
+                <button id="export-pdf-btn"
+                    class="flex items-center bg-purple-100 text-purple-700 hover:bg-purple-200 px-3 py-1 rounded-lg text-sm font-semibold transition-colors shadow-sm border border-purple-200">
+                    <i class="fas fa-file-pdf mr-2"></i>Export PDF
+                </button>
+                <button id="notify-btn"
+                    class="flex items-center bg-yellow-100 text-yellow-700 hover:bg-yellow-200 px-3 py-1 rounded-lg text-sm font-semibold transition-colors shadow-sm border border-yellow-200">
+                    <i class="fas fa-bell mr-2"></i>Notifikasi
                 </button>
 
                 <!-- Logout Button (Moved here) -->
@@ -529,6 +551,10 @@
                             Simpan Perubahan
                         </button>
                     </div>
+                    <button type="button" id="open-bulk-edit-btn"
+                        class="w-full mt-2 bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-indigo-700 transition-all">
+                        <i class="fas fa-layer-group mr-2"></i>Edit Semua Suku Serentak
+                    </button>
                 </form>
             </div>
         </div>
@@ -665,6 +691,47 @@
                         <button id="input-modal-ok-btn"
                             class="inline-flex justify-center rounded-lg border border-transparent shadow-sm px-4 py-2 bg-brand-primary text-sm font-medium text-white hover:bg-blue-800 focus:outline-none">Simpan</button>
                         <button id="input-modal-cancel-btn"
+                            class="inline-flex justify-center rounded-lg border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none">Batal</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bulk Edit Modal: Edit all quarters for a single KPI -->
+        <div id="bulk-edit-modal" class="fixed inset-0 z-[60] hidden overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="bulk-edit-modal-title">
+            <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
+                <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+                <div class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
+                    <div class="bg-white px-6 pt-5 pb-4">
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="text-lg font-bold text-gray-900" id="bulk-edit-modal-title">Edit Nilai Semua Suku</h3>
+                            <button id="bulk-edit-modal-close" class="text-gray-500 hover:text-red-600 text-2xl font-bold">&times;</button>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-4" id="bulk-edit-kpi-name">KPI: —</p>
+                        <div class="space-y-3">
+                            <div class="flex items-center gap-3">
+                                <label class="w-20 text-sm font-semibold text-gray-700 flex-shrink-0" for="bulk-q1-input">Suku 1</label>
+                                <input type="number" id="bulk-q1-input" class="flex-1 border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-brand-primary focus:border-brand-primary" placeholder="0" min="0">
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <label class="w-20 text-sm font-semibold text-gray-700 flex-shrink-0" for="bulk-q2-input">Suku 2</label>
+                                <input type="number" id="bulk-q2-input" class="flex-1 border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-brand-primary focus:border-brand-primary" placeholder="0" min="0">
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <label class="w-20 text-sm font-semibold text-gray-700 flex-shrink-0" for="bulk-q3-input">Suku 3</label>
+                                <input type="number" id="bulk-q3-input" class="flex-1 border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-brand-primary focus:border-brand-primary" placeholder="0" min="0">
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <label class="w-20 text-sm font-semibold text-gray-700 flex-shrink-0" for="bulk-q4-input">Suku 4</label>
+                                <input type="number" id="bulk-q4-input" class="flex-1 border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-brand-primary focus:border-brand-primary" placeholder="0" min="0">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 px-6 py-3 flex flex-row-reverse gap-2">
+                        <button id="bulk-edit-save-btn"
+                            class="inline-flex justify-center rounded-lg border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none">Simpan Semua</button>
+                        <button id="bulk-edit-cancel-btn"
                             class="inline-flex justify-center rounded-lg border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none">Batal</button>
                     </div>
                 </div>

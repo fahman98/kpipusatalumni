@@ -159,7 +159,7 @@ export function renderSkeletons() {
     const skeletonCount = 6;
     for (let i = 0; i < skeletonCount; i++) {
         const skeletonHTML = `
-            <div class="kpi-card bg-white p-6 rounded-2xl shadow-lg border border-gray-100 flex flex-col h-full animate-pulse relative overflow-hidden">
+            <div class="kpi-card bg-white p-6 rounded-2xl shadow-lg border border-gray-100 flex flex-col h-full animate-pulse relative overflow-hidden" role="status" aria-label="Memuatkan data KPI...">
                 <!-- Header Icon & Title -->
                 <div class="flex items-center mb-6">
                     <div class="w-12 h-12 rounded-full bg-gray-200"></div>

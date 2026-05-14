@@ -796,6 +796,27 @@ body.dark-mode .theme-toggle-btn {
     animation: handle-pulse 1.5s ease-in-out 0.5s 2;
 }
 
+/* --- COLORBLIND ACCESSIBILITY: Progress Bar Patterns --- */
+.progress-bar.bg-status-bad {
+    background-image: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 4px,
+        rgba(255, 255, 255, 0.25) 4px,
+        rgba(255, 255, 255, 0.25) 8px
+    );
+}
+
+.progress-bar.bg-status-ok {
+    background-image: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 4px,
+        rgba(255, 255, 255, 0.25) 4px,
+        rgba(255, 255, 255, 0.25) 6px
+    );
+}
+
 /* ==================== PRINT STYLES ==================== */
 @media print {
     /* Sembunyikan elemen yang tidak perlu dalam cetakan */
