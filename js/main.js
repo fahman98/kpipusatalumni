@@ -148,6 +148,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Process KPIs
             const processedKpis = processKpisWithTrends(currentData.kpis, previousData ? previousData.kpis : null);
+
+            // Buang Bicara Ramadan dari Penerbitan untuk tahun 2026 dan seterusnya
+            if (parseInt(selectedYear) >= 2026) {
+                processedKpis.forEach(kpi => {
+                    if (kpi.id === 'penerbitan' && kpi.details && kpi.details.items) {
+                        const filteredItems = kpi.details.items.filter(item => item.name !== 'Bicara Ramadan');
+                        kpi.details = { ...kpi.details, items: filteredItems };
+                        if (kpi.isPercentage && filteredItems.length > 0) {
+                            let totalScore = 0;
+                            filteredItems.forEach(item => {
+                                if (item.subItems && item.subItems.length > 0) {
+                                    totalScore += item.subItems.reduce((acc, sub) => acc + sub.value, 0) / item.subItems.length;
+                                } else {
+                                    totalScore += item.value;
+                                }
+                            });
+                            kpi.value = totalScore / filteredItems.length;
+                        }
+                    }
+                });
+            }
+
             kpiDataCache[quarterKey].processedKpis = processedKpis;
 
             let totalPct = 0;
