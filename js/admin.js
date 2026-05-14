@@ -6,6 +6,9 @@ let bootSequenceTimeouts = [];
 let failedAttempts = 0;
 let isLocked = false;
 
+const SS_LOCK_UNTIL = 'kpi_admin_lock_until';
+const SS_ATTEMPTS = 'kpi_admin_attempts';
+
 // Helper to get element safely
 const getEl = (id) => document.getElementById(id);
 
@@ -39,18 +42,30 @@ export function resetTerminalModal() {
     const terminalWindow = getEl('terminal-window');
     if(terminalWindow) terminalWindow.classList.remove('terminal-glitch');
 
-    failedAttempts = 0;
-    isLocked = false;
-    
+    // Semak sama ada lockout masih aktif dalam sessionStorage
+    const lockUntil = parseInt(sessionStorage.getItem(SS_LOCK_UNTIL) || '0');
+    const lockActive = Date.now() < lockUntil;
+
+    if (!lockActive) {
+        failedAttempts = 0;
+        isLocked = false;
+        sessionStorage.removeItem(SS_LOCK_UNTIL);
+        sessionStorage.removeItem(SS_ATTEMPTS);
+    }
+
     if (passwordInput) {
         passwordInput.value = '';
-        passwordInput.disabled = false;
-        passwordInput.classList.remove('input-disabled');
+        if (!lockActive) {
+            passwordInput.disabled = false;
+            passwordInput.classList.remove('input-disabled');
+        }
     }
     if (emailInput) {
         emailInput.value = '';
-        emailInput.disabled = false;
-        emailInput.classList.remove('input-disabled');
+        if (!lockActive) {
+            emailInput.disabled = false;
+            emailInput.classList.remove('input-disabled');
+        }
     }
 }
 
@@ -128,7 +143,9 @@ function triggerLockdown() {
     const feedback = getEl('terminal-feedback');
     
     isLocked = true;
-    
+    sessionStorage.setItem(SS_LOCK_UNTIL, (Date.now() + 10000).toString());
+    sessionStorage.setItem(SS_ATTEMPTS, failedAttempts.toString());
+
     if(passwordInput) {
         passwordInput.disabled = true;
         passwordInput.classList.add('input-disabled');
@@ -153,6 +170,8 @@ function triggerLockdown() {
             clearInterval(countdownInterval);
             isLocked = false;
             failedAttempts = 0;
+            sessionStorage.removeItem(SS_LOCK_UNTIL);
+            sessionStorage.removeItem(SS_ATTEMPTS);
             
             if(passwordInput) {
                 passwordInput.disabled = false;
@@ -173,7 +192,13 @@ function triggerLockdown() {
 }
 
 export function handleAdminLogin() {
-    if (isLocked) return; 
+    // Sync dari sessionStorage — tangani kes modal ditutup & dibuka semula semasa lockout
+    const storedLockUntil = parseInt(sessionStorage.getItem(SS_LOCK_UNTIL) || '0');
+    if (Date.now() < storedLockUntil) {
+        isLocked = true;
+        failedAttempts = parseInt(sessionStorage.getItem(SS_ATTEMPTS) || '3');
+    }
+    if (isLocked) return;
     
     const emailInput = getEl('email-input');
     const passwordInput = getEl('password-input');
@@ -198,11 +223,16 @@ export function handleAdminLogin() {
     
     firebase.auth().signInWithEmailAndPassword(email, password)
         .then((userCredential) => {
+             // Clear lockout state on successful login
+             sessionStorage.removeItem(SS_LOCK_UNTIL);
+             sessionStorage.removeItem(SS_ATTEMPTS);
+             failedAttempts = 0;
+
              if(feedback) {
                  feedback.textContent = "> [ACCESS GRANTED] PERMISSIONS UPDATED.";
                  feedback.classList.add('access-granted');
              }
-             
+
              setTimeout(() => {
                  closeModal(passwordModal);
                  if(emailInput) emailInput.value = '';

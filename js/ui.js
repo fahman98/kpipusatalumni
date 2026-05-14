@@ -706,6 +706,11 @@ function handleModalEdit(editBtn, kpiId, itemName, subItemName = null) {
 
         if (isNaN(newValue) || newValue === originalValue) return;
 
+        if (newValue < 0 || newValue > 100) {
+            showToastNotification("Nilai peratusan mesti antara 0 - 100.", "danger");
+            return;
+        }
+
         valueTextElement.innerHTML = `<i class="fas fa-spinner fa-spin text-brand-primary"></i>`;
         const activeQuarterKey = `q${paginationContainer.querySelector('.active').dataset.quarter}`;
         await updateKpiProgressListItem(activeQuarterKey, kpiId, itemName, subItemName, newValue);

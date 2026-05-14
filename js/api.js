@@ -23,6 +23,7 @@ export function setApiYear(year) {
 
 // Variable untuk simpan listener aktif
 let activeListener = null;
+let listenerGeneration = 0;
 
 // Helper to get APP ID safely
 const getAppId = () => {
@@ -32,6 +33,22 @@ const getAppId = () => {
     return "dashboard-alumni-kpi";
 };
 
+// --- AUDIT LOG ---
+async function writeAuditLog(action, details) {
+    try {
+        const user = firebase.auth().currentUser;
+        await db.collection(`artifacts/${getAppId()}/public/data/audit-logs`).add({
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            user: user ? user.email : 'unknown',
+            action,
+            year: selectedYear,
+            details
+        });
+    } catch (e) {
+        console.error("Audit log error:", e);
+    }
+}
+
 // --- FUNGSI REAL-TIME LISTENER ---
 export function subscribeToQuarterData(quarterKey, onUpdateCallback) {
     // 1. Matikan listener lama jika ada
@@ -40,11 +57,12 @@ export function subscribeToQuarterData(quarterKey, onUpdateCallback) {
         activeListener = null;
     }
 
+    // Generation counter — callbacks dari subscription lama diabaikan
+    const generation = ++listenerGeneration;
+
     if (!navigator.onLine) {
         showToastNotification("Tiada sambungan internet.", "danger");
     }
-
-
 
     const currentQuarterNum = parseInt(quarterKey.replace('q', ''));
     let previousQuarterKey = null;
@@ -61,12 +79,18 @@ export function subscribeToQuarterData(quarterKey, onUpdateCallback) {
         : Promise.resolve(null);
 
     prevQuarterPromise.then(prevSnap => {
+        // Abaikan jika subscription baru sudah dilancarkan
+        if (generation !== listenerGeneration) return;
+
         const previousData = (prevSnap && prevSnap.exists) ? prevSnap.data() : null;
 
         // 2. Start Real-time Listener
         const docRef = db.collection(basePath).doc(quarterKey);
 
         activeListener = docRef.onSnapshot((docSnap) => {
+            // Abaikan callback dari subscription lama
+            if (generation !== listenerGeneration) return;
+
             hideLoading();
 
             if (docSnap.exists) {
@@ -86,6 +110,7 @@ export function subscribeToQuarterData(quarterKey, onUpdateCallback) {
                 onUpdateCallback(null, null, true);
             }
         }, (error) => {
+            if (generation !== listenerGeneration) return;
             console.error("Ralat Sync:", error);
             hideLoading();
             if (error.code !== 'permission-denied') {
@@ -94,6 +119,7 @@ export function subscribeToQuarterData(quarterKey, onUpdateCallback) {
         });
 
     }).catch(error => {
+        if (generation !== listenerGeneration) return;
         console.error("Ralat fetch previous quarter:", error);
         hideLoading();
     });
@@ -159,6 +185,13 @@ export async function addNewKpi(kpiData) {
                 if (data.subtitle) subtitle = data.subtitle;
             }
 
+            // Semak duplikat pada suku pertama sahaja
+            if (i === 1 && currentKpis.some(k => k.name.toLowerCase() === kpiData.name.toLowerCase())) {
+                hideLoading();
+                showToastNotification(`KPI "${kpiData.name}" sudah wujud.`, "danger");
+                return;
+            }
+
             // Push new KPI
             currentKpis.push(kpiData);
 
@@ -171,6 +204,7 @@ export async function addNewKpi(kpiData) {
         }
 
         await batch.commit();
+        await writeAuditLog('ADD_KPI', { name: kpiData.name, id: kpiData.id });
         showToastNotification("KPI berjaya ditambah!", "success");
 
     } catch (e) {
@@ -214,6 +248,7 @@ export async function updateKpiStructure(kpiId, newName, newTarget) {
             batch.update(docRef, { kpis: kpis });
         }
         await batch.commit();
+        await writeAuditLog('EDIT_KPI_STRUCTURE', { kpiId, newName, newTarget });
         showToastNotification("Struktur KPI dikemaskini!", "success");
     } catch (e) {
         console.error(e);
@@ -252,6 +287,7 @@ export function deleteKpi(kpiId) {
                     batch.update(docRef, { kpis: filteredKpis });
                 }
                 await batch.commit();
+                await writeAuditLog('DELETE_KPI', { kpiId });
                 showToastNotification("KPI berjaya dipadam.", "success");
             } catch (e) {
                 console.error(e);
@@ -322,6 +358,7 @@ export async function cloneFromYear(sourceYear) {
             }
         }
         await batch.commit();
+        await writeAuditLog('CLONE_YEAR', { sourceYear, targetYear: selectedYear });
         showToastNotification(`Berjaya menyalin struktur dari ${sourceYear}!`, "success");
     } catch (e) {
         console.error(e);
@@ -357,6 +394,7 @@ export async function updateKpiValueInFirestore(quarterKey, kpiId, newValue) {
             }
         }
         await batch.commit();
+        await writeAuditLog('UPDATE_VALUE', { kpiId, quarterKey, newValue });
         showToastNotification('Nilai dikemaskini!', 'success');
     } catch (e) {
         console.error(e);

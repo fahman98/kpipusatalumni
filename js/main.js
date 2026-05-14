@@ -205,7 +205,16 @@ document.addEventListener('DOMContentLoaded', () => {
                             currentVal,
                             (newVal) => {
                                 if (newVal !== null && newVal.trim() !== "") {
-                                    updateKpiValueInFirestore(quarterKey, kpi.id, parseFloat(newVal));
+                                    const parsed = parseFloat(newVal);
+                                    if (isNaN(parsed) || parsed < 0) {
+                                        showToastNotification("Nilai tidak sah. Sila masukkan angka positif.", "danger");
+                                        return;
+                                    }
+                                    if (kpi.isPercentage && parsed > 100) {
+                                        showToastNotification("Nilai peratusan tidak boleh melebihi 100%.", "danger");
+                                        return;
+                                    }
+                                    updateKpiValueInFirestore(quarterKey, kpi.id, parsed);
                                 }
                             }
                         );
