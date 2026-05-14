@@ -1,4 +1,5 @@
-const CACHE_NAME = 'kpi-dashboard-v1';
+// Naik taraf versi ini setiap kali deploy baru untuk paksa cache refresh
+const CACHE_NAME = 'kpi-dashboard-v2';
 const ASSETS_TO_CACHE = [
     './',
     './index.html',

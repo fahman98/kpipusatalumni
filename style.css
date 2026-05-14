@@ -795,3 +795,58 @@ body.dark-mode .theme-toggle-btn {
 .modal:not(.hidden) .modal-content::before {
     animation: handle-pulse 1.5s ease-in-out 0.5s 2;
 }
+
+/* ==================== PRINT STYLES ==================== */
+@media print {
+    /* Sembunyikan elemen yang tidak perlu dalam cetakan */
+    header .flex,
+    nav,
+    footer,
+    #add-kpi-container,
+    #global-loading-overlay,
+    .settings-btn,
+    .edit-kpi-btn,
+    .show-chart-btn,
+    .desc-popover,
+    .modal,
+    #toast-notification,
+    #install-prompt,
+    #ios-install-modal,
+    #password-modal,
+    #confirm-modal,
+    #input-modal {
+        display: none !important;
+    }
+
+    body {
+        background: white !important;
+        color: black !important;
+    }
+
+    #dashboard-container {
+        padding: 0 !important;
+    }
+
+    #main-title, #sub-title {
+        color: #0d47a1 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .kpi-card {
+        break-inside: avoid;
+        box-shadow: none !important;
+        border: 1px solid #d1d5db !important;
+        page-break-inside: avoid;
+    }
+
+    #kpi-grid-container {
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 12px !important;
+    }
+
+    .progress-bar {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+}

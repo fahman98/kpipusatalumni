@@ -5,6 +5,13 @@ import { kpiDataCache, getKpiDataFromFirestore } from './api.js';
 let kpiChartInstance = null;
 let gaugeChartInstance = null;
 
+export function destroyKpiChart() {
+    if (kpiChartInstance) {
+        kpiChartInstance.destroy();
+        kpiChartInstance = null;
+    }
+}
+
 
 export function renderGaugeChart(value) {
     const overallGaugeCtx = document.getElementById('overall-gauge-chart').getContext('2d');

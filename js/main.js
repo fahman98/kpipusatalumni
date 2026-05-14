@@ -30,7 +30,7 @@ import {
     updateKpiDescriptionInFirestore
 } from './api.js';
 
-import { renderGaugeChart, showHistoryChart } from './charts.js';
+import { renderGaugeChart, showHistoryChart, destroyKpiChart } from './charts.js';
 import { handleAdminLogin, resetTerminalModal, runBootSequence, randomGlitch, runLogoutSequence } from './admin.js';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -73,6 +73,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const addKpiModal = getEl('add-kpi-modal');
     const editStructureModal = getEl('edit-structure-modal');
+    const inputModal = getEl('input-modal');
+    const confirmModal = getEl('confirm-modal');
 
     const searchInput = getEl('dashboard-search-input');
     const statusFilter = getEl('dashboard-status-filter');
@@ -92,6 +94,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const toastCloseBtn = getEl('toast-close-btn');
 
     let currentQuarter = 'q1';
+    let quarterSwitchTimeout = null;
 
     // --- INITIALIZE YEAR ---
     if (yearSelector) {
@@ -358,14 +361,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Pagination
+    // Pagination — debounce 150ms untuk elak multiple Firestore reads
     if (paginationContainer) {
-        paginationContainer.addEventListener('click', async (e) => {
+        paginationContainer.addEventListener('click', (e) => {
             if (e.target.matches('.quarter-btn')) {
                 document.querySelector('.quarter-btn.active').classList.remove('active');
                 e.target.classList.add('active');
-                updateDashboard(`q${e.target.dataset.quarter}`);
-                window.scrollTo({ top: 0, behavior: 'smooth' });
+                clearTimeout(quarterSwitchTimeout);
+                quarterSwitchTimeout = setTimeout(() => {
+                    updateDashboard(`q${e.target.dataset.quarter}`);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }, 150);
             }
         });
     }
@@ -389,13 +395,28 @@ document.addEventListener('DOMContentLoaded', () => {
     // What-If
 
 
-    // Modals
-    [chartModal, detailsModal, editDescModal, addKpiModal, editStructureModal].forEach(modal => {
+    // Modals — klik luar untuk tutup, dan destroy chart bila chartModal ditutup
+    [chartModal, detailsModal, editDescModal, addKpiModal, editStructureModal, inputModal].forEach(modal => {
         if (!modal) return;
         const closeBtn = modal.querySelector('button[aria-label="Tutup modal"]') || modal.querySelector('.text-2xl');
-        modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(modal); });
-        if (closeBtn) closeBtn.addEventListener('click', () => closeModal(modal));
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                if (modal === chartModal) destroyKpiChart();
+                closeModal(modal);
+            }
+        });
+        if (closeBtn) closeBtn.addEventListener('click', () => {
+            if (modal === chartModal) destroyKpiChart();
+            closeModal(modal);
+        });
     });
+
+    // confirmModal — klik luar tutup (guna hidden class, bukan is-open)
+    if (confirmModal) {
+        confirmModal.addEventListener('click', (e) => {
+            if (e.target === confirmModal) confirmModal.classList.add('hidden');
+        });
+    }
 
     // Admin & Auth
     if (adminLoginBtn) adminLoginBtn.addEventListener('click', () => { resetTerminalModal(); openModal(passwordModal, adminLoginBtn); runBootSequence(); randomGlitch(); });
@@ -570,6 +591,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         function showInstallBanner(isIOSDevice = false) {
+            if (sessionStorage.getItem('pwa_banner_dismissed')) return;
             if (installPrompt) {
                 installPrompt.classList.remove('hidden');
 
@@ -609,7 +631,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (closeInstallBtn && installPrompt) {
-            closeInstallBtn.addEventListener('click', hideInstallBanner);
+            closeInstallBtn.addEventListener('click', () => {
+                sessionStorage.setItem('pwa_banner_dismissed', '1');
+                hideInstallBanner();
+            });
         }
 
         // Close iOS Modal
@@ -625,6 +650,38 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (e.target === iosModal) iosModal.classList.add('hidden');
             });
         }
+    }
+
+    // --- EXPORT CSV ---
+    const exportCsvBtn = getEl('export-csv-btn');
+    if (exportCsvBtn) {
+        exportCsvBtn.addEventListener('click', () => {
+            const data = kpiDataCache[currentQuarter];
+            if (!data || !data.processedKpis) {
+                showToastNotification('Tiada data untuk dieksport.', 'danger');
+                return;
+            }
+            const rows = [['Nama KPI', 'Nilai', 'Sasaran', 'Peratus (%)']];
+            data.processedKpis.forEach(kpi => {
+                const value = calculateKpiValue(kpi);
+                const pct = getKpiPercentage(kpi);
+                rows.push([kpi.name, value.toFixed(2), kpi.target, pct.toFixed(2) + '%']);
+            });
+            const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `KPI_${selectedYear}_${currentQuarter.toUpperCase()}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+    }
+
+    // --- PRINT ---
+    const printBtn = getEl('print-btn');
+    if (printBtn) {
+        printBtn.addEventListener('click', () => window.print());
     }
 
     // Start App
