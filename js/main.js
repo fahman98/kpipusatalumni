@@ -159,7 +159,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (mainTitle) mainTitle.innerHTML = `Dashboard KPI ${selectedYear} <br> ${currentData.title || quarterKey.toUpperCase()}`;
             if (subTitle) subTitle.textContent = (currentData.subtitle || '').replace(/[()]/g, '');
             if (footerNote && currentData.footerDate) {
-                footerNote.innerHTML = `Data dikemaskini pada ${currentData.footerDate}. Untuk maklumat lanjut, sila hubungi <a href="tel:+60134977187" class="text-brand-primary hover:underline font-semibold">Encik Fahman Mujib Bin Ramli</a>.`;
+                footerNote.textContent = `Data dikemaskini pada ${currentData.footerDate}.`;
             }
 
             // Process KPIs
