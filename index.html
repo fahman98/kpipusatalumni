@@ -232,33 +232,34 @@
             </div>
         </div>
 
-        <!-- QUARTER TABS (moved from bottom) -->
+        <!-- QUARTER TABS: 2×2 grid on mobile, single row on sm+ -->
         <div class="mb-4">
             <div id="pagination"
-                class="bg-white rounded-xl shadow-sm border border-gray-100 p-1 flex gap-1"
+                class="bg-white rounded-xl shadow-sm border border-gray-100 p-1 grid grid-cols-2 sm:flex gap-1"
                 role="tablist" aria-label="Navigasi suku tahunan">
-                <button class="quarter-btn active flex-1 py-2 px-2 sm:px-4 rounded-lg text-xs sm:text-sm font-semibold transition-all"
+                <button class="quarter-btn active sm:flex-1 py-2.5 px-3 sm:px-4 rounded-lg text-xs sm:text-sm font-semibold transition-all"
                     data-quarter="1" role="tab" aria-selected="true">
-                    <i class="fas fa-calendar-alt mr-1 hidden sm:inline-block"></i>Suku 1
+                    <i class="fas fa-calendar-alt mr-1.5"></i>Suku 1
                 </button>
-                <button class="quarter-btn flex-1 py-2 px-2 sm:px-4 rounded-lg text-xs sm:text-sm font-semibold transition-all"
+                <button class="quarter-btn sm:flex-1 py-2.5 px-3 sm:px-4 rounded-lg text-xs sm:text-sm font-semibold transition-all"
                     data-quarter="2" role="tab" aria-selected="false">
-                    <i class="fas fa-calendar-alt mr-1 hidden sm:inline-block"></i>Suku 2
+                    <i class="fas fa-calendar-alt mr-1.5"></i>Suku 2
                 </button>
-                <button class="quarter-btn flex-1 py-2 px-2 sm:px-4 rounded-lg text-xs sm:text-sm font-semibold transition-all"
+                <button class="quarter-btn sm:flex-1 py-2.5 px-3 sm:px-4 rounded-lg text-xs sm:text-sm font-semibold transition-all"
                     data-quarter="3" role="tab" aria-selected="false">
-                    <i class="fas fa-calendar-alt mr-1 hidden sm:inline-block"></i>Suku 3
+                    <i class="fas fa-calendar-alt mr-1.5"></i>Suku 3
                 </button>
-                <button class="quarter-btn flex-1 py-2 px-2 sm:px-4 rounded-lg text-xs sm:text-sm font-semibold transition-all"
+                <button class="quarter-btn sm:flex-1 py-2.5 px-3 sm:px-4 rounded-lg text-xs sm:text-sm font-semibold transition-all"
                     data-quarter="4" role="tab" aria-selected="false">
-                    <i class="fas fa-calendar-alt mr-1 hidden sm:inline-block"></i>Suku 4
+                    <i class="fas fa-calendar-alt mr-1.5"></i>Suku 4
                 </button>
             </div>
         </div>
 
-        <!-- STATS SUMMARY BAR -->
+        <!-- STATS SUMMARY BAR — clickable to filter grid (#2) -->
         <div id="stats-bar" class="hidden grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-            <div class="bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-gray-100 flex items-center gap-3">
+            <div class="stat-card bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-gray-100 flex items-center gap-3 cursor-pointer select-none transition-all hover:shadow-md"
+                data-filter="all" title="Tunjuk semua KPI">
                 <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
                     <i class="fas fa-th-large text-brand-primary text-sm"></i>
                 </div>
@@ -267,7 +268,8 @@
                     <p id="stat-total" class="text-xl font-bold text-gray-800 mt-1">0</p>
                 </div>
             </div>
-            <div class="bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-gray-100 flex items-center gap-3">
+            <div class="stat-card bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-gray-100 flex items-center gap-3 cursor-pointer select-none transition-all hover:shadow-md"
+                data-filter="good" title="Tapis: Cemerlang sahaja">
                 <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-green-50 flex items-center justify-center flex-shrink-0">
                     <i class="fas fa-check-circle text-green-500 text-sm"></i>
                 </div>
@@ -276,7 +278,8 @@
                     <p id="stat-good" class="text-xl font-bold text-green-600 mt-1">0</p>
                 </div>
             </div>
-            <div class="bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-gray-100 flex items-center gap-3">
+            <div class="stat-card bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-gray-100 flex items-center gap-3 cursor-pointer select-none transition-all hover:shadow-md"
+                data-filter="ok" title="Tapis: Sederhana sahaja">
                 <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-yellow-50 flex items-center justify-center flex-shrink-0">
                     <i class="fas fa-minus-circle text-yellow-500 text-sm"></i>
                 </div>
@@ -285,7 +288,8 @@
                     <p id="stat-ok" class="text-xl font-bold text-yellow-500 mt-1">0</p>
                 </div>
             </div>
-            <div class="bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-gray-100 flex items-center gap-3">
+            <div class="stat-card bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-gray-100 flex items-center gap-3 cursor-pointer select-none transition-all hover:shadow-md"
+                data-filter="bad" title="Tapis: Perlu Perhatian sahaja">
                 <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0">
                     <i class="fas fa-exclamation-circle text-red-500 text-sm"></i>
                 </div>
@@ -668,6 +672,8 @@
                             </p>
                             <!-- Target on its own line (#6) -->
                             <p class="kpi-target-display text-xs text-gray-400 font-medium mt-1.5"></p>
+                            <!-- Tarikh nilai terakhir dikemaskini -->
+                            <p class="kpi-updated-at text-xs text-gray-300 mt-0.5 leading-none"></p>
                         </div>
                         <div class="text-right flex-shrink-0">
                             <span class="kpi-trend flex items-center justify-end font-semibold text-sm"></span>

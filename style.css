@@ -138,6 +138,16 @@ button:active,
     transform: scale(0.95);
 }
 
+/* #2: Stats bar card — active filter state */
+.stat-card-active {
+    ring: 2px;
+    box-shadow: 0 0 0 2px #0d47a1, 0 4px 12px rgba(13, 71, 161, 0.15) !important;
+    transform: translateY(-1px);
+}
+.stat-card-active[data-filter="good"] { box-shadow: 0 0 0 2px #43a047, 0 4px 12px rgba(67,160,71,0.15) !important; }
+.stat-card-active[data-filter="ok"]   { box-shadow: 0 0 0 2px #fdd835, 0 4px 12px rgba(253,216,53,0.15) !important; }
+.stat-card-active[data-filter="bad"]  { box-shadow: 0 0 0 2px #e53935, 0 4px 12px rgba(229,57,53,0.15) !important; }
+
 /* Footer action button group */
 .footer-action-btn {
     display: inline-flex;

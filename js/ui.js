@@ -151,38 +151,47 @@ export function renderSkeletons() {
     const kpiGridContainer = getEl('kpi-grid-container');
     if (!kpiGridContainer) return;
 
-    // Optional: Hide empty state while skeleton is showing
     const emptyState = getEl('empty-state-container');
     if (emptyState) emptyState.classList.add('hidden');
 
     kpiGridContainer.innerHTML = '';
     const skeletonCount = 6;
     for (let i = 0; i < skeletonCount; i++) {
+        // Match new card layout: status-bar | header(icon+name+actions) | value | progress
         const skeletonHTML = `
-            <div class="kpi-card bg-white p-6 rounded-2xl shadow-lg border border-gray-100 flex flex-col h-full animate-pulse relative overflow-hidden" role="status" aria-label="Memuatkan data KPI...">
-                <!-- Header Icon & Title -->
-                <div class="flex items-center mb-6">
-                    <div class="w-12 h-12 rounded-full bg-gray-200"></div>
-                    <div class="ml-4 flex-1 space-y-2">
-                        <div class="h-5 bg-gray-200 rounded w-3/4"></div>
-                        <div class="h-3 bg-gray-100 rounded w-1/2"></div>
+            <div class="kpi-card bg-white rounded-2xl flex flex-col relative overflow-hidden animate-pulse" role="status" aria-label="Memuatkan data KPI...">
+                <!-- Status left bar -->
+                <div class="absolute left-0 top-0 bottom-0 w-1 bg-gray-200 rounded-l-2xl"></div>
+
+                <!-- HEADER: icon container + name + action cluster -->
+                <div class="flex items-start px-5 pt-4 pb-3 gap-3">
+                    <div class="w-11 h-11 rounded-xl bg-gray-200 flex-shrink-0"></div>
+                    <div class="flex-1 min-w-0 pt-1 space-y-2">
+                        <div class="h-4 bg-gray-200 rounded w-4/5"></div>
+                        <div class="h-3 bg-gray-100 rounded w-2/5"></div>
+                    </div>
+                    <div class="flex items-center gap-1 flex-shrink-0">
+                        <div class="w-7 h-7 rounded-md bg-gray-100"></div>
+                        <div class="w-7 h-7 rounded-md bg-gray-100"></div>
                     </div>
                 </div>
-                
-                <!-- Center Viz/Text -->
-                <div class="my-4 space-y-3">
-                    <div class="h-8 bg-gray-200 rounded w-1/3 mx-auto"></div>
-                    <div class="h-2 bg-gray-100 rounded w-full"></div>
-                    <div class="h-2 bg-gray-100 rounded w-5/6 mx-auto"></div>
+
+                <!-- VALUE SECTION -->
+                <div class="px-5 mt-auto space-y-2">
+                    <div class="h-8 bg-gray-200 rounded w-2/5"></div>
+                    <div class="h-3 bg-gray-100 rounded w-1/3"></div>
                 </div>
 
-                <!-- Bottom Footer -->
-                <div class="mt-auto pt-4 border-t border-gray-50 flex justify-between items-center">
-                    <div class="h-4 bg-gray-200 rounded w-16"></div>
-                    <div class="h-8 bg-gray-200 rounded w-8"></div>
+                <!-- PROGRESS SECTION -->
+                <div class="px-5 pb-4 mt-3">
+                    <div class="flex justify-between mb-1.5">
+                        <div class="w-7 h-7 rounded-full bg-gray-100"></div>
+                        <div class="h-3 bg-gray-100 rounded w-12"></div>
+                    </div>
+                    <div class="h-5 bg-gray-200 rounded-full w-full"></div>
                 </div>
-                
-                <!-- Shimmer Effect Overlay -->
+
+                <!-- Shimmer overlay -->
                 <div class="absolute inset-0 -translate-x-full skeleton-shimmer bg-gradient-to-r from-transparent via-white/40 to-transparent"></div>
             </div>
         `;
@@ -298,6 +307,18 @@ export function createKpiCard(kpi) {
             targetDisplay.textContent = `Sasaran: ${formattedTarget}`;
         } else {
             targetDisplay.remove();
+        }
+    }
+
+    // #4: Tarikh nilai terakhir dikemaskini
+    const updatedAtEl = cardElement.querySelector('.kpi-updated-at');
+    if (updatedAtEl) {
+        if (kpi.updatedAt) {
+            const d = new Date(kpi.updatedAt);
+            const formatted = d.toLocaleDateString('ms-MY', { day: 'numeric', month: 'short', year: 'numeric' });
+            updatedAtEl.textContent = `Kemaskini: ${formatted}`;
+        } else {
+            updatedAtEl.remove();
         }
     }
 

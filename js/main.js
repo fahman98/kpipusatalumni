@@ -428,6 +428,45 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (kpiId) showDetailsModal(kpiId, detailsBtn);
             }
         });
+
+        // #5: Swipe gesture — tukar suku dengan swipe kiri/kanan pada grid (mobile)
+        let swipeTouchStartX = 0;
+        kpiGridContainer.addEventListener('touchstart', (e) => {
+            swipeTouchStartX = e.changedTouches[0].clientX;
+        }, { passive: true });
+        kpiGridContainer.addEventListener('touchend', (e) => {
+            const dx = e.changedTouches[0].clientX - swipeTouchStartX;
+            if (Math.abs(dx) < 60) return; // abaikan swipe terlalu kecil
+            const activeBtn = document.querySelector('.quarter-btn.active');
+            if (!activeBtn) return;
+            const currentQ = parseInt(activeBtn.dataset.quarter);
+            const targetQ = dx < 0 ? Math.min(currentQ + 1, 4) : Math.max(currentQ - 1, 1);
+            if (targetQ === currentQ) return;
+            const targetBtn = document.querySelector(`.quarter-btn[data-quarter="${targetQ}"]`);
+            if (targetBtn) targetBtn.click(); // guna logik quarter switch sedia ada
+        }, { passive: true });
+    }
+
+    // #2: Stats bar clickable — klik stat card untuk filter grid
+    if (statsBar) {
+        statsBar.addEventListener('click', (e) => {
+            const card = e.target.closest('.stat-card');
+            if (!card) return;
+            const filter = card.dataset.filter; // 'all' | 'good' | 'ok' | 'bad'
+            const statusFilterEl = getEl('dashboard-status-filter');
+            if (!statusFilterEl) return;
+
+            // Toggle: klik semula kad yang sama → reset ke all
+            const isActive = card.classList.contains('stat-card-active');
+            document.querySelectorAll('.stat-card').forEach(c => c.classList.remove('stat-card-active'));
+            if (isActive) {
+                statusFilterEl.value = 'all';
+            } else {
+                card.classList.add('stat-card-active');
+                statusFilterEl.value = filter;
+            }
+            statusFilterEl.dispatchEvent(new Event('change')); // trigger filter logic
+        });
     }
 
     if (overallChartBtn) overallChartBtn.addEventListener('click', (e) => showHistoryChart('overall', e.currentTarget));
@@ -586,7 +625,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Filters
     if (searchInput) searchInput.addEventListener('input', (e) => filterDashboardCards(e.target.value, statusFilter.value));
-    if (statusFilter) statusFilter.addEventListener('change', (e) => filterDashboardCards(searchInput.value, e.target.value));
+    if (statusFilter) statusFilter.addEventListener('change', (e) => {
+        // Reset stat card active state bila dropdown digunakan secara manual
+        document.querySelectorAll('.stat-card').forEach(c => c.classList.remove('stat-card-active'));
+        const matchingCard = document.querySelector(`.stat-card[data-filter="${e.target.value}"]`);
+        if (matchingCard && e.target.value !== 'all') matchingCard.classList.add('stat-card-active');
+        filterDashboardCards(searchInput.value, e.target.value);
+    });
 
 
 

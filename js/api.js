@@ -420,6 +420,7 @@ export async function updateKpiValueInFirestore(quarterKey, kpiId, newValue) {
             const kpiIndex = data.kpis.findIndex(k => k.id === kpiId);
             if (kpiIndex > -1) {
                 data.kpis[kpiIndex].value = newValue;
+                data.kpis[kpiIndex].updatedAt = new Date().toISOString(); // #4 tarikh kemaskini
                 batch.update(docRef, { kpis: data.kpis });
             }
         }
