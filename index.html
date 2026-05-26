@@ -127,39 +127,42 @@
 
     <div id="dashboard-container" class="container mx-auto p-4 sm:p-6 lg:p-8">
         <!-- Header -->
-        <header class="text-center mb-8 relative">
+        <header class="mb-6 relative">
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 px-4 sm:px-6 py-3 flex items-center gap-3 sm:gap-5">
 
-            <!-- Global Logos -->
-            <div class="flex justify-center items-center gap-4 sm:gap-8 mb-6">
-                <img src="./images/logo-1.png" alt="Logo Utama"
-                    class="h-12 sm:h-16 md:h-20 object-contain transition-transform hover:scale-105 duration-300">
-                <img src="./images/logo-2.png" alt="Logo Kedua"
-                    class="h-12 sm:h-16 md:h-20 object-contain transition-transform hover:scale-105 duration-300">
+                <!-- Left: Logos -->
+                <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+                    <img src="./images/logo-1.png" alt="Logo Utama"
+                        class="h-10 sm:h-14 object-contain transition-transform hover:scale-105 duration-300">
+                    <div class="hidden sm:block w-px h-10 bg-gray-200 flex-shrink-0"></div>
+                    <img src="./images/logo-2.png" alt="Logo Kedua"
+                        class="h-10 sm:h-14 object-contain transition-transform hover:scale-105 duration-300">
+                </div>
+
+                <!-- Center: Dynamic Title -->
+                <div class="flex-1 min-w-0 text-center px-2">
+                    <h1 id="main-title" class="text-sm sm:text-lg md:text-xl font-bold text-brand-primary leading-tight">
+                        Dashboard KPI</h1>
+                    <p id="sub-title" class="text-xs sm:text-sm text-gray-400 mt-0.5 hidden sm:block">Papan Pemuka
+                        Prestasi</p>
+                </div>
+
+                <!-- Right: Controls -->
+                <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+                    <select id="year-selector"
+                        class="bg-white border border-gray-200 text-gray-700 font-bold text-xs sm:text-sm py-1.5 px-2 sm:px-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary cursor-pointer shadow-sm">
+                        <option value="2025">2025</option>
+                        <option value="2026" selected>2026</option>
+                        <option value="2027">2027</option>
+                    </select>
+                    <div id="mode-indicator" class="flex-shrink-0">
+                        <span
+                            class="inline-flex items-center bg-blue-100 text-blue-800 text-xs font-semibold px-2 sm:px-2.5 py-1 rounded-full border border-blue-200 whitespace-nowrap">
+                            <i class="fas fa-eye mr-1"></i><span class="hidden sm:inline">Paparan </span>Awam
+                        </span>
+                    </div>
+                </div>
             </div>
-
-            <h1 id="main-title" class="text-2xl sm:text-3xl md:text-4xl font-bold text-brand-primary">
-                Dashboard KPI
-            </h1>
-
-            <!-- Year Selector (NEW) -->
-            <div class="flex flex-col justify-center items-center gap-2 mt-2">
-                <p id="sub-title" class="text-md md:text-lg text-gray-600">Papan Pemuka Prestasi</p>
-                <select id="year-selector"
-                    class="bg-white border border-gray-300 text-gray-700 font-bold py-1 px-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary cursor-pointer shadow-sm">
-                    <option value="2025">2025</option>
-                    <option value="2026" selected>2026</option>
-                    <option value="2027">2027</option>
-                </select>
-            </div>
-
-            <div id="mode-indicator" class="mt-2">
-                <span
-                    class="inline-block bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-blue-200">
-                    <i class="fas fa-eye mr-1"></i> Paparan Awam
-                </span>
-            </div>
-
-
         </header>
 
         <!-- Empty State / Clone Data Container (Hidden by default) -->
@@ -226,6 +229,70 @@
             </div>
         </div>
 
+        <!-- QUARTER TABS (moved from bottom) -->
+        <div class="mb-4">
+            <div id="pagination"
+                class="bg-white rounded-xl shadow-sm border border-gray-100 p-1 flex gap-1"
+                role="tablist" aria-label="Navigasi suku tahunan">
+                <button class="quarter-btn active flex-1 py-2 px-2 sm:px-4 rounded-lg text-xs sm:text-sm font-semibold transition-all"
+                    data-quarter="1" role="tab" aria-selected="true">
+                    <i class="fas fa-calendar-alt mr-1 hidden sm:inline-block"></i>Suku 1
+                </button>
+                <button class="quarter-btn flex-1 py-2 px-2 sm:px-4 rounded-lg text-xs sm:text-sm font-semibold transition-all"
+                    data-quarter="2" role="tab" aria-selected="false">
+                    <i class="fas fa-calendar-alt mr-1 hidden sm:inline-block"></i>Suku 2
+                </button>
+                <button class="quarter-btn flex-1 py-2 px-2 sm:px-4 rounded-lg text-xs sm:text-sm font-semibold transition-all"
+                    data-quarter="3" role="tab" aria-selected="false">
+                    <i class="fas fa-calendar-alt mr-1 hidden sm:inline-block"></i>Suku 3
+                </button>
+                <button class="quarter-btn flex-1 py-2 px-2 sm:px-4 rounded-lg text-xs sm:text-sm font-semibold transition-all"
+                    data-quarter="4" role="tab" aria-selected="false">
+                    <i class="fas fa-calendar-alt mr-1 hidden sm:inline-block"></i>Suku 4
+                </button>
+            </div>
+        </div>
+
+        <!-- STATS SUMMARY BAR -->
+        <div id="stats-bar" class="hidden grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+            <div class="bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-gray-100 flex items-center gap-3">
+                <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
+                    <i class="fas fa-th-large text-brand-primary text-sm"></i>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-400 font-medium leading-none">Jumlah KPI</p>
+                    <p id="stat-total" class="text-xl font-bold text-gray-800 mt-1">0</p>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-gray-100 flex items-center gap-3">
+                <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-green-50 flex items-center justify-center flex-shrink-0">
+                    <i class="fas fa-check-circle text-green-500 text-sm"></i>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-400 font-medium leading-none">Cemerlang</p>
+                    <p id="stat-good" class="text-xl font-bold text-green-600 mt-1">0</p>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-gray-100 flex items-center gap-3">
+                <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-yellow-50 flex items-center justify-center flex-shrink-0">
+                    <i class="fas fa-minus-circle text-yellow-500 text-sm"></i>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-400 font-medium leading-none">Sederhana</p>
+                    <p id="stat-ok" class="text-xl font-bold text-yellow-500 mt-1">0</p>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-gray-100 flex items-center gap-3">
+                <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0">
+                    <i class="fas fa-exclamation-circle text-red-500 text-sm"></i>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-400 font-medium leading-none">Perlu Perhatian</p>
+                    <p id="stat-bad" class="text-xl font-bold text-red-500 mt-1">0</p>
+                </div>
+            </div>
+        </div>
+
         <!-- SEARCH & FILTER CONTROLS -->
         <div id="search-filter-container"
             class="mb-6 bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col sm:flex-row gap-4 justify-between items-center">
@@ -266,71 +333,60 @@
             </div>
         </div>
 
-        <nav aria-label="Navigasi suku tahunan" class="flex justify-center gap-2 mt-12">
-            <div id="pagination">
-                <button
-                    class="quarter-btn active border-2 border-gray-400 text-gray-700 font-semibold py-2 px-6 rounded-lg transition-all"
-                    data-quarter="1">S1</button>
-                <button
-                    class="quarter-btn border-2 border-gray-400 text-gray-700 font-semibold py-2 px-6 rounded-lg transition-all"
-                    data-quarter="2">S2</button>
-                <button
-                    class="quarter-btn border-2 border-gray-400 text-gray-700 font-semibold py-2 px-6 rounded-lg transition-all"
-                    data-quarter="3">S3</button>
-                <button
-                    class="quarter-btn border-2 border-gray-400 text-gray-700 font-semibold py-2 px-6 rounded-lg transition-all"
-                    data-quarter="4">S4</button>
+        <footer class="mt-10 pt-5 border-t border-gray-200 mb-12 text-center">
+
+            <!-- Dynamic last-updated note -->
+            <p id="footer-note" class="text-xs text-gray-400 mb-1 min-h-[1rem]"></p>
+
+            <!-- Copyright -->
+            <p class="text-xs text-gray-400 mb-5">
+                &copy; <span id="footer-year"></span> Pusat Alumni UPSI &middot;
+                Diselenggara oleh <a href="tel:+60134977187"
+                    class="text-brand-primary hover:underline font-semibold">Encik Fahman Mujib Bin Ramli</a>
+            </p>
+
+            <!-- Footer Actions — grouped with dividers -->
+            <div class="flex flex-wrap justify-center items-center gap-x-3 gap-y-2">
+
+                <!-- Group 1: Eksport -->
+                <div class="flex items-center gap-1.5">
+                    <button id="export-csv-btn" class="footer-action-btn bg-green-50 text-green-700 hover:bg-green-100 border-green-200">
+                        <i class="fas fa-file-csv mr-1.5"></i>CSV
+                    </button>
+                    <button id="export-pdf-btn" class="footer-action-btn bg-purple-50 text-purple-700 hover:bg-purple-100 border-purple-200">
+                        <i class="fas fa-file-pdf mr-1.5"></i>PDF
+                    </button>
+                    <button id="print-btn" class="footer-action-btn bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200">
+                        <i class="fas fa-print mr-1.5"></i>Cetak
+                    </button>
+                </div>
+
+                <div class="h-5 w-px bg-gray-200 hidden sm:block"></div>
+
+                <!-- Group 2: Notifikasi -->
+                <button id="notify-btn" class="footer-action-btn bg-amber-50 text-amber-700 hover:bg-amber-100 border-amber-200">
+                    <i class="fas fa-bell mr-1.5"></i>Notifikasi
+                </button>
+
+                <div class="h-5 w-px bg-gray-200 hidden sm:block"></div>
+
+                <!-- Group 3: Admin -->
+                <div class="flex items-center gap-1.5">
+                    <button id="admin-logout-btn"
+                        class="footer-action-btn hidden bg-red-50 text-red-600 hover:bg-red-100 border-red-200">
+                        <i class="fas fa-sign-out-alt mr-1.5"></i>Logout
+                    </button>
+                    <button id="admin-login-btn"
+                        class="footer-action-btn bg-gray-50 text-gray-500 hover:bg-gray-100 border-gray-200">
+                        <i class="fas fa-terminal mr-1.5"></i>Admin
+                    </button>
+                </div>
             </div>
-        </nav>
 
-        <footer class="text-center mt-12 pt-4 border-t border-gray-300 mb-12">
-            <div class="mb-4 space-y-1">
-                <p class="text-xs text-gray-500">
-                    &copy; 2025 Pusat Alumni UPSI. Hak Cipta Terpelihara.
-                </p>
-                <p class="text-xs text-gray-500">
-                    Diselenggara oleh <a href="tel:+60134977187"
-                        class="text-brand-primary hover:underline font-bold">Encik Fahman Mujib Bin Ramli</a>.
-                </p>
-            </div>
-
-            <!-- Footer Actions -->
-            <div class="flex flex-wrap justify-center gap-3 items-center">
-
-                <!-- Export & Print Buttons -->
-                <button id="export-csv-btn"
-                    class="flex items-center bg-green-100 text-green-700 hover:bg-green-200 px-3 py-1 rounded-lg text-sm font-semibold transition-colors shadow-sm border border-green-200">
-                    <i class="fas fa-file-csv mr-2"></i>Export CSV
-                </button>
-                <button id="print-btn"
-                    class="flex items-center bg-blue-100 text-blue-700 hover:bg-blue-200 px-3 py-1 rounded-lg text-sm font-semibold transition-colors shadow-sm border border-blue-200">
-                    <i class="fas fa-print mr-2"></i>Cetak
-                </button>
-                <button id="export-pdf-btn"
-                    class="flex items-center bg-purple-100 text-purple-700 hover:bg-purple-200 px-3 py-1 rounded-lg text-sm font-semibold transition-colors shadow-sm border border-purple-200">
-                    <i class="fas fa-file-pdf mr-2"></i>Export PDF
-                </button>
-                <button id="notify-btn"
-                    class="flex items-center bg-yellow-100 text-yellow-700 hover:bg-yellow-200 px-3 py-1 rounded-lg text-sm font-semibold transition-colors shadow-sm border border-yellow-200">
-                    <i class="fas fa-bell mr-2"></i>Notifikasi
-                </button>
-
-                <!-- Logout Button (Moved here) -->
-                <button id="admin-logout-btn"
-                    class="hidden bg-red-100 text-red-600 hover:bg-red-200 px-3 py-1 rounded-lg text-sm font-semibold transition-colors shadow-sm items-center border border-red-200">
-                    <i class="fas fa-sign-out-alt mr-2"></i>Logout
-                </button>
-
-                <!-- Admin Login Trigger -->
-                <button id="admin-login-btn"
-                    class="text-gray-400 hover:text-gray-600 font-semibold py-2 px-4 rounded-lg transition-all text-xs">
-                    <i class="fas fa-terminal mr-1"></i> TERMINAL LOGIN
-                </button>
-                <!-- Theme Toggle Floating Button -->
-                <button id="theme-toggle" class="theme-toggle-btn" aria-label="Tukar Tema">
-                    <i class="fas fa-moon"></i>
-                </button>
-            </div>
+            <!-- Theme Toggle (floating, unchanged) -->
+            <button id="theme-toggle" class="theme-toggle-btn" aria-label="Tukar Tema">
+                <i class="fas fa-moon"></i>
+            </button>
         </footer>
 
 

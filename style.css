@@ -115,15 +115,40 @@ button:active,
     transition: width 1.5s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
-/* Styling untuk butang suku tahun */
+/* Styling untuk tab suku tahun */
+.quarter-btn {
+    color: #6b7280;
+    background: transparent;
+}
+
+.quarter-btn:not(.active):hover {
+    background-color: #f3f4f6;
+    color: #1f2937;
+}
+
 .quarter-btn.active {
     background-color: #0d47a1;
     color: white;
     border-color: #0d47a1;
+    box-shadow: 0 2px 8px rgba(13, 71, 161, 0.25);
 }
 
 .quarter-btn:active {
     transform: scale(0.95);
+}
+
+/* Footer action button group */
+.footer-action-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 12px;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border: 1px solid;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+    cursor: pointer;
 }
 
 /* Styling untuk modal */

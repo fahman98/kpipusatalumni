@@ -81,6 +81,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchInput = getEl('dashboard-search-input');
     const statusFilter = getEl('dashboard-status-filter');
 
+    const statsBar = getEl('stats-bar');
+
     const bulkEditModal = getEl('bulk-edit-modal');
     const exportPdfBtn = getEl('export-pdf-btn');
     const notifyBtn = getEl('notify-btn');
@@ -137,6 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (isEmpty) {
                 if (kpiGridContainer) kpiGridContainer.innerHTML = '';
                 if (emptyStateContainer) emptyStateContainer.classList.remove('hidden');
+                if (statsBar) statsBar.classList.add('hidden');
 
                 if (isEditMode) {
                     if (adminSetupActions) adminSetupActions.classList.remove('hidden');
@@ -201,6 +204,7 @@ document.addEventListener('DOMContentLoaded', () => {
             let bottomKpi = null;
             let maxPercentage = -1;
             let minPercentage = 999999;
+            let goodCount = 0, okCount = 0, badCount = 0;
 
             if (kpiGridContainer) kpiGridContainer.innerHTML = '';
 
@@ -274,6 +278,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 totalPct += cappedPct;
                 count++;
 
+                if (pct >= 75) goodCount++;
+                else if (pct >= 30) okCount++;
+                else badCount++;
+
                 if (pct > maxPercentage) {
                     maxPercentage = pct;
                     topKpi = kpi;
@@ -286,6 +294,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const overall = count > 0 ? totalPct / count : 0;
             renderGaugeChart(overall);
+
+            // Update stats bar
+            if (statsBar) {
+                statsBar.classList.remove('hidden');
+                const el = (id) => document.getElementById(id);
+                if (el('stat-total')) el('stat-total').textContent = count;
+                if (el('stat-good')) el('stat-good').textContent = goodCount;
+                if (el('stat-ok')) el('stat-ok').textContent = okCount;
+                if (el('stat-bad')) el('stat-bad').textContent = badCount;
+            }
 
             setEditMode(isEditMode);
 
@@ -386,8 +404,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (paginationContainer) {
         paginationContainer.addEventListener('click', (e) => {
             if (e.target.matches('.quarter-btn')) {
-                document.querySelector('.quarter-btn.active').classList.remove('active');
+                const prevActive = document.querySelector('.quarter-btn.active');
+                if (prevActive) { prevActive.classList.remove('active'); prevActive.setAttribute('aria-selected', 'false'); }
                 e.target.classList.add('active');
+                e.target.setAttribute('aria-selected', 'true');
                 clearTimeout(quarterSwitchTimeout);
                 quarterSwitchTimeout = setTimeout(() => {
                     updateDashboard(`q${e.target.dataset.quarter}`);
@@ -851,6 +871,10 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('offline', () => {
         if (offlineBanner) offlineBanner.classList.remove('hidden');
     });
+
+    // Set dynamic copyright year
+    const footerYearEl = getEl('footer-year');
+    if (footerYearEl) footerYearEl.textContent = new Date().getFullYear();
 
     // Start App
     initializeApp();
