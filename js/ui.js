@@ -210,11 +210,26 @@ export function createKpiCard(kpi) {
     cardElement.querySelector('.kpi-icon').classList.add(kpi.icon);
     cardElement.querySelector('.kpi-name').textContent = kpi.name;
 
+    // #8: Coloured left status bar
+    const statusBarEl = cardElement.querySelector('.kpi-status-bar');
+    if (statusBarEl) {
+        statusBarEl.classList.add(getStatusColor(displayPercentage));
+    }
+
+    // #9: Status-tinted icon container background
+    const iconContainer = cardElement.querySelector('.kpi-icon-container');
+    if (iconContainer) {
+        const statusColor = getStatusColor(displayPercentage);
+        const iconBgClass = statusColor === 'bg-status-good' ? 'icon-bg-good' :
+                            statusColor === 'bg-status-ok'   ? 'icon-bg-ok'   : 'icon-bg-bad';
+        iconContainer.classList.add(iconBgClass);
+    }
+
     // --- SETTINGS BUTTON (NEW) ---
     const settingsBtn = cardElement.querySelector('.settings-btn');
     if (settingsBtn) {
         settingsBtn.dataset.kpiId = kpi.id; // Store ID for click handler in main.js
-        settingsBtn.style.display = isEditMode ? 'block' : 'none';
+        settingsBtn.style.display = isEditMode ? 'flex' : 'none'; // flex to match .kpi-action-btn
     }
 
     // --- LOGIC DESKRIPSI/INFO BUTTON ---
@@ -261,7 +276,7 @@ export function createKpiCard(kpi) {
     const trendElement = cardElement.querySelector('.kpi-trend');
     if (kpi.trend) {
         trendElement.innerHTML = `<i class="fas ${kpi.trendIcon} mr-1"></i> ${kpi.trend}`;
-        trendElement.className = `kpi-trend flex items-center font-semibold text-sm sm:text-base ${kpi.trendColor}`;
+        trendElement.className = `kpi-trend flex items-center justify-end font-semibold text-sm sm:text-base ${kpi.trendColor}`;
         if (isComplete) {
             cardElement.querySelector('.trend-wrapper-complete').appendChild(trendElement);
         }
@@ -279,7 +294,8 @@ export function createKpiCard(kpi) {
         const displayTarget = kpi.target;
         if (typeof displayTarget === 'number') {
             const formattedTarget = displayTarget > 9999 ? `${(displayTarget / 1000).toLocaleString()}k` : displayTarget.toLocaleString();
-            targetDisplay.textContent = ` / ${formattedTarget}`;
+            // #6: Target on own line below value, formatted as "Sasaran: X"
+            targetDisplay.textContent = `Sasaran: ${formattedTarget}`;
         } else {
             targetDisplay.remove();
         }
@@ -316,6 +332,19 @@ export function animateCardElements(card, kpi) {
     const percentageDisplayEl = card.querySelector('.kpi-percentage-display');
     if (percentageDisplayEl) {
         animateValue(percentageDisplayEl, 0, displayPercentage, 1500, val => `${val.toFixed(2)}%`);
+    }
+
+    // #5: Show percentage label inside progress bar after bar animation completes
+    const progressLabel = card.querySelector('.progress-label');
+    if (progressLabel) {
+        const clampedPct = Math.min(displayPercentage, 100);
+        // Only show label when bar is wide enough to contain text (≥ 20%)
+        if (clampedPct >= 20) {
+            setTimeout(() => {
+                progressLabel.textContent = `${clampedPct.toFixed(1)}%`;
+                progressLabel.style.opacity = '1';
+            }, 1600); // after 1.5s bar animation
+        }
     }
 }
 
