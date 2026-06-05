@@ -713,7 +713,7 @@ function handleEditBreakdownItem(liElement, kpiId, itemIndex, item) {
 
         if (newName && !isNaN(newValue)) {
             const activeQuarterKey = `q${paginationContainer.querySelector('.active').dataset.quarter}`;
-            await updateKpiBreakdownList(activeQuarterKey, kpi.id, { index: itemIndex, data: { name: newName, value: newValue } }, 'edit');
+            await updateKpiBreakdownList(activeQuarterKey, kpiId, { index: itemIndex, data: { name: newName, value: newValue } }, 'edit');
         } else {
             showToastNotification('Nama dan nilai tidak sah.', 'danger');
             liElement.innerHTML = originalHTML;
