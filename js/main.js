@@ -363,6 +363,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 filterDashboardCards(searchInput.value, statusFilter.value);
             }
 
+            // Show live indicator on first successful data load
+            const liveIndicator = getEl('live-indicator');
+            if (liveIndicator) liveIndicator.classList.replace('hidden', 'flex');
+
             // Quarter transition: fade in new grid
             if (kpiGridContainer) {
                 kpiGridContainer.classList.add('grid-enter');
@@ -1014,8 +1018,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             :             'bg-red-100 text-red-600';
             const iconBg    = pct >= 75 ? 'bg-green-50'   : pct >= 30 ? 'bg-amber-50'   : 'bg-red-50';
             const iconClr   = pct >= 75 ? 'text-green-600': pct >= 30 ? 'text-amber-600': 'text-red-600';
-            const trendTxt  = kpi.trend === 'up' ? '↑' : kpi.trend === 'down' ? '↓' : '—';
-            const trendClr  = kpi.trend === 'up' ? 'text-green-500' : kpi.trend === 'down' ? 'text-red-500' : 'text-gray-400';
+            const trendTxt  = kpi.trend || '—';
+            const trendClr  = kpi.trendColor || 'text-gray-400';
 
             const tr = document.createElement('tr');
             tr.className = 'border-b border-gray-50 hover:bg-blue-50/30 transition-colors';

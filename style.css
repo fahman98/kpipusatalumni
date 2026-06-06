@@ -27,14 +27,28 @@ body.dark-mode {
 body {
     font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
     transition: background-color 0.3s, color 0.3s;
-    background: linear-gradient(145deg, #eef2ff 0%, #f3f4f6 45%, #f0f9ff 100%);
+    background:
+        radial-gradient(circle, rgba(13,71,161,0.06) 1.5px, transparent 1.5px),
+        linear-gradient(145deg, #eef2ff 0%, #f3f4f6 45%, #f0f9ff 100%);
+    background-size: 28px 28px, 100% 100%;
     background-attachment: fixed;
 }
 
 body.dark-mode {
-    background: linear-gradient(145deg, #0f172a 0%, #111827 50%, #0c1a2e 100%);
+    background:
+        radial-gradient(circle, rgba(99,130,255,0.055) 1.5px, transparent 1.5px),
+        linear-gradient(145deg, #0f172a 0%, #111827 50%, #0c1a2e 100%);
+    background-size: 28px 28px, 100% 100%;
     background-attachment: fixed;
 }
+
+/* ===== CUSTOM SCROLLBAR ===== */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(13,71,161,0.22); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(13,71,161,0.45); }
+body.dark-mode ::-webkit-scrollbar-thumb { background: rgba(99,130,255,0.25); }
+body.dark-mode ::-webkit-scrollbar-thumb:hover { background: rgba(99,130,255,0.5); }
 
 /* Custom colors untuk tema */
 .bg-brand-primary {
@@ -1297,3 +1311,53 @@ body.dark-mode #kpi-table-container td {
 @media print {
     #view-toggle-btn { display: none !important; }
 }
+
+/* ===== GLASSMORPHISM HEADER ===== */
+#header-inner {
+    background: rgba(255,255,255,0.82) !important;
+    backdrop-filter: blur(18px) !important;
+    -webkit-backdrop-filter: blur(18px) !important;
+    border: 1px solid rgba(255,255,255,0.65) !important;
+}
+
+body.dark-mode #header-inner {
+    background: rgba(17,24,39,0.82) !important;
+    border-color: rgba(75,85,99,0.4) !important;
+}
+
+/* ===== GRADIENT TEXT ON KPI VALUES ===== */
+.value-gradient-good {
+    background: linear-gradient(135deg, #15803d, #22c55e);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+.value-gradient-ok {
+    background: linear-gradient(135deg, #b45309, #f59e0b);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+.value-gradient-bad {
+    background: linear-gradient(135deg, #b91c1c, #f87171);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* ===== LIVE PULSE INDICATOR ===== */
+@keyframes livePulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(34,197,94,0.5); }
+    50%       { opacity: 0.7; box-shadow: 0 0 0 4px rgba(34,197,94,0); }
+}
+.live-pulse-dot {
+    animation: livePulse 2s ease-in-out infinite;
+}
+
+/* ===== TREND CHIP ===== */
+.kpi-trend-chip-up   { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+.kpi-trend-chip-down { background: #fff1f2; color: #b91c1c; border: 1px solid #fecdd3; }
+.kpi-trend-chip-flat { background: #f9fafb; color: #6b7280; border: 1px solid #e5e7eb; }
+body.dark-mode .kpi-trend-chip-up   { background: #052e16; color: #4ade80; border-color: #166534; }
+body.dark-mode .kpi-trend-chip-down { background: #450a0a; color: #f87171; border-color: #7f1d1d; }
+body.dark-mode .kpi-trend-chip-flat { background: #1f2937; color: #9ca3af; border-color: #374151; }

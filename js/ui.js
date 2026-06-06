@@ -234,6 +234,14 @@ export function createKpiCard(kpi) {
         iconContainer.classList.add(iconBgClass);
     }
 
+    // Gradient text on KPI value
+    const animatedValueEl = cardElement.querySelector('.animated-value');
+    if (animatedValueEl) {
+        const gradClass = displayPercentage >= 75 ? 'value-gradient-good' :
+                          displayPercentage >= 30 ? 'value-gradient-ok'   : 'value-gradient-bad';
+        animatedValueEl.classList.add(gradClass);
+    }
+
     // Ring progress: set CSS vars for conic-gradient
     const ringWrap = cardElement.querySelector('.kpi-ring-wrap');
     if (ringWrap) {
@@ -294,8 +302,11 @@ export function createKpiCard(kpi) {
 
     const trendElement = cardElement.querySelector('.kpi-trend');
     if (kpi.trend) {
-        trendElement.innerHTML = `<i class="fas ${kpi.trendIcon} mr-1"></i> ${kpi.trend}`;
-        trendElement.className = `kpi-trend flex items-center justify-end font-semibold text-sm sm:text-base ${kpi.trendColor}`;
+        const chipClass = kpi.trendColor.includes('green') ? 'kpi-trend-chip-up' :
+                          kpi.trendColor.includes('red')   ? 'kpi-trend-chip-down' : 'kpi-trend-chip-flat';
+        trendElement.innerHTML = `<i class="fas ${kpi.trendIcon} text-xs mr-1"></i>${kpi.trend}`;
+        trendElement.className = `kpi-trend inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${chipClass}`;
+        trendElement.title = 'vs suku lepas';
         if (isComplete) {
             cardElement.querySelector('.trend-wrapper-complete').appendChild(trendElement);
         }
