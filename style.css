@@ -1215,3 +1215,85 @@ body.dark-mode .kpi-ring-wrap {
     height: 40px !important;
     border-radius: 50% !important;
 }
+/* ===== STICKY HEADER SHRINK ===== */
+header {
+    transition: margin 0.3s ease;
+    margin-bottom: 1.5rem;
+}
+
+#header-inner {
+    transition: padding 0.25s ease, box-shadow 0.25s ease;
+}
+
+#header-inner.header-compact {
+    padding-top: 0.35rem !important;
+    padding-bottom: 0.35rem !important;
+    box-shadow: 0 8px 24px -4px rgba(0,0,0,0.14), 0 4px 8px -2px rgba(0,0,0,0.06) !important;
+}
+
+#header-inner.header-compact #sub-title {
+    display: none !important;
+}
+
+#header-inner.header-compact #main-title {
+    font-size: 0.8rem !important;
+    line-height: 1.2 !important;
+}
+
+#header-inner.header-compact img {
+    height: 2rem !important;
+    max-height: 2rem !important;
+}
+
+/* ===== GRID QUARTER TRANSITION ===== */
+@keyframes gridExit {
+    from { opacity: 1; transform: translateY(0); }
+    to   { opacity: 0; transform: translateY(-10px); }
+}
+
+@keyframes gridEnter {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.grid-exit {
+    animation: gridExit 0.22s ease forwards;
+    pointer-events: none;
+}
+
+.grid-enter {
+    animation: gridEnter 0.3s ease forwards;
+}
+
+/* ===== EXECUTIVE TABLE VIEW ===== */
+#kpi-table-container table {
+    border-collapse: collapse;
+}
+
+#kpi-table-container tbody tr {
+    transition: background 0.15s ease;
+}
+
+body.dark-mode #kpi-table-container > div {
+    background: rgba(31,41,55,0.75);
+    border-color: rgba(75,85,99,0.4);
+}
+
+body.dark-mode #kpi-table-container thead tr {
+    background: rgba(55,65,81,0.6);
+}
+
+body.dark-mode #kpi-table-container tbody tr:hover {
+    background: rgba(55,65,81,0.4);
+}
+
+body.dark-mode #kpi-table-container th,
+body.dark-mode #kpi-table-container td {
+    border-color: rgba(75,85,99,0.3);
+    color: #d1d5db;
+}
+
+/* Print: show table if active, hide grid */
+@media print {
+    #view-toggle-btn { display: none !important; }
+}

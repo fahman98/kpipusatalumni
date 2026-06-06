@@ -135,6 +135,11 @@ document.addEventListener('DOMContentLoaded', () => {
         currentQuarter = quarterKey;
         initiallyLoadedQuarters.delete(quarterKey);
 
+        // Quarter transition: fade out existing grid
+        if (kpiGridContainer && kpiGridContainer.children.length > 0) {
+            kpiGridContainer.classList.add('grid-exit');
+        }
+
         // 1. Set Title Serta-merta
         if (mainTitle) {
             const qMap = { 'q1': 'Suku Pertama', 'q2': 'Suku Kedua', 'q3': 'Suku Ketiga', 'q4': 'Suku Keempat' };
@@ -225,7 +230,10 @@ document.addEventListener('DOMContentLoaded', () => {
             let minPercentage = 999999;
             let goodCount = 0, okCount = 0, badCount = 0;
 
-            if (kpiGridContainer) kpiGridContainer.innerHTML = '';
+            if (kpiGridContainer) {
+                kpiGridContainer.classList.remove('grid-exit');
+                kpiGridContainer.innerHTML = '';
+            }
 
             processedKpis.forEach((kpi, index) => {
                 const card = createKpiCard(kpi);
@@ -354,6 +362,15 @@ document.addEventListener('DOMContentLoaded', () => {
             if (searchInput && statusFilter) {
                 filterDashboardCards(searchInput.value, statusFilter.value);
             }
+
+            // Quarter transition: fade in new grid
+            if (kpiGridContainer) {
+                kpiGridContainer.classList.add('grid-enter');
+                setTimeout(() => kpiGridContainer.classList.remove('grid-enter'), 400);
+            }
+
+            // Refresh table view if active
+            if (isTableView) renderTableView();
         });
     };
 
@@ -963,6 +980,82 @@ document.addEventListener('DOMContentLoaded', () => {
     // Set dynamic copyright year
     const footerYearEl = getEl('footer-year');
     if (footerYearEl) footerYearEl.textContent = new Date().getFullYear();
+
+    // --- STICKY HEADER SHRINK ---
+    const headerInner = getEl('header-inner');
+    window.addEventListener('scroll', () => {
+        if (!headerInner) return;
+        headerInner.classList.toggle('header-compact', window.scrollY > 70);
+    }, { passive: true });
+
+    // --- EXECUTIVE TABLE VIEW ---
+    let isTableView = false;
+    const viewToggleBtn = getEl('view-toggle-btn');
+    const kpiTableContainer = getEl('kpi-table-container');
+
+    function renderTableView() {
+        const tbody = getEl('kpi-table-body');
+        if (!tbody) return;
+        const data = kpiDataCache[currentQuarter];
+        if (!data || !data.processedKpis) return;
+
+        tbody.innerHTML = '';
+        data.processedKpis.forEach(kpi => {
+            const pct = getKpiPercentage(kpi);
+            const cappedPct = Math.min(pct, 100);
+            const val = calculateKpiValue(kpi);
+            const valStr = kpi.isCurrency
+                ? 'RM ' + val.toLocaleString('en-US', { minimumFractionDigits: 0 })
+                : kpi.isPercentage ? val.toFixed(1) + '%'
+                : Math.floor(val).toLocaleString();
+            const dotColor  = pct >= 75 ? '#43a047' : pct >= 30 ? '#f59e0b' : '#e53935';
+            const badge     = pct >= 75 ? 'bg-green-100 text-green-700'
+                            : pct >= 30 ? 'bg-amber-100 text-amber-700'
+                            :             'bg-red-100 text-red-600';
+            const iconBg    = pct >= 75 ? 'bg-green-50'   : pct >= 30 ? 'bg-amber-50'   : 'bg-red-50';
+            const iconClr   = pct >= 75 ? 'text-green-600': pct >= 30 ? 'text-amber-600': 'text-red-600';
+            const trendTxt  = kpi.trend === 'up' ? '↑' : kpi.trend === 'down' ? '↓' : '—';
+            const trendClr  = kpi.trend === 'up' ? 'text-green-500' : kpi.trend === 'down' ? 'text-red-500' : 'text-gray-400';
+
+            const tr = document.createElement('tr');
+            tr.className = 'border-b border-gray-50 hover:bg-blue-50/30 transition-colors';
+            tr.innerHTML = `
+                <td class="px-4 py-3">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg ${iconBg} flex items-center justify-center flex-shrink-0">
+                            <i class="${kpi.icon || 'fas fa-chart-bar'} ${iconClr} text-xs"></i>
+                        </div>
+                        <span class="font-semibold text-gray-800 text-sm">${kpi.name}</span>
+                    </div>
+                </td>
+                <td class="px-4 py-3 text-right font-bold text-gray-800 text-sm">${valStr}</td>
+                <td class="px-4 py-3 text-right text-gray-400 text-sm">${kpi.target}</td>
+                <td class="px-4 py-3 text-right">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${badge}">${cappedPct.toFixed(1)}%</span>
+                </td>
+                <td class="px-4 py-3 text-center text-sm font-bold ${trendClr} hidden sm:table-cell">${trendTxt}</td>
+                <td class="px-4 py-3 text-center hidden sm:table-cell">
+                    <span class="w-2.5 h-2.5 rounded-full inline-block" style="background:${dotColor}"></span>
+                </td>`;
+            tbody.appendChild(tr);
+        });
+    }
+
+    if (viewToggleBtn) {
+        viewToggleBtn.addEventListener('click', () => {
+            isTableView = !isTableView;
+            if (isTableView) {
+                kpiGridContainer.classList.add('hidden');
+                if (kpiTableContainer) kpiTableContainer.classList.remove('hidden');
+                viewToggleBtn.innerHTML = '<i class="fas fa-th-large mr-1.5"></i>Grid';
+                renderTableView();
+            } else {
+                kpiGridContainer.classList.remove('hidden');
+                if (kpiTableContainer) kpiTableContainer.classList.add('hidden');
+                viewToggleBtn.innerHTML = '<i class="fas fa-list mr-1.5"></i>Jadual';
+            }
+        });
+    }
 
     // Start App
     initializeApp();
