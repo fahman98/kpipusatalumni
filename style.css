@@ -55,8 +55,8 @@ body {
 }
 
 .kpi-card:hover {
-    transform: translateY(-8px) scale(1.02);
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 20px -4px rgba(0, 0, 0, 0.1), 0 6px 8px -4px rgba(0, 0, 0, 0.04);
     z-index: 10;
 }
 
@@ -662,6 +662,17 @@ li:hover .item-actions {
 .kpi-status-bar.bg-status-good { background-color: var(--color-status-good); }
 .kpi-status-bar.bg-status-ok   { background-color: var(--color-status-ok); }
 .kpi-status-bar.bg-status-bad  { background-color: var(--color-status-bad); }
+
+/* Completion glow — fires once when KPI hits 100% */
+@keyframes complete-glow {
+    0%   { box-shadow: var(--shadow-card, 0 2px 12px rgba(0,0,0,0.07)); }
+    35%  { box-shadow: 0 0 0 4px rgba(67, 160, 71, 0.3), 0 8px 28px rgba(67, 160, 71, 0.18); }
+    100% { box-shadow: var(--shadow-card, 0 2px 12px rgba(0,0,0,0.07)); }
+}
+
+.kpi-complete-glow {
+    animation: complete-glow 1.4s ease-out forwards;
+}
 
 @keyframes pulse-green {
     0% {

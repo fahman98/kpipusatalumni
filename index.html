@@ -271,46 +271,72 @@
             </div>
         </div>
 
-        <!-- STATS SUMMARY BAR — clickable to filter grid (#2) -->
+        <!-- STATS SUMMARY BAR — clickable to filter grid -->
         <div id="stats-bar" class="hidden grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-            <div class="stat-card bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-gray-100 flex items-center gap-3 cursor-pointer select-none transition-all hover:shadow-md"
+            <!-- Jumlah KPI — stacked proportion bar -->
+            <div class="stat-card bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-gray-100 cursor-pointer select-none transition-all hover:shadow-md"
                 data-filter="all" title="Tunjuk semua KPI">
-                <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
-                    <i class="fas fa-th-large text-brand-primary text-sm"></i>
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
+                        <i class="fas fa-th-large text-brand-primary text-sm"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-400 font-medium leading-none">Jumlah KPI</p>
+                        <p id="stat-total" class="text-xl font-bold text-gray-800 mt-0.5">0</p>
+                    </div>
                 </div>
-                <div>
-                    <p class="text-xs text-gray-400 font-medium leading-none">Jumlah KPI</p>
-                    <p id="stat-total" class="text-xl font-bold text-gray-800 mt-1">0</p>
+                <div class="w-full h-1.5 bg-gray-100 rounded-full mt-2.5 overflow-hidden flex">
+                    <div id="stat-all-good-bar" class="h-full bg-status-good transition-all duration-700" style="width:0%"></div>
+                    <div id="stat-all-ok-bar"   class="h-full bg-status-ok transition-all duration-700"   style="width:0%"></div>
+                    <div id="stat-all-bad-bar"  class="h-full bg-status-bad transition-all duration-700"  style="width:0%"></div>
                 </div>
             </div>
-            <div class="stat-card bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-gray-100 flex items-center gap-3 cursor-pointer select-none transition-all hover:shadow-md"
+            <!-- Cemerlang -->
+            <div class="stat-card bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-gray-100 cursor-pointer select-none transition-all hover:shadow-md"
                 data-filter="good" title="Tapis: Cemerlang sahaja">
-                <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-green-50 flex items-center justify-center flex-shrink-0">
-                    <i class="fas fa-check-circle text-green-500 text-sm"></i>
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-green-50 flex items-center justify-center flex-shrink-0">
+                        <i class="fas fa-check-circle text-green-500 text-sm"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-400 font-medium leading-none">Cemerlang</p>
+                        <p id="stat-good" class="text-xl font-bold text-green-600 mt-0.5">0</p>
+                    </div>
                 </div>
-                <div>
-                    <p class="text-xs text-gray-400 font-medium leading-none">Cemerlang</p>
-                    <p id="stat-good" class="text-xl font-bold text-green-600 mt-1">0</p>
+                <div class="w-full h-1.5 bg-gray-100 rounded-full mt-2.5 overflow-hidden">
+                    <div id="stat-good-bar" class="h-full bg-status-good rounded-full transition-all duration-700" style="width:0%"></div>
                 </div>
             </div>
-            <div class="stat-card bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-gray-100 flex items-center gap-3 cursor-pointer select-none transition-all hover:shadow-md"
+            <!-- Sederhana -->
+            <div class="stat-card bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-gray-100 cursor-pointer select-none transition-all hover:shadow-md"
                 data-filter="ok" title="Tapis: Sederhana sahaja">
-                <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-yellow-50 flex items-center justify-center flex-shrink-0">
-                    <i class="fas fa-minus-circle text-yellow-500 text-sm"></i>
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0">
+                        <i class="fas fa-minus-circle text-amber-500 text-sm"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-400 font-medium leading-none">Sederhana</p>
+                        <p id="stat-ok" class="text-xl font-bold text-amber-500 mt-0.5">0</p>
+                    </div>
                 </div>
-                <div>
-                    <p class="text-xs text-gray-400 font-medium leading-none">Sederhana</p>
-                    <p id="stat-ok" class="text-xl font-bold text-yellow-500 mt-1">0</p>
+                <div class="w-full h-1.5 bg-gray-100 rounded-full mt-2.5 overflow-hidden">
+                    <div id="stat-ok-bar" class="h-full bg-status-ok rounded-full transition-all duration-700" style="width:0%"></div>
                 </div>
             </div>
-            <div class="stat-card bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-gray-100 flex items-center gap-3 cursor-pointer select-none transition-all hover:shadow-md"
+            <!-- Perlu Perhatian -->
+            <div class="stat-card bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-gray-100 cursor-pointer select-none transition-all hover:shadow-md"
                 data-filter="bad" title="Tapis: Perlu Perhatian sahaja">
-                <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0">
-                    <i class="fas fa-exclamation-circle text-red-500 text-sm"></i>
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0">
+                        <i class="fas fa-exclamation-circle text-red-500 text-sm"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-400 font-medium leading-none">Perlu Perhatian</p>
+                        <p id="stat-bad" class="text-xl font-bold text-red-500 mt-0.5">0</p>
+                    </div>
                 </div>
-                <div>
-                    <p class="text-xs text-gray-400 font-medium leading-none">Perlu Perhatian</p>
-                    <p id="stat-bad" class="text-xl font-bold text-red-500 mt-1">0</p>
+                <div class="w-full h-1.5 bg-gray-100 rounded-full mt-2.5 overflow-hidden">
+                    <div id="stat-bad-bar" class="h-full bg-status-bad rounded-full transition-all duration-700" style="width:0%"></div>
                 </div>
             </div>
         </div>
@@ -341,30 +367,50 @@
             </div>
         </div>
 
-        <!-- SEARCH & FILTER CONTROLS -->
+        <!-- SEARCH, FILTER & EXPORT -->
         <div id="search-filter-container"
-            class="mb-6 bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col sm:flex-row gap-4 justify-between items-center">
-            <!-- Search Input -->
-            <div class="relative w-full sm:w-2/3">
-                <input type="text" id="dashboard-search-input" placeholder="Cari nama KPI..."
-                    class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent transition-all">
-                <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
-            </div>
-
-            <!-- Filter Dropdown -->
-            <div class="w-full sm:w-1/3">
+            class="mb-4 bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-gray-100">
+            <div class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+                <!-- Search Input -->
+                <div class="relative flex-1">
+                    <input type="text" id="dashboard-search-input" placeholder="Cari nama KPI..."
+                        class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent transition-all">
+                    <i class="fas fa-search absolute left-3 top-2.5 text-gray-400"></i>
+                </div>
+                <!-- Filter Dropdown -->
                 <select id="dashboard-status-filter"
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary bg-white text-gray-700 cursor-pointer">
+                    class="w-full sm:w-44 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary bg-white text-gray-700 cursor-pointer text-sm">
                     <option value="all">Semua Status</option>
                     <option value="good">🟢 Cemerlang (≥ 75%)</option>
-                    <option value="ok">🟡 Sederhana (30% - 74%)</option>
-                    <option value="bad">🔴 Perlu Perhatian (< 30%)</option>
+                    <option value="ok">🟡 Sederhana (30–74%)</option>
+                    <option value="bad">🔴 Perlu Perhatian (&lt; 30%)</option>
                 </select>
+                <!-- Export Actions — moved from footer -->
+                <div class="flex items-center gap-1.5 sm:ml-1">
+                    <button id="export-csv-btn" class="footer-action-btn bg-green-50 text-green-700 hover:bg-green-100 border-green-200">
+                        <i class="fas fa-file-csv mr-1.5"></i>CSV
+                    </button>
+                    <button id="export-pdf-btn" class="footer-action-btn bg-purple-50 text-purple-700 hover:bg-purple-100 border-purple-200">
+                        <i class="fas fa-file-pdf mr-1.5"></i>PDF
+                    </button>
+                    <button id="print-btn" class="footer-action-btn bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200">
+                        <i class="fas fa-print mr-1.5"></i>Cetak
+                    </button>
+                </div>
             </div>
         </div>
 
         <div id="kpi-grid-container" class="relative grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             <!-- Content or Skeleton will be injected here -->
+        </div>
+
+        <!-- Empty search state -->
+        <div id="empty-search-state" class="hidden text-center py-14">
+            <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-search text-gray-300 text-2xl"></i>
+            </div>
+            <p class="font-semibold text-gray-500">Tiada KPI sepadan</p>
+            <p class="text-sm text-gray-400 mt-1">Cuba kata kunci atau penapis lain</p>
         </div>
 
         <!-- Add KPI Button (Admin Only) -->
@@ -393,32 +439,16 @@
                     class="text-brand-primary hover:underline font-semibold">Encik Fahman Mujib Bin Ramli</a>
             </p>
 
-            <!-- Footer Actions — grouped with dividers -->
+            <!-- Footer Actions -->
             <div class="flex flex-wrap justify-center items-center gap-x-3 gap-y-2">
-
-                <!-- Group 1: Eksport -->
-                <div class="flex items-center gap-1.5">
-                    <button id="export-csv-btn" class="footer-action-btn bg-green-50 text-green-700 hover:bg-green-100 border-green-200">
-                        <i class="fas fa-file-csv mr-1.5"></i>CSV
-                    </button>
-                    <button id="export-pdf-btn" class="footer-action-btn bg-purple-50 text-purple-700 hover:bg-purple-100 border-purple-200">
-                        <i class="fas fa-file-pdf mr-1.5"></i>PDF
-                    </button>
-                    <button id="print-btn" class="footer-action-btn bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200">
-                        <i class="fas fa-print mr-1.5"></i>Cetak
-                    </button>
-                </div>
-
-                <div class="h-5 w-px bg-gray-200 hidden sm:block"></div>
-
-                <!-- Group 2: Notifikasi -->
+                <!-- Notifikasi -->
                 <button id="notify-btn" class="footer-action-btn bg-amber-50 text-amber-700 hover:bg-amber-100 border-amber-200">
                     <i class="fas fa-bell mr-1.5"></i>Notifikasi
                 </button>
 
                 <div class="h-5 w-px bg-gray-200 hidden sm:block"></div>
 
-                <!-- Group 3: Admin -->
+                <!-- Admin -->
                 <div class="flex items-center gap-1.5">
                     <button id="admin-logout-btn"
                         class="footer-action-btn hidden bg-red-50 text-red-600 hover:bg-red-100 border-red-200">

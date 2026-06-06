@@ -367,6 +367,13 @@ export function animateCardElements(card, kpi) {
             }, 1600); // after 1.5s bar animation
         }
     }
+
+    if (displayPercentage >= 100) {
+        setTimeout(() => {
+            card.classList.add('kpi-complete-glow');
+            setTimeout(() => card.classList.remove('kpi-complete-glow'), 1500);
+        }, 1700);
+    }
 }
 
 function handleEditKpi(cardElement, kpi) {
@@ -806,6 +813,16 @@ export function filterDashboardCards(searchTerm, statusFilter) {
             card.classList.remove('flex');
         }
     });
+
+    const emptySearchState = document.getElementById('empty-search-state');
+    if (emptySearchState) {
+        const visibleCount = document.querySelectorAll('.kpi-card:not(.hidden)').length;
+        if (visibleCount === 0 && cards.length > 0) {
+            emptySearchState.classList.remove('hidden');
+        } else {
+            emptySearchState.classList.add('hidden');
+        }
+    }
 }
 
 

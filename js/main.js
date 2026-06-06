@@ -321,6 +321,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (el('stat-good')) el('stat-good').textContent = goodCount;
                 if (el('stat-ok')) el('stat-ok').textContent = okCount;
                 if (el('stat-bad')) el('stat-bad').textContent = badCount;
+
+                const goodPct = count > 0 ? (goodCount / count) * 100 : 0;
+                const okPct   = count > 0 ? (okCount   / count) * 100 : 0;
+                const badPct  = count > 0 ? (badCount  / count) * 100 : 0;
+                if (el('stat-good-bar')) el('stat-good-bar').style.width = `${goodPct}%`;
+                if (el('stat-ok-bar'))   el('stat-ok-bar').style.width   = `${okPct}%`;
+                if (el('stat-bad-bar'))  el('stat-bad-bar').style.width  = `${badPct}%`;
+                if (el('stat-all-good-bar')) el('stat-all-good-bar').style.width = `${goodPct}%`;
+                if (el('stat-all-ok-bar'))   el('stat-all-ok-bar').style.width   = `${okPct}%`;
+                if (el('stat-all-bad-bar'))  el('stat-all-bad-bar').style.width  = `${badPct}%`;
             }
 
             setEditMode(isEditMode);
