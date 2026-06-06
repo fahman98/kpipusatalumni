@@ -87,6 +87,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const exportPdfBtn = getEl('export-pdf-btn');
     const notifyBtn = getEl('notify-btn');
     const offlineBanner = getEl('offline-banner');
+    const adminRibbon = getEl('admin-mode-ribbon');
+    const achieverPanel = getEl('achiever-panel');
 
     // CRUD Forms
     const addKpiForm = getEl('add-kpi-form');
@@ -140,6 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (kpiGridContainer) kpiGridContainer.innerHTML = '';
                 if (emptyStateContainer) emptyStateContainer.classList.remove('hidden');
                 if (statsBar) statsBar.classList.add('hidden');
+                if (achieverPanel) achieverPanel.classList.add('hidden');
 
                 if (isEditMode) {
                     if (adminSetupActions) adminSetupActions.classList.remove('hidden');
@@ -295,6 +298,21 @@ document.addEventListener('DOMContentLoaded', () => {
             const overall = count > 0 ? totalPct / count : 0;
             renderGaugeChart(overall);
 
+            // Achiever Panel (#7)
+            if (achieverPanel && count > 1 && topKpi && bottomKpi && topKpi.id !== bottomKpi.id) {
+                achieverPanel.classList.remove('hidden');
+                const topName = getEl('top-kpi-name');
+                const topPct = getEl('top-kpi-pct');
+                const bottomName = getEl('bottom-kpi-name');
+                const bottomPct = getEl('bottom-kpi-pct');
+                if (topName) topName.textContent = topKpi.name;
+                if (topPct) topPct.textContent = `${getKpiPercentage(topKpi).toFixed(1)}%`;
+                if (bottomName) bottomName.textContent = bottomKpi.name;
+                if (bottomPct) bottomPct.textContent = `${getKpiPercentage(bottomKpi).toFixed(1)}%`;
+            } else if (achieverPanel) {
+                achieverPanel.classList.add('hidden');
+            }
+
             // Update stats bar
             if (statsBar) {
                 statsBar.classList.remove('hidden');
@@ -361,6 +379,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (modeIndicator) modeIndicator.innerHTML = '<span class="inline-block bg-green-200 text-green-800 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-green-300">Mod Admin</span>';
                 if (adminLogoutBtn) adminLogoutBtn.classList.remove('hidden');
                 if (adminLoginBtn) adminLoginBtn.classList.add('hidden');
+                if (adminRibbon) adminRibbon.classList.remove('hidden');
 
                 showToastNotification(`Selamat datang, Admin (${user.email})`, "success");
             } else {
@@ -369,6 +388,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (modeIndicator) modeIndicator.innerHTML = '<span class="inline-flex items-center bg-blue-100 text-blue-800 text-xs font-semibold px-2 md:px-2.5 py-1 rounded-full border border-blue-200 whitespace-nowrap"><i class="fas fa-eye md:mr-1"></i><span class="hidden md:inline">Paparan Awam</span></span>';
                 if (adminLogoutBtn) adminLogoutBtn.classList.add('hidden');
                 if (adminLoginBtn) adminLoginBtn.classList.remove('hidden');
+                if (adminRibbon) adminRibbon.classList.add('hidden');
 
                 // Hide admin specific elements immediately
                 if (adminSetupActions) adminSetupActions.classList.add('hidden');

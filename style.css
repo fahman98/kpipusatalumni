@@ -1,3 +1,28 @@
+/* --- CSS CUSTOM PROPERTIES (#10) --- */
+:root {
+    --color-brand: #0d47a1;
+    --color-status-good: #43a047;
+    --color-status-ok: #f59e0b;
+    --color-status-bad: #e53935;
+    --bg-body: #f3f4f6;
+    --bg-card: #ffffff;
+    --bg-card-alt: #f9fafb;
+    --text-primary: #1f2937;
+    --text-secondary: #6b7280;
+    --text-muted: #9ca3af;
+    --border-color: #e5e7eb;
+}
+
+body.dark-mode {
+    --bg-body: #111827;
+    --bg-card: #1f2937;
+    --bg-card-alt: #374151;
+    --text-primary: #f3f4f6;
+    --text-secondary: #d1d5db;
+    --text-muted: #9ca3af;
+    --border-color: #374151;
+}
+
 /* Custom styles untuk melengkapkan Tailwind */
 body {
     font-family: 'Inter', sans-serif;
@@ -13,22 +38,10 @@ body {
     color: #0d47a1;
 }
 
-/* Warna Status */
-.bg-status-bad {
-    background-color: #e53935;
-}
-
-/* Merah */
-.bg-status-ok {
-    background-color: #fdd835;
-}
-
-/* Kuning */
-.bg-status-good {
-    background-color: #43a047;
-}
-
-/* Hijau */
+/* Warna Status (#1) */
+.bg-status-bad  { background-color: var(--color-status-bad); }
+.bg-status-ok   { background-color: var(--color-status-ok); }
+.bg-status-good { background-color: var(--color-status-good); }
 
 /* Animasi untuk kad */
 .kpi-card {
@@ -144,9 +157,9 @@ button:active,
     box-shadow: 0 0 0 2px #0d47a1, 0 4px 12px rgba(13, 71, 161, 0.15) !important;
     transform: translateY(-1px);
 }
-.stat-card-active[data-filter="good"] { box-shadow: 0 0 0 2px #43a047, 0 4px 12px rgba(67,160,71,0.15) !important; }
-.stat-card-active[data-filter="ok"]   { box-shadow: 0 0 0 2px #fdd835, 0 4px 12px rgba(253,216,53,0.15) !important; }
-.stat-card-active[data-filter="bad"]  { box-shadow: 0 0 0 2px #e53935, 0 4px 12px rgba(229,57,53,0.15) !important; }
+.stat-card-active[data-filter="good"] { box-shadow: 0 0 0 2px var(--color-status-good), 0 4px 12px rgba(67,160,71,0.15) !important; }
+.stat-card-active[data-filter="ok"]   { box-shadow: 0 0 0 2px var(--color-status-ok), 0 4px 12px rgba(245,158,11,0.15) !important; }
+.stat-card-active[data-filter="bad"]  { box-shadow: 0 0 0 2px var(--color-status-bad), 0 4px 12px rgba(229,57,53,0.15) !important; }
 
 /* Footer action button group */
 .footer-action-btn {
@@ -646,9 +659,9 @@ li:hover .item-actions {
     border-radius: 16px 0 0 16px; /* match card rounded-2xl = 1rem */
 }
 
-.kpi-status-bar.bg-status-good { background-color: #43a047; }
-.kpi-status-bar.bg-status-ok  { background-color: #fdd835; }
-.kpi-status-bar.bg-status-bad { background-color: #e53935; }
+.kpi-status-bar.bg-status-good { background-color: var(--color-status-good); }
+.kpi-status-bar.bg-status-ok   { background-color: var(--color-status-ok); }
+.kpi-status-bar.bg-status-bad  { background-color: var(--color-status-bad); }
 
 @keyframes pulse-green {
     0% {
@@ -683,6 +696,34 @@ li:hover .item-actions {
 }
 
 
+
+/* --- ADMIN MODE RIBBON (#4) --- */
+#admin-mode-ribbon {
+    background-color: #fffbeb;
+    border-color: #fde68a;
+}
+
+body.dark-mode #admin-mode-ribbon {
+    background-color: #451a03;
+    border-color: #92400e;
+}
+
+body.dark-mode #admin-mode-ribbon .ribbon-title { color: #fde68a; }
+body.dark-mode #admin-mode-ribbon .ribbon-sub   { color: #fcd34d; }
+body.dark-mode #admin-mode-ribbon .ribbon-badge {
+    background-color: #78350f;
+    color: #fbbf24;
+}
+
+/* --- ACHIEVER PANEL (#7) --- */
+#achiever-panel .achiever-card {
+    background-color: var(--bg-card);
+    border-color: var(--border-color);
+}
+
+body.dark-mode #achiever-panel .achiever-card { background-color: var(--bg-card); }
+body.dark-mode #achiever-panel .achiever-label { color: var(--text-muted); }
+body.dark-mode #achiever-panel .achiever-name  { color: var(--text-primary); }
 
 /* --- DARK MODE STYLES (Existing) --- */
 body.dark-mode {
@@ -923,12 +964,13 @@ body.dark-mode .theme-toggle-btn {
 }
 
 .progress-bar.bg-status-ok {
+    background-color: var(--color-status-ok);
     background-image: repeating-linear-gradient(
         0deg,
         transparent,
         transparent 4px,
-        rgba(255, 255, 255, 0.25) 4px,
-        rgba(255, 255, 255, 0.25) 6px
+        rgba(255, 255, 255, 0.3) 4px,
+        rgba(255, 255, 255, 0.3) 6px
     );
 }
 

@@ -168,6 +168,17 @@
             </div>
         </header>
 
+        <!-- Admin Mode Ribbon (#4) -->
+        <div id="admin-mode-ribbon"
+            class="hidden mb-4 border rounded-xl px-4 py-2.5 flex items-center gap-3">
+            <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse flex-shrink-0"></span>
+            <div class="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
+                <span class="ribbon-title text-amber-800 font-bold text-sm">Mod Admin Aktif</span>
+                <span class="ribbon-sub text-amber-600 text-xs hidden sm:inline">— Semua perubahan disimpan ke Firestore secara langsung</span>
+            </div>
+            <span class="ribbon-badge bg-amber-100 text-amber-700 text-xs font-bold px-2.5 py-1 rounded-full flex-shrink-0">EDIT MODE</span>
+        </div>
+
         <!-- Empty State / Clone Data Container (Hidden by default) -->
         <div id="empty-state-container"
             class="hidden flex flex-col items-center justify-center p-8 bg-white rounded-xl shadow-lg border-2 border-dashed border-gray-300 mb-8 mt-4">
@@ -193,27 +204,31 @@
         </div>
 
         <div id="main-content-wrapper" class="hidden">
-            <!-- Gauge Chart Area -->
+            <!-- Gauge Chart Area — Compact Horizontal (#2) -->
             <div id="overall-highlight"
-                class="relative bg-brand-primary text-white p-4 rounded-2xl text-center mb-8 shadow-2xl shadow-blue-900/20 flex flex-col items-center justify-center overflow-hidden">
-                <button id="show-overall-chart-btn"
-                    class="absolute top-4 right-4 text-white/70 hover:text-white text-xl z-10"
-                    aria-label="Lihat Pecahan Pencapaian" title="Lihat Pecahan Pencapaian">
-                    <i class="fas fa-chart-pie"></i>
-                </button>
-                <h2 class="text-xl sm:text-2xl font-semibold opacity-90 mb-2 relative z-10">Pencapaian Keseluruhan</h2>
-
-                <div class="relative w-full max-w-[300px] h-[160px] flex justify-center">
-                    <canvas id="overall-gauge-chart"></canvas>
-                    <div class="absolute -bottom-2 left-0 w-full text-center">
-                        <div id="gauge-value-text" class="text-4xl sm:text-5xl font-bold text-white drop-shadow-md">
-                            0.00%</div>
+                class="relative bg-brand-primary text-white px-4 sm:px-6 py-3 rounded-2xl mb-4 shadow-2xl shadow-blue-900/20 overflow-hidden">
+                <div class="flex items-center gap-3 sm:gap-5">
+                    <!-- Compact half-circle gauge -->
+                    <div class="relative flex-shrink-0" style="width:130px;height:72px">
+                        <canvas id="overall-gauge-chart"></canvas>
                     </div>
+                    <!-- Title + animated value -->
+                    <div class="flex-1 min-w-0">
+                        <p class="text-white/70 text-xs sm:text-sm font-medium leading-none mb-1">Pencapaian Keseluruhan</p>
+                        <div id="gauge-value-text" class="text-3xl sm:text-4xl font-bold text-white leading-none drop-shadow-md">0.00%</div>
+                    </div>
+                    <!-- Pecahan button -->
+                    <button id="show-overall-chart-btn"
+                        class="flex-shrink-0 bg-white/10 hover:bg-white/20 text-white rounded-xl px-3 py-2 flex items-center gap-1.5 text-xs font-semibold transition-all border border-white/10"
+                        aria-label="Lihat Pecahan Pencapaian" title="Lihat Pecahan Pencapaian">
+                        <i class="fas fa-chart-pie text-sm"></i>
+                        <span class="hidden sm:inline">Pecahan</span>
+                    </button>
                 </div>
             </div>
 
             <div id="legend-container"
-                class="flex flex-wrap justify-center items-center gap-4 sm:gap-6 mb-8 text-sm text-gray-700">
+                class="flex flex-wrap justify-center items-center gap-4 sm:gap-6 mb-4 text-sm text-gray-700">
                 <div class="flex items-center gap-1">
                     <span class="w-4 h-4 rounded-full bg-status-good border border-gray-300 flex-shrink-0" aria-hidden="true"></span>
                     <i class="fas fa-check-circle text-green-600 text-xs" aria-hidden="true"></i>
@@ -297,6 +312,32 @@
                     <p class="text-xs text-gray-400 font-medium leading-none">Perlu Perhatian</p>
                     <p id="stat-bad" class="text-xl font-bold text-red-500 mt-1">0</p>
                 </div>
+            </div>
+        </div>
+
+        <!-- TOP / BOTTOM KPI PANEL (#7) -->
+        <div id="achiever-panel" class="hidden grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+            <!-- Top KPI -->
+            <div class="achiever-card bg-white rounded-xl px-4 py-3 shadow-sm border border-gray-100 flex items-center gap-3">
+                <div class="w-9 h-9 rounded-lg bg-green-50 flex items-center justify-center flex-shrink-0">
+                    <i class="fas fa-trophy text-green-600 text-sm"></i>
+                </div>
+                <div class="min-w-0 flex-1">
+                    <p class="achiever-label text-xs text-gray-400 font-medium leading-none mb-0.5">KPI Terbaik</p>
+                    <p id="top-kpi-name" class="achiever-name font-bold text-gray-800 text-sm truncate"></p>
+                </div>
+                <p id="top-kpi-pct" class="text-green-600 font-bold text-sm flex-shrink-0"></p>
+            </div>
+            <!-- Bottom KPI -->
+            <div class="achiever-card bg-white rounded-xl px-4 py-3 shadow-sm border border-gray-100 flex items-center gap-3">
+                <div class="w-9 h-9 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0">
+                    <i class="fas fa-exclamation-circle text-red-500 text-sm"></i>
+                </div>
+                <div class="min-w-0 flex-1">
+                    <p class="achiever-label text-xs text-gray-400 font-medium leading-none mb-0.5">Perlu Perhatian</p>
+                    <p id="bottom-kpi-name" class="achiever-name font-bold text-gray-800 text-sm truncate"></p>
+                </div>
+                <p id="bottom-kpi-pct" class="text-red-500 font-bold text-sm flex-shrink-0"></p>
             </div>
         </div>
 
