@@ -690,9 +690,9 @@ li:hover .item-actions {
 
 /* Completion glow — fires once when KPI hits 100% */
 @keyframes complete-glow {
-    0%   { opacity: 1; transform: translateY(0); box-shadow: var(--shadow-card, 0 2px 12px rgba(0,0,0,0.07)); }
-    35%  { opacity: 1; transform: translateY(0); box-shadow: 0 0 0 4px rgba(67, 160, 71, 0.3), 0 8px 28px rgba(67, 160, 71, 0.18); }
-    100% { opacity: 1; transform: translateY(0); box-shadow: var(--shadow-card, 0 2px 12px rgba(0,0,0,0.07)); }
+    0%   { box-shadow: var(--shadow-card, 0 2px 12px rgba(0,0,0,0.07)); }
+    35%  { box-shadow: 0 0 0 4px rgba(67, 160, 71, 0.3), 0 8px 28px rgba(67, 160, 71, 0.18); }
+    100% { box-shadow: var(--shadow-card, 0 2px 12px rgba(0,0,0,0.07)); }
 }
 
 .kpi-complete-glow {

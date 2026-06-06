@@ -393,8 +393,8 @@ export function animateCardElements(card, kpi) {
 
     if (displayPercentage >= 100) {
         setTimeout(() => {
-            card.classList.add('kpi-complete-glow');
-            setTimeout(() => card.classList.remove('kpi-complete-glow'), 1500);
+            card.style.boxShadow = '0 0 0 4px rgba(67,160,71,0.32), 0 8px 28px rgba(67,160,71,0.22)';
+            setTimeout(() => { card.style.boxShadow = ''; }, 1100);
         }, 1700);
     }
 }
