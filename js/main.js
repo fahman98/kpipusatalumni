@@ -14,7 +14,7 @@ import {
     showDetailsModal,
     showConfirmModal,
     showInputModal,
-
+    getPhosphorIcon,
 } from './ui.js';
 
 import {
@@ -963,6 +963,120 @@ document.addEventListener('DOMContentLoaded', () => {
     // Set dynamic copyright year
     const footerYearEl = getEl('footer-year');
     if (footerYearEl) footerYearEl.textContent = new Date().getFullYear();
+
+    // --- STICKY HEADER SHRINK ---
+    const headerInner = getEl('header-inner');
+    window.addEventListener('scroll', () => {
+        if (!headerInner) return;
+        headerInner.classList.toggle('header-compact', window.scrollY > 70);
+    }, { passive: true });
+
+    // --- EXECUTIVE TABLE VIEW ---
+    let isTableView = false;
+    const viewToggleBtn = getEl('view-toggle-btn');
+    const kpiTableContainer = getEl('kpi-table-container');
+
+    function renderTableView() {
+        const tbody = getEl('kpi-table-body');
+        if (!tbody) return;
+        const data = kpiDataCache[currentQuarter];
+        if (!data || !data.processedKpis) return;
+
+        tbody.innerHTML = '';
+        data.processedKpis.forEach(kpi => {
+            const pct = getKpiPercentage(kpi);
+            const cappedPct = Math.min(pct, 100);
+            const val = calculateKpiValue(kpi);
+            const valStr = kpi.isCurrency
+                ? 'RM ' + val.toLocaleString('en-US', { minimumFractionDigits: 0 })
+                : kpi.isPercentage ? val.toFixed(1) + '%'
+                : Math.floor(val).toLocaleString();
+            const dotColor  = pct >= 75 ? '#43a047' : pct >= 30 ? '#f59e0b' : '#e53935';
+            const badge     = pct >= 75 ? 'bg-green-100 text-green-700'
+                            : pct >= 30 ? 'bg-amber-100 text-amber-700'
+                            :             'bg-red-100 text-red-600';
+            const iconBg    = pct >= 75 ? 'bg-green-50'   : pct >= 30 ? 'bg-amber-50'   : 'bg-red-50';
+            const iconClr   = pct >= 75 ? 'text-green-600': pct >= 30 ? 'text-amber-600': 'text-red-600';
+            const trendTxt  = kpi.trend || '—';
+            const trendClr  = kpi.trendColor || 'text-gray-400';
+
+            const tr = document.createElement('tr');
+            tr.className = 'border-b border-gray-50 hover:bg-blue-50/30 transition-colors';
+            tr.innerHTML = `
+                <td class="px-4 py-3">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg ${iconBg} flex items-center justify-center flex-shrink-0">
+                            <i class="ph-duotone ${getPhosphorIcon(kpi.icon)} ${iconClr} text-xs"></i>
+                        </div>
+                        <span class="font-semibold text-gray-800 text-sm">${kpi.name}</span>
+                    </div>
+                </td>
+                <td class="px-4 py-3 text-right font-bold text-gray-800 text-sm">${valStr}</td>
+                <td class="px-4 py-3 text-right text-gray-400 text-sm">${kpi.target}</td>
+                <td class="px-4 py-3 text-right">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${badge}">${cappedPct.toFixed(1)}%</span>
+                </td>
+                <td class="px-4 py-3 text-center text-sm font-bold ${trendClr} hidden sm:table-cell">${trendTxt}</td>
+                <td class="px-4 py-3 text-center hidden sm:table-cell">
+                    <span class="w-2.5 h-2.5 rounded-full inline-block" style="background:${dotColor}"></span>
+                </td>`;
+            tbody.appendChild(tr);
+        });
+    }
+
+    if (viewToggleBtn) {
+        viewToggleBtn.addEventListener('click', () => {
+            isTableView = !isTableView;
+            if (isTableView) {
+                kpiGridContainer.classList.add('hidden');
+                if (kpiTableContainer) kpiTableContainer.classList.remove('hidden');
+                viewToggleBtn.innerHTML = '<i class="fas fa-th-large mr-1.5"></i>Grid';
+                renderTableView();
+            } else {
+                kpiGridContainer.classList.remove('hidden');
+                if (kpiTableContainer) kpiTableContainer.classList.add('hidden');
+                viewToggleBtn.innerHTML = '<i class="fas fa-list mr-1.5"></i>Jadual';
+            }
+        });
+    }
+
+    // ===== ANIMATED FAVICON =====
+    function updateFavicon(pct) {
+        try {
+            const size = 64, cx = 32, cy = 32, r = 27;
+            const canvas = document.createElement('canvas');
+            canvas.width = size; canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            const color = pct >= 75 ? '#43a047' : pct >= 30 ? '#f59e0b' : '#e53935';
+
+            // Coloured background circle
+            ctx.fillStyle = color;
+            ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+
+            // Track ring
+            ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+            ctx.lineWidth = 6;
+            ctx.beginPath(); ctx.arc(cx, cy, r - 6, 0, Math.PI * 2); ctx.stroke();
+
+            // Progress arc
+            ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+            ctx.lineWidth = 6; ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.arc(cx, cy, r - 6, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(pct, 100) / 100);
+            ctx.stroke();
+
+            // Percentage text
+            ctx.fillStyle = '#fff';
+            ctx.font = `bold ${pct >= 100 ? 11 : 13}px Arial`;
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(Math.round(pct) + '%', cx, cy);
+
+            let link = document.querySelector('link[rel="icon"]');
+            if (!link) { link = document.createElement('link'); link.rel = 'icon'; document.head.appendChild(link); }
+            link.type = 'image/png';
+            link.href = canvas.toDataURL();
+        } catch(e) {}
+    }
 
     // Start App
     initializeApp();

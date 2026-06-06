@@ -8,6 +8,27 @@ import {
     kpiDataCache
 } from './api.js';
 
+// ── Phosphor icon mapping (legacy FA names → Phosphor names) ──
+const FA_TO_PHOSPHOR = {
+    'fa-users':           'ph-users',
+    'fa-chart-line':      'ph-trend-up',
+    'fa-money-bill-wave': 'ph-money',
+    'fa-handshake':       'ph-handshake',
+    'fa-bullhorn':        'ph-megaphone',
+    'fa-trophy':          'ph-trophy',
+    'fa-globe-asia':      'ph-globe',
+    'fa-globe':           'ph-globe',
+    'fa-graduation-cap':  'ph-graduation-cap',
+    'fa-star':            'ph-star',
+    'fa-chart-bar':       'ph-chart-bar',
+};
+
+export function getPhosphorIcon(faIcon) {
+    if (!faIcon) return 'ph-chart-bar';
+    if (faIcon.startsWith('ph-')) return faIcon;
+    return FA_TO_PHOSPHOR[faIcon] || 'ph-chart-bar';
+}
+
 // Global UI State (Exported)
 export let isEditMode = false;
 
@@ -216,8 +237,10 @@ export function createKpiCard(kpi) {
         detailsBtn.classList.add('flex');
     }
 
-    cardElement.querySelector('.kpi-icon').classList.add(kpi.icon);
-    cardElement.querySelector('.kpi-name').textContent = kpi.name;
+    cardElement.querySelector('.kpi-icon').classList.add(getPhosphorIcon(kpi.icon));
+    const kpiNameEl = cardElement.querySelector('.kpi-name');
+    kpiNameEl.textContent = kpi.name;
+    kpiNameEl.dataset.kpiId = kpi.id;
 
     // #8: Coloured left status bar
     const statusBarEl = cardElement.querySelector('.kpi-status-bar');
