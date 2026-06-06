@@ -107,10 +107,26 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentQuarter = 'q1';
     let quarterSwitchTimeout = null;
 
-    // --- INITIALIZE YEAR ---
+    // --- INITIALIZE YEAR (DYNAMIC) ---
+    const currentYear = new Date().getFullYear();
+    const prevYear = currentYear - 1;
+
     if (yearSelector) {
-        setApiYear(yearSelector.value || "2025");
+        for (let y = prevYear; y <= currentYear + 1; y++) {
+            const opt = document.createElement('option');
+            opt.value = String(y);
+            opt.textContent = String(y);
+            if (y === currentYear) opt.selected = true;
+            yearSelector.appendChild(opt);
+        }
+        setApiYear(String(currentYear));
     }
+
+    // Update admin action button labels with dynamic years
+    const cloneBtnLabel = document.getElementById('clone-btn-label');
+    if (cloneBtnLabel) cloneBtnLabel.textContent = `Copy Struktur ${prevYear}`;
+    const reCloneBtnLabel = document.getElementById('reclone-btn-label');
+    if (reCloneBtnLabel) reCloneBtnLabel.textContent = `Fix/Reset ${prevYear}`;
 
     const initiallyLoadedQuarters = new Set();
 
@@ -555,21 +571,18 @@ document.addEventListener('DOMContentLoaded', () => {
     if (cancelDescBtn) cancelDescBtn.addEventListener('click', () => closeModal(editDescModal));
     if (editDescModalClose) editDescModalClose.addEventListener('click', () => closeModal(editDescModal));
 
-    if (cloneBtn) cloneBtn.addEventListener('click', () => cloneFromYear("2025"));
+    if (cloneBtn) cloneBtn.addEventListener('click', () => cloneFromYear(String(prevYear)));
     if (startFreshBtn) startFreshBtn.addEventListener('click', () => openModal(addKpiModal));
     if (openAddKpiBtn) openAddKpiBtn.addEventListener('click', () => { getEl('add-kpi-form').reset(); openModal(addKpiModal); });
-
-    // Expose for Re-Sync Button
-    window.clone2025 = () => cloneFromYear("2025");
 
     // Re-Clone Button with Custom Modal
     const reCloneBtn = document.getElementById('re-clone-btn');
     if (reCloneBtn) {
         reCloneBtn.addEventListener('click', () => {
             showConfirmModal(
-                "Reset Data 2026?",
-                "AMARAN: Ini akan memadam SEMUA data 2026 dan menyalin semula struktur asal dari 2025. Data 2026 yang sedia ada akan hilang kekal. Teruskan?",
-                () => window.clone2025()
+                `Reset Data ${currentYear}?`,
+                `AMARAN: Ini akan memadam SEMUA data ${currentYear} dan menyalin semula struktur asal dari ${prevYear}. Data ${currentYear} yang sedia ada akan hilang kekal. Teruskan?`,
+                () => cloneFromYear(String(prevYear))
             );
         });
     }
