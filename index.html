@@ -22,7 +22,7 @@
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
@@ -168,6 +168,8 @@
                 </div>
             </div>
         </header>
+        <!-- Premium gradient accent line -->
+        <div class="brand-gradient-bar"></div>
 
         <!-- Admin Mode Ribbon (#4) -->
         <div id="admin-mode-ribbon"
@@ -704,9 +706,11 @@
 
                 <!-- HEADER: Icon container + Name + Action cluster (#7, #9) -->
                 <div class="kpi-header-fixed px-5 pt-4 pb-3 gap-3 relative">
-                    <!-- Icon container with status-tinted bg (#9) -->
-                    <div class="kpi-icon-container">
-                        <i class="kpi-icon fas text-xl"></i>
+                    <!-- Ring progress + icon (#ring) -->
+                    <div class="kpi-ring-wrap">
+                        <div class="kpi-icon-container kpi-ring-inner">
+                            <i class="kpi-icon fas text-xl"></i>
+                        </div>
                     </div>
                     <!-- KPI Name -->
                     <div class="flex-1 min-w-0 pt-0.5">

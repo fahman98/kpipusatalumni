@@ -234,6 +234,16 @@ export function createKpiCard(kpi) {
         iconContainer.classList.add(iconBgClass);
     }
 
+    // Ring progress: set CSS vars for conic-gradient
+    const ringWrap = cardElement.querySelector('.kpi-ring-wrap');
+    if (ringWrap) {
+        const cappedPct = Math.min(displayPercentage, 100);
+        const ringColor = displayPercentage >= 75 ? '#43a047' :
+                          displayPercentage >= 30 ? '#f59e0b' : '#e53935';
+        ringWrap.style.setProperty('--ring-pct', `${cappedPct}%`);
+        ringWrap.style.setProperty('--ring-color', ringColor);
+    }
+
     // --- SETTINGS BUTTON (NEW) ---
     const settingsBtn = cardElement.querySelector('.settings-btn');
     if (settingsBtn) {

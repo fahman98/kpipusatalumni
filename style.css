@@ -25,8 +25,15 @@ body.dark-mode {
 
 /* Custom styles untuk melengkapkan Tailwind */
 body {
-    font-family: 'Inter', sans-serif;
+    font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
     transition: background-color 0.3s, color 0.3s;
+    background: linear-gradient(145deg, #eef2ff 0%, #f3f4f6 45%, #f0f9ff 100%);
+    background-attachment: fixed;
+}
+
+body.dark-mode {
+    background: linear-gradient(145deg, #0f172a 0%, #111827 50%, #0c1a2e 100%);
+    background-attachment: fixed;
 }
 
 /* Custom colors untuk tema */
@@ -43,9 +50,13 @@ body {
 .bg-status-ok   { background-color: var(--color-status-ok); }
 .bg-status-good { background-color: var(--color-status-good); }
 
-/* Animasi untuk kad */
+/* Glassmorphism KPI cards */
 .kpi-card {
     transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+    background: rgba(255, 255, 255, 0.72) !important;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.55) !important;
     opacity: 0;
     transform: translateY(20px);
     animation: card-fade-in 0.5s ease-out forwards;
@@ -1143,4 +1154,64 @@ body.dark-mode .footer-action-btn:hover {
 /* ===== SPARKLINE STYLES ===== */
 #details-sparkline-wrapper {
     transition: opacity 0.2s ease;
+}
+
+/* ===== PREMIUM GRADIENT BRAND BAR ===== */
+.brand-gradient-bar {
+    height: 3px;
+    background: linear-gradient(90deg, #0d47a1 0%, #1976d2 30%, #42a5f5 60%, #0d47a1 100%);
+    background-size: 200% 100%;
+    animation: bar-shimmer 4s linear infinite;
+    margin-bottom: 1rem;
+    flex-shrink: 0;
+}
+
+@keyframes bar-shimmer {
+    0%   { background-position: 0% 0%; }
+    100% { background-position: 200% 0%; }
+}
+
+/* ===== GLASSMORPHISM: DARK MODE ===== */
+body.dark-mode .kpi-card {
+    background: rgba(31, 41, 55, 0.65) !important;
+    border: 1px solid rgba(75, 85, 99, 0.45) !important;
+}
+
+/* Glassmorphism: stats bar + search bar */
+body:not(.dark-mode) #stats-bar .stat-card,
+body:not(.dark-mode) #search-filter-container {
+    background: rgba(255, 255, 255, 0.72);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.55);
+}
+
+/* ===== RING PROGRESS ===== */
+.kpi-ring-wrap {
+    position: relative;
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    background: conic-gradient(
+        var(--ring-color, #e5e7eb) var(--ring-pct, 0%),
+        #e5e7eb var(--ring-pct, 0%)
+    );
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.6s ease;
+}
+
+body.dark-mode .kpi-ring-wrap {
+    background: conic-gradient(
+        var(--ring-color, #374151) var(--ring-pct, 0%),
+        #374151 var(--ring-pct, 0%)
+    );
+}
+
+.kpi-ring-inner.kpi-icon-container {
+    width: 40px !important;
+    height: 40px !important;
+    border-radius: 50% !important;
 }
