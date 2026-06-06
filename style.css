@@ -1428,3 +1428,66 @@ body.dark-mode #focus-modal #focus-modal-close {
 /* KPI name cursor pointer */
 .kpi-name { cursor: pointer; }
 .kpi-name:hover { text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 3px; }
+
+/* ===== YEAR PAGE TRANSITION VEIL ===== */
+#year-veil {
+    position: fixed;
+    inset: 0;
+    z-index: 18;
+    pointer-events: none;
+    background: linear-gradient(135deg, rgba(238,242,255,0.94) 0%, rgba(240,249,255,0.94) 100%);
+    backdrop-filter: blur(18px) saturate(1.6);
+    -webkit-backdrop-filter: blur(18px) saturate(1.6);
+    opacity: 0;
+    transition: opacity 0.28s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+body.dark-mode #year-veil {
+    background: rgba(15, 23, 42, 0.94);
+}
+
+#year-veil.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.year-veil-content {
+    text-align: center;
+    opacity: 0;
+    transform: scale(0.88);
+    transition: opacity 0.2s ease 0.12s, transform 0.2s ease 0.12s;
+}
+
+#year-veil.active .year-veil-content {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.year-veil-spinner {
+    width: 38px;
+    height: 38px;
+    border: 3.5px solid rgba(13, 71, 161, 0.15);
+    border-top-color: #0d47a1;
+    border-radius: 50%;
+    animation: spin 0.75s linear infinite;
+    margin: 0 auto 12px;
+}
+
+body.dark-mode .year-veil-spinner {
+    border-color: rgba(99, 130, 255, 0.15);
+    border-top-color: #6382ff;
+}
+
+.year-veil-text {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: #0d47a1;
+    letter-spacing: 0.02em;
+}
+
+body.dark-mode .year-veil-text {
+    color: #93c5fd;
+}

@@ -321,6 +321,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const overall = count > 0 ? totalPct / count : 0;
             renderGaugeChart(overall);
+            updateFavicon(overall);
+            document.title = `KPI ${overall.toFixed(0)}% · Pusat Alumni UPSI`;
 
             // Achiever Panel (#7)
             if (achieverPanel && count > 1 && topKpi && bottomKpi && topKpi.id !== bottomKpi.id) {
@@ -456,14 +458,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- EVENT LISTENERS ---
 
-    // Year Change
+    // Year Change — with page transition veil
     if (yearSelector) {
         yearSelector.addEventListener('change', (e) => {
             const year = e.target.value;
-            setApiYear(year);
-            initiallyLoadedQuarters.clear();
-            updateDashboard(currentQuarter);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            const veil = getEl('year-veil');
+            const veilText = getEl('year-veil-text');
+            if (veil) {
+                if (veilText) veilText.textContent = `Memuatkan ${year}...`;
+                veil.classList.add('active');
+                setTimeout(() => {
+                    setApiYear(year);
+                    initiallyLoadedQuarters.clear();
+                    updateDashboard(currentQuarter);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    setTimeout(() => veil.classList.remove('active'), 320);
+                }, 280);
+            } else {
+                setApiYear(year);
+                initiallyLoadedQuarters.clear();
+                updateDashboard(currentQuarter);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
         });
     }
 
@@ -976,41 +992,136 @@ document.addEventListener('DOMContentLoaded', () => {
         printBtn.addEventListener('click', () => window.print());
     }
 
-    // --- EXPORT PDF ---
+    // --- EXPORT PDF (BRANDED) ---
     if (exportPdfBtn) {
         exportPdfBtn.addEventListener('click', () => {
             const data = kpiDataCache[currentQuarter];
-            if (!data || !data.processedKpis) {
-                showToastNotification('Tiada data untuk dieksport.', 'danger');
-                return;
-            }
+            if (!data || !data.processedKpis) { showToastNotification('Tiada data untuk dieksport.', 'danger'); return; }
             const jsPDFLib = window.jspdf && window.jspdf.jsPDF;
-            if (!jsPDFLib) {
-                showToastNotification('PDF library tidak tersedia.', 'danger');
-                return;
-            }
-            const doc = new jsPDFLib();
+            if (!jsPDFLib) { showToastNotification('PDF library tidak tersedia.', 'danger'); return; }
+
+            const doc = new jsPDFLib({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+            const pageW = 210;
             const quarterTitle = data.title || currentQuarter.toUpperCase();
-            doc.setFontSize(14);
-            doc.setTextColor(13, 71, 161);
-            doc.text('Laporan KPI Pusat Alumni UPSI', 14, 15);
-            doc.setFontSize(11);
-            doc.setTextColor(60, 60, 60);
-            doc.text(`Tahun: ${selectedYear}   |   ${quarterTitle}`, 14, 23);
-            doc.autoTable({
-                startY: 30,
-                head: [['Nama KPI', 'Nilai', 'Sasaran', 'Peratus (%)']],
-                body: data.processedKpis.map(kpi => [
-                    kpi.name,
-                    calculateKpiValue(kpi).toFixed(2),
-                    kpi.target,
-                    getKpiPercentage(kpi).toFixed(2) + '%'
-                ]),
-                styles: { fontSize: 10, cellPadding: 4 },
-                headStyles: { fillColor: [13, 71, 161], textColor: [255, 255, 255], fontStyle: 'bold' },
-                alternateRowStyles: { fillColor: [240, 244, 252] }
+            const genDate = new Date().toLocaleDateString('ms-MY', { day: 'numeric', month: 'long', year: 'numeric' });
+
+            // Compute summary stats
+            let totalPctPdf = 0, goodCnt = 0, okCnt = 0, badCnt = 0;
+            data.processedKpis.forEach(kpi => {
+                const p = getKpiPercentage(kpi);
+                totalPctPdf += Math.min(p, 100);
+                if (p >= 75) goodCnt++; else if (p >= 30) okCnt++; else badCnt++;
             });
-            doc.save(`KPI_${selectedYear}_${currentQuarter.toUpperCase()}.pdf`);
+            const kpiCnt = data.processedKpis.length;
+            const overallPdf = kpiCnt > 0 ? totalPctPdf / kpiCnt : 0;
+
+            // ── HEADER BAND ──
+            doc.setFillColor(13, 71, 161);
+            doc.rect(0, 0, pageW, 38, 'F');
+            doc.setFillColor(21, 101, 192);
+            doc.rect(0, 34, pageW, 4, 'F');
+
+            // Try to embed logo from page
+            try {
+                const logoEl = document.querySelector('img[alt="Logo Utama"]');
+                if (logoEl && logoEl.complete && logoEl.naturalWidth > 0) {
+                    const c = document.createElement('canvas');
+                    c.width = logoEl.naturalWidth; c.height = logoEl.naturalHeight;
+                    c.getContext('2d').drawImage(logoEl, 0, 0);
+                    doc.addImage(c.toDataURL('image/png'), 'PNG', pageW - 42, 4, 28, 28);
+                }
+            } catch(e) {}
+
+            doc.setTextColor(255, 255, 255);
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(16);
+            doc.text('PUSAT ALUMNI UPSI', 14, 13);
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5);
+            doc.text('Laporan Prestasi Petunjuk Utama Prestasi (KPI) Suku Tahunan', 14, 20);
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(11);
+            doc.text(`${selectedYear}  ·  ${quarterTitle}`, 14, 29);
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5);
+            doc.setTextColor(180, 210, 255);
+            doc.text(`Dijana: ${genDate}`, pageW - 14, 29, { align: 'right' });
+
+            // ── SUMMARY BOX ──
+            const sumY = 42;
+            doc.setFillColor(247, 250, 255); doc.setDrawColor(220, 230, 255);
+            doc.roundedRect(14, sumY, pageW - 28, 22, 2, 2, 'FD');
+
+            const summaryStats = [
+                { label: 'Jumlah KPI',      value: String(kpiCnt),            rgb: [13, 71, 161] },
+                { label: 'Cemerlang',        value: String(goodCnt),           rgb: [22, 163, 74] },
+                { label: 'Sederhana',        value: String(okCnt),             rgb: [161, 98, 7] },
+                { label: 'Perlu Perhatian',  value: String(badCnt),            rgb: [185, 28, 28] },
+                { label: 'Pencapaian',       value: `${overallPdf.toFixed(1)}%`, rgb: [13, 71, 161] },
+            ];
+            const sColW = (pageW - 28) / summaryStats.length;
+            summaryStats.forEach((s, i) => {
+                const sx = 14 + sColW * i + sColW / 2;
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(14);
+                doc.setTextColor(...s.rgb);
+                doc.text(s.value, sx, sumY + 10, { align: 'center' });
+                doc.setFont('helvetica', 'normal'); doc.setFontSize(6.5);
+                doc.setTextColor(100, 100, 100);
+                doc.text(s.label, sx, sumY + 17, { align: 'center' });
+            });
+
+            // ── DATA TABLE ──
+            doc.autoTable({
+                startY: sumY + 26,
+                head: [['#', 'Nama KPI', 'Nilai', 'Sasaran', 'Peratus', 'Trend', 'Status']],
+                body: data.processedKpis.map((kpi, idx) => {
+                    const val = calculateKpiValue(kpi);
+                    const pct = getKpiPercentage(kpi);
+                    const valStr = kpi.isCurrency ? `RM ${Math.floor(val).toLocaleString()}`
+                                 : kpi.isPercentage ? `${val.toFixed(1)}%`
+                                 : Math.floor(val).toLocaleString();
+                    const status = pct >= 75 ? 'Cemerlang' : pct >= 30 ? 'Sederhana' : 'Perlu Perhatian';
+                    return [idx + 1, kpi.name, valStr, kpi.target, `${pct.toFixed(1)}%`, kpi.trend || '—', status];
+                }),
+                styles: { fontSize: 8.5, cellPadding: 2.8, font: 'helvetica' },
+                headStyles: { fillColor: [13, 71, 161], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8.5 },
+                columnStyles: {
+                    0: { cellWidth: 8,  halign: 'center' },
+                    1: { cellWidth: 58 },
+                    2: { cellWidth: 26, halign: 'right' },
+                    3: { cellWidth: 22, halign: 'right' },
+                    4: { cellWidth: 20, halign: 'center' },
+                    5: { cellWidth: 24, halign: 'center' },
+                    6: { cellWidth: 28, halign: 'center' },
+                },
+                didParseCell: function(hookData) {
+                    if (hookData.section !== 'body') return;
+                    const pctVal = parseFloat(hookData.row.raw[4]);
+                    const isStatus = hookData.column.index === 6;
+                    if (pctVal >= 75) {
+                        hookData.cell.styles.fillColor = [220, 252, 231];
+                        if (isStatus) { hookData.cell.styles.textColor = [22, 163, 74]; hookData.cell.styles.fontStyle = 'bold'; }
+                    } else if (pctVal >= 30) {
+                        hookData.cell.styles.fillColor = [254, 249, 195];
+                        if (isStatus) { hookData.cell.styles.textColor = [161, 98, 7]; hookData.cell.styles.fontStyle = 'bold'; }
+                    } else {
+                        hookData.cell.styles.fillColor = [254, 226, 226];
+                        if (isStatus) { hookData.cell.styles.textColor = [185, 28, 28]; hookData.cell.styles.fontStyle = 'bold'; }
+                    }
+                },
+                margin: { left: 14, right: 14 },
+            });
+
+            // ── FOOTER ON EACH PAGE ──
+            const totalPages = doc.internal.getNumberOfPages();
+            for (let p = 1; p <= totalPages; p++) {
+                doc.setPage(p);
+                doc.setDrawColor(210, 220, 240);
+                doc.line(14, 285, pageW - 14, 285);
+                doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(150, 150, 150);
+                doc.text('Pusat Alumni UPSI  ·  Dokumen Sulit Dalaman', 14, 290);
+                doc.text(`Halaman ${p} / ${totalPages}`, pageW - 14, 290, { align: 'right' });
+            }
+
+            const filename = `Laporan_KPI_${selectedYear}_${currentQuarter.toUpperCase()}_${new Date().toISOString().slice(0,10)}.pdf`;
+            doc.save(filename);
+            showToastNotification('PDF berjaya dijana!', 'success');
         });
     }
 
@@ -1201,6 +1312,44 @@ document.addEventListener('DOMContentLoaded', () => {
                 viewToggleBtn.innerHTML = '<i class="fas fa-list mr-1.5"></i>Jadual';
             }
         });
+    }
+
+    // ===== ANIMATED FAVICON =====
+    function updateFavicon(pct) {
+        try {
+            const size = 64, cx = 32, cy = 32, r = 27;
+            const canvas = document.createElement('canvas');
+            canvas.width = size; canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            const color = pct >= 75 ? '#43a047' : pct >= 30 ? '#f59e0b' : '#e53935';
+
+            // Coloured background circle
+            ctx.fillStyle = color;
+            ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+
+            // Track ring
+            ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+            ctx.lineWidth = 6;
+            ctx.beginPath(); ctx.arc(cx, cy, r - 6, 0, Math.PI * 2); ctx.stroke();
+
+            // Progress arc
+            ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+            ctx.lineWidth = 6; ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.arc(cx, cy, r - 6, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(pct, 100) / 100);
+            ctx.stroke();
+
+            // Percentage text
+            ctx.fillStyle = '#fff';
+            ctx.font = `bold ${pct >= 100 ? 11 : 13}px Arial`;
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(Math.round(pct) + '%', cx, cy);
+
+            let link = document.querySelector('link[rel="icon"]');
+            if (!link) { link = document.createElement('link'); link.rel = 'icon'; document.head.appendChild(link); }
+            link.type = 'image/png';
+            link.href = canvas.toDataURL();
+        } catch(e) {}
     }
 
     // Start App
