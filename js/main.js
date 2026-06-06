@@ -87,6 +87,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const exportPdfBtn = getEl('export-pdf-btn');
     const notifyBtn = getEl('notify-btn');
     const offlineBanner = getEl('offline-banner');
+    const adminRibbon = getEl('admin-mode-ribbon');
+    const achieverPanel = getEl('achiever-panel');
 
     // CRUD Forms
     const addKpiForm = getEl('add-kpi-form');
@@ -105,10 +107,26 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentQuarter = 'q1';
     let quarterSwitchTimeout = null;
 
-    // --- INITIALIZE YEAR ---
+    // --- INITIALIZE YEAR (DYNAMIC) ---
+    const currentYear = new Date().getFullYear();
+    const prevYear = currentYear - 1;
+
     if (yearSelector) {
-        setApiYear(yearSelector.value || "2025");
+        for (let y = prevYear; y <= currentYear + 1; y++) {
+            const opt = document.createElement('option');
+            opt.value = String(y);
+            opt.textContent = String(y);
+            if (y === currentYear) opt.selected = true;
+            yearSelector.appendChild(opt);
+        }
+        setApiYear(String(currentYear));
     }
+
+    // Update admin action button labels with dynamic years
+    const cloneBtnLabel = document.getElementById('clone-btn-label');
+    if (cloneBtnLabel) cloneBtnLabel.textContent = `Copy Struktur ${prevYear}`;
+    const reCloneBtnLabel = document.getElementById('reclone-btn-label');
+    if (reCloneBtnLabel) reCloneBtnLabel.textContent = `Fix/Reset ${prevYear}`;
 
     const initiallyLoadedQuarters = new Set();
 
@@ -140,6 +158,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (kpiGridContainer) kpiGridContainer.innerHTML = '';
                 if (emptyStateContainer) emptyStateContainer.classList.remove('hidden');
                 if (statsBar) statsBar.classList.add('hidden');
+                if (achieverPanel) achieverPanel.classList.add('hidden');
 
                 if (isEditMode) {
                     if (adminSetupActions) adminSetupActions.classList.remove('hidden');
@@ -295,6 +314,21 @@ document.addEventListener('DOMContentLoaded', () => {
             const overall = count > 0 ? totalPct / count : 0;
             renderGaugeChart(overall);
 
+            // Achiever Panel (#7)
+            if (achieverPanel && count > 1 && topKpi && bottomKpi && topKpi.id !== bottomKpi.id) {
+                achieverPanel.classList.remove('hidden');
+                const topName = getEl('top-kpi-name');
+                const topPct = getEl('top-kpi-pct');
+                const bottomName = getEl('bottom-kpi-name');
+                const bottomPct = getEl('bottom-kpi-pct');
+                if (topName) topName.textContent = topKpi.name;
+                if (topPct) topPct.textContent = `${getKpiPercentage(topKpi).toFixed(1)}%`;
+                if (bottomName) bottomName.textContent = bottomKpi.name;
+                if (bottomPct) bottomPct.textContent = `${getKpiPercentage(bottomKpi).toFixed(1)}%`;
+            } else if (achieverPanel) {
+                achieverPanel.classList.add('hidden');
+            }
+
             // Update stats bar
             if (statsBar) {
                 statsBar.classList.remove('hidden');
@@ -303,6 +337,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (el('stat-good')) el('stat-good').textContent = goodCount;
                 if (el('stat-ok')) el('stat-ok').textContent = okCount;
                 if (el('stat-bad')) el('stat-bad').textContent = badCount;
+
+                const goodPct = count > 0 ? (goodCount / count) * 100 : 0;
+                const okPct   = count > 0 ? (okCount   / count) * 100 : 0;
+                const badPct  = count > 0 ? (badCount  / count) * 100 : 0;
+                if (el('stat-good-bar')) el('stat-good-bar').style.width = `${goodPct}%`;
+                if (el('stat-ok-bar'))   el('stat-ok-bar').style.width   = `${okPct}%`;
+                if (el('stat-bad-bar'))  el('stat-bad-bar').style.width  = `${badPct}%`;
+                if (el('stat-all-good-bar')) el('stat-all-good-bar').style.width = `${goodPct}%`;
+                if (el('stat-all-ok-bar'))   el('stat-all-ok-bar').style.width   = `${okPct}%`;
+                if (el('stat-all-bad-bar'))  el('stat-all-bad-bar').style.width  = `${badPct}%`;
             }
 
             setEditMode(isEditMode);
@@ -361,6 +405,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (modeIndicator) modeIndicator.innerHTML = '<span class="inline-block bg-green-200 text-green-800 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-green-300">Mod Admin</span>';
                 if (adminLogoutBtn) adminLogoutBtn.classList.remove('hidden');
                 if (adminLoginBtn) adminLoginBtn.classList.add('hidden');
+                if (adminRibbon) adminRibbon.classList.remove('hidden');
 
                 showToastNotification(`Selamat datang, Admin (${user.email})`, "success");
             } else {
@@ -369,6 +414,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (modeIndicator) modeIndicator.innerHTML = '<span class="inline-flex items-center bg-blue-100 text-blue-800 text-xs font-semibold px-2 md:px-2.5 py-1 rounded-full border border-blue-200 whitespace-nowrap"><i class="fas fa-eye md:mr-1"></i><span class="hidden md:inline">Paparan Awam</span></span>';
                 if (adminLogoutBtn) adminLogoutBtn.classList.add('hidden');
                 if (adminLoginBtn) adminLoginBtn.classList.remove('hidden');
+                if (adminRibbon) adminRibbon.classList.add('hidden');
 
                 // Hide admin specific elements immediately
                 if (adminSetupActions) adminSetupActions.classList.add('hidden');
@@ -525,21 +571,18 @@ document.addEventListener('DOMContentLoaded', () => {
     if (cancelDescBtn) cancelDescBtn.addEventListener('click', () => closeModal(editDescModal));
     if (editDescModalClose) editDescModalClose.addEventListener('click', () => closeModal(editDescModal));
 
-    if (cloneBtn) cloneBtn.addEventListener('click', () => cloneFromYear("2025"));
+    if (cloneBtn) cloneBtn.addEventListener('click', () => cloneFromYear(String(prevYear)));
     if (startFreshBtn) startFreshBtn.addEventListener('click', () => openModal(addKpiModal));
     if (openAddKpiBtn) openAddKpiBtn.addEventListener('click', () => { getEl('add-kpi-form').reset(); openModal(addKpiModal); });
-
-    // Expose for Re-Sync Button
-    window.clone2025 = () => cloneFromYear("2025");
 
     // Re-Clone Button with Custom Modal
     const reCloneBtn = document.getElementById('re-clone-btn');
     if (reCloneBtn) {
         reCloneBtn.addEventListener('click', () => {
             showConfirmModal(
-                "Reset Data 2026?",
-                "AMARAN: Ini akan memadam SEMUA data 2026 dan menyalin semula struktur asal dari 2025. Data 2026 yang sedia ada akan hilang kekal. Teruskan?",
-                () => window.clone2025()
+                `Reset Data ${currentYear}?`,
+                `AMARAN: Ini akan memadam SEMUA data ${currentYear} dan menyalin semula struktur asal dari ${prevYear}. Data ${currentYear} yang sedia ada akan hilang kekal. Teruskan?`,
+                () => cloneFromYear(String(prevYear))
             );
         });
     }

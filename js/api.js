@@ -635,8 +635,9 @@ export async function updateKpiProgressListItem(quarterKey, kpiId, itemName, sub
             const itemIndex = data.kpis[kpiIndex].details.items.findIndex(i => i.name === itemName);
             if (itemIndex === -1) continue;
             if (subItemName) {
-                const subIdx = data.kpis[kpiIndex].details.items[itemIndex].subItems.findIndex(si => si.name === subItemName);
-                if (subIdx > -1) data.kpis[kpiIndex].details.items[itemIndex].subItems[subIdx].value = newValue;
+                const subItems = data.kpis[kpiIndex].details.items[itemIndex].subItems;
+                const subIdx = subItems ? subItems.findIndex(si => si.name === subItemName) : -1;
+                if (subIdx > -1) subItems[subIdx].value = newValue;
             } else {
                 data.kpis[kpiIndex].details.items[itemIndex].value = newValue;
             }

@@ -367,6 +367,13 @@ export function animateCardElements(card, kpi) {
             }, 1600); // after 1.5s bar animation
         }
     }
+
+    if (displayPercentage >= 100) {
+        setTimeout(() => {
+            card.classList.add('kpi-complete-glow');
+            setTimeout(() => card.classList.remove('kpi-complete-glow'), 1500);
+        }, 1700);
+    }
 }
 
 function handleEditKpi(cardElement, kpi) {
@@ -454,6 +461,55 @@ export function showDetailsModal(kpiId, triggerElement) {
     detailsModalDescription.textContent = description;
     detailsList.innerHTML = '';
     detailsAddNewWrapper.innerHTML = '';
+
+    // --- Sparkline: cross-quarter trend ---
+    const sparklineWrapper = getEl('details-sparkline-wrapper');
+    const sparklineCanvas = getEl('details-sparkline');
+    if (sparklineWrapper && sparklineCanvas && typeof Chart !== 'undefined') {
+        const quarters = ['q1', 'q2', 'q3', 'q4'];
+        const labels = ['Suku 1', 'Suku 2', 'Suku 3', 'Suku 4'];
+        const values = quarters.map(q => {
+            if (!kpiDataCache[q] || !kpiDataCache[q].processedKpis) return null;
+            const k = kpiDataCache[q].processedKpis.find(p => p.id === kpiId);
+            return k ? Math.min(getKpiPercentage(k), 100) : null;
+        });
+        const hasData = values.filter(v => v !== null).length >= 1;
+        if (hasData) {
+            sparklineWrapper.classList.remove('hidden');
+            if (window._detailsSparklineChart) window._detailsSparklineChart.destroy();
+            const isDark = document.body.classList.contains('dark-mode');
+            const tickColor = isDark ? '#9ca3af' : '#6b7280';
+            const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
+            window._detailsSparklineChart = new Chart(sparklineCanvas, {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: values.map(v =>
+                            v === null ? 'transparent' :
+                            v >= 75 ? 'rgba(67,160,71,0.8)' :
+                            v >= 30 ? 'rgba(245,158,11,0.8)' : 'rgba(229,57,53,0.8)'
+                        ),
+                        borderRadius: 5,
+                        borderSkipped: false,
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, tooltip: {
+                        callbacks: { label: ctx => `${ctx.parsed.y !== null ? ctx.parsed.y.toFixed(1) + '%' : 'Tiada data'}` }
+                    }},
+                    scales: {
+                        y: { min: 0, max: 100, ticks: { callback: v => v + '%', color: tickColor, font: { size: 10 } }, grid: { color: gridColor } },
+                        x: { ticks: { color: tickColor, font: { size: 10 } }, grid: { display: false } }
+                    }
+                }
+            });
+        } else {
+            sparklineWrapper.classList.add('hidden');
+        }
+    }
 
     if (type === 'list') {
         const allItems = [...new Set([...(targetList || [])])];
@@ -713,7 +769,7 @@ function handleEditBreakdownItem(liElement, kpiId, itemIndex, item) {
 
         if (newName && !isNaN(newValue)) {
             const activeQuarterKey = `q${paginationContainer.querySelector('.active').dataset.quarter}`;
-            await updateKpiBreakdownList(activeQuarterKey, kpi.id, { index: itemIndex, data: { name: newName, value: newValue } }, 'edit');
+            await updateKpiBreakdownList(activeQuarterKey, kpiId, { index: itemIndex, data: { name: newName, value: newValue } }, 'edit');
         } else {
             showToastNotification('Nama dan nilai tidak sah.', 'danger');
             liElement.innerHTML = originalHTML;
@@ -806,6 +862,16 @@ export function filterDashboardCards(searchTerm, statusFilter) {
             card.classList.remove('flex');
         }
     });
+
+    const emptySearchState = document.getElementById('empty-search-state');
+    if (emptySearchState) {
+        const visibleCount = document.querySelectorAll('.kpi-card:not(.hidden)').length;
+        if (visibleCount === 0 && cards.length > 0) {
+            emptySearchState.classList.remove('hidden');
+        } else {
+            emptySearchState.classList.add('hidden');
+        }
+    }
 }
 
 
