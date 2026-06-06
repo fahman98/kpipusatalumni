@@ -217,7 +217,9 @@ export function createKpiCard(kpi) {
     }
 
     cardElement.querySelector('.kpi-icon').classList.add(kpi.icon);
-    cardElement.querySelector('.kpi-name').textContent = kpi.name;
+    const kpiNameEl = cardElement.querySelector('.kpi-name');
+    kpiNameEl.textContent = kpi.name;
+    kpiNameEl.dataset.kpiId = kpi.id;
 
     // #8: Coloured left status bar
     const statusBarEl = cardElement.querySelector('.kpi-status-bar');

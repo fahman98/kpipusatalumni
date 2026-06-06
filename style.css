@@ -1361,3 +1361,70 @@ body.dark-mode #header-inner {
 body.dark-mode .kpi-trend-chip-up   { background: #052e16; color: #4ade80; border-color: #166534; }
 body.dark-mode .kpi-trend-chip-down { background: #450a0a; color: #f87171; border-color: #7f1d1d; }
 body.dark-mode .kpi-trend-chip-flat { background: #1f2937; color: #9ca3af; border-color: #374151; }
+
+/* ===== RIPPLE EFFECT ===== */
+.quarter-btn,
+.footer-action-btn,
+.kpi-action-btn,
+#theme-toggle {
+    position: relative;
+    overflow: hidden;
+}
+
+.ripple-wave {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.38);
+    transform: scale(0);
+    animation: ripple-expand 0.55s ease-out forwards;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.quarter-btn.active .ripple-wave {
+    background: rgba(255, 255, 255, 0.28);
+}
+
+@keyframes ripple-expand {
+    to { transform: scale(1); opacity: 0; }
+}
+
+/* ===== TOOLTIP ===== */
+#kpi-tooltip {
+    transition: opacity 0.12s ease;
+}
+
+/* ===== FOCUS MODAL ===== */
+#focus-modal .modal-content {
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+body.dark-mode #focus-modal .modal-content {
+    background: #1f2937;
+}
+
+body.dark-mode #focus-modal .bg-gray-50 {
+    background: #374151;
+}
+
+body.dark-mode #focus-modal #focus-kpi-name,
+body.dark-mode #focus-modal #focus-kpi-pct,
+body.dark-mode #focus-modal #focus-kpi-value,
+body.dark-mode #focus-modal #focus-kpi-target {
+    color: #f3f4f6;
+}
+
+body.dark-mode #focus-modal #focus-modal-close {
+    background: #374151;
+    color: #9ca3af;
+}
+
+/* Keyboard shortcut hint */
+#kb-hint {
+    transition: opacity 0.3s ease;
+}
+
+/* KPI name cursor pointer */
+.kpi-name { cursor: pointer; }
+.kpi-name:hover { text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 3px; }

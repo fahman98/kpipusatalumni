@@ -484,16 +484,158 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // ===== FOCUS MODE =====
+    let focusGaugeChart = null;
+    const focusModal = getEl('focus-modal');
+    const focusModalClose = getEl('focus-modal-close');
+
+    function openFocusMode(kpiId) {
+        const data = kpiDataCache[currentQuarter];
+        if (!data || !data.processedKpis) return;
+        const kpi = data.processedKpis.find(k => k.id === kpiId);
+        if (!kpi) return;
+
+        const pct = getKpiPercentage(kpi);
+        const cappedPct = Math.min(pct, 100);
+        const val = calculateKpiValue(kpi);
+        const valStr = kpi.isCurrency ? 'RM ' + Math.floor(val).toLocaleString()
+                     : kpi.isPercentage ? val.toFixed(1) + '%'
+                     : Math.floor(val).toLocaleString();
+        const color = pct >= 75 ? '#43a047' : pct >= 30 ? '#f59e0b' : '#e53935';
+
+        getEl('focus-kpi-name').textContent = kpi.name;
+        getEl('focus-kpi-pct').textContent = cappedPct.toFixed(1) + '%';
+        getEl('focus-kpi-pct').style.color = color;
+        getEl('focus-kpi-value').textContent = valStr;
+        getEl('focus-kpi-target').textContent = kpi.target;
+
+        const trendRow = getEl('focus-trend-row');
+        if (kpi.trend && trendRow) {
+            const chipClass = kpi.trendColor && kpi.trendColor.includes('green') ? 'kpi-trend-chip-up' :
+                              kpi.trendColor && kpi.trendColor.includes('red')   ? 'kpi-trend-chip-down' : 'kpi-trend-chip-flat';
+            trendRow.innerHTML = `<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${chipClass}"><i class="fas ${kpi.trendIcon} mr-1.5 text-xs"></i>${kpi.trend} vs suku lepas</span>`;
+        } else if (trendRow) {
+            trendRow.innerHTML = '';
+        }
+
+        // Draw focus gauge
+        const canvas = getEl('focus-gauge-canvas');
+        if (focusGaugeChart) { focusGaugeChart.destroy(); focusGaugeChart = null; }
+        if (canvas) {
+            focusGaugeChart = new Chart(canvas, {
+                type: 'doughnut',
+                data: { datasets: [{ data: [cappedPct, 100 - cappedPct],
+                    backgroundColor: [color, document.body.classList.contains('dark-mode') ? '#374151' : '#e5e7eb'],
+                    borderWidth: 0, circumference: 270, rotation: 225 }] },
+                options: { responsive: true, maintainAspectRatio: false, cutout: '80%',
+                    plugins: { legend: { display: false }, tooltip: { enabled: false } },
+                    animation: { duration: 700, easing: 'easeOutQuart' } }
+            });
+        }
+        openModal(focusModal);
+    }
+
+    if (focusModalClose) focusModalClose.addEventListener('click', () => closeModal(focusModal));
+    if (focusModal) focusModal.addEventListener('click', (e) => { if (e.target === focusModal) closeModal(focusModal); });
+
+    // ===== TOOLTIP ON RING HOVER =====
+    const tooltip = getEl('kpi-tooltip');
+    if (kpiGridContainer && tooltip) {
+        kpiGridContainer.addEventListener('mouseover', (e) => {
+            const ring = e.target.closest('.kpi-ring-wrap');
+            if (!ring) return;
+            const card = ring.closest('.kpi-card');
+            if (!card) return;
+            const name  = card.querySelector('.kpi-name')?.textContent || '';
+            const value = card.querySelector('.animated-value')?.textContent || '—';
+            const target = card.querySelector('.kpi-target-display')?.textContent?.replace(/\D*$/,'').trim() || '—';
+            const pct   = card.querySelector('.kpi-percentage-display')?.textContent || '—';
+            const trend = card.querySelector('.kpi-trend');
+            const trendTxt = trend ? trend.textContent.trim() : '—';
+            const trendClr = trend && trend.classList.contains('kpi-trend-chip-up') ? '#4ade80'
+                           : trend && trend.classList.contains('kpi-trend-chip-down') ? '#f87171' : '#9ca3af';
+
+            getEl('tooltip-name').textContent   = name;
+            getEl('tooltip-value').textContent  = value;
+            getEl('tooltip-target').textContent = target;
+            const pctEl = getEl('tooltip-pct');
+            pctEl.textContent = pct;
+            const pctNum = parseFloat(pct);
+            pctEl.style.color = pctNum >= 75 ? '#4ade80' : pctNum >= 30 ? '#fbbf24' : '#f87171';
+            getEl('tooltip-trend').textContent = trendTxt || '—';
+            getEl('tooltip-trend').style.color = trendClr;
+
+            tooltip.classList.remove('hidden');
+        });
+
+        kpiGridContainer.addEventListener('mousemove', (e) => {
+            if (tooltip.classList.contains('hidden')) return;
+            const ring = e.target.closest('.kpi-ring-wrap');
+            if (!ring) { tooltip.classList.add('hidden'); return; }
+            const x = e.clientX + 18;
+            const y = e.clientY - 80;
+            const tw = tooltip.offsetWidth || 200;
+            tooltip.style.left = (x + tw > window.innerWidth ? e.clientX - tw - 12 : x) + 'px';
+            tooltip.style.top  = Math.max(8, y) + 'px';
+        });
+
+        kpiGridContainer.addEventListener('mouseleave', () => tooltip.classList.add('hidden'));
+    }
+
+    // ===== KEYBOARD SHORTCUTS =====
+    const kbHint = getEl('kb-hint');
+    let kbHintTimeout;
+    function showKbHint(msg) {
+        if (!kbHint) return;
+        kbHint.textContent = msg;
+        kbHint.classList.remove('hidden');
+        kbHint.style.opacity = '1';
+        clearTimeout(kbHintTimeout);
+        kbHintTimeout = setTimeout(() => { kbHint.style.opacity = '0'; setTimeout(() => kbHint.classList.add('hidden'), 300); }, 1200);
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) return;
+        if (e.metaKey || e.ctrlKey || e.altKey) return;
+        if (e.key >= '1' && e.key <= '4') {
+            const qBtn = document.querySelector(`.quarter-btn[data-quarter="${e.key}"]`);
+            if (qBtn) { qBtn.click(); showKbHint(`Suku ${e.key}`); }
+        }
+        if (e.key === '/') {
+            e.preventDefault();
+            const si = getEl('dashboard-search-input');
+            if (si) { si.focus(); si.select(); showKbHint('/ Cari KPI...'); }
+        }
+        if (e.key === 'Escape') {
+            if (focusModal && focusModal.classList.contains('is-open')) closeModal(focusModal);
+        }
+    });
+
+    // ===== RIPPLE EFFECT =====
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest('.quarter-btn, .footer-action-btn, .kpi-action-btn, #theme-toggle, #view-toggle-btn');
+        if (!btn) return;
+        const wave = document.createElement('span');
+        wave.className = 'ripple-wave';
+        const rect = btn.getBoundingClientRect();
+        const size = Math.max(rect.width, rect.height) * 2.2;
+        wave.style.cssText = `width:${size}px;height:${size}px;left:${e.clientX-rect.left-size/2}px;top:${e.clientY-rect.top-size/2}px`;
+        btn.appendChild(wave);
+        wave.addEventListener('animationend', () => wave.remove());
+    }, true);
+
     // Grid Interaction
     if (kpiGridContainer) {
         kpiGridContainer.addEventListener('click', (e) => {
             const chartBtn = e.target.closest('.show-chart-btn');
             const detailsBtn = e.target.closest('.show-details-btn');
+            const kpiNameEl = e.target.closest('.kpi-name');
             if (chartBtn) showHistoryChart(chartBtn.dataset.kpiId, chartBtn);
             if (detailsBtn) {
                 const kpiId = detailsBtn.dataset.kpiId;
                 if (kpiId) showDetailsModal(kpiId, detailsBtn);
             }
+            if (kpiNameEl && kpiNameEl.dataset.kpiId) openFocusMode(kpiNameEl.dataset.kpiId);
         });
 
         // #5: Swipe gesture — tukar suku dengan swipe kiri/kanan pada grid (mobile)

@@ -500,9 +500,68 @@
 
         </footer>
 
+        <!-- ===== RICH TOOLTIP ===== -->
+        <div id="kpi-tooltip" class="fixed z-[90] pointer-events-none hidden" role="tooltip">
+            <div class="bg-gray-900 text-white rounded-2xl shadow-2xl px-4 py-3 min-w-[190px] border border-white/10">
+                <p id="tooltip-name" class="font-bold text-white text-xs uppercase tracking-wider mb-2.5 truncate"></p>
+                <div class="space-y-1.5">
+                    <div class="flex justify-between gap-6">
+                        <span class="text-gray-400 text-xs">Nilai</span>
+                        <span id="tooltip-value" class="font-semibold text-white text-xs"></span>
+                    </div>
+                    <div class="flex justify-between gap-6">
+                        <span class="text-gray-400 text-xs">Sasaran</span>
+                        <span id="tooltip-target" class="text-gray-300 text-xs"></span>
+                    </div>
+                    <div class="flex justify-between gap-6">
+                        <span class="text-gray-400 text-xs">Peratus</span>
+                        <span id="tooltip-pct" class="font-bold text-xs"></span>
+                    </div>
+                    <div class="flex justify-between gap-6 border-t border-white/10 pt-1.5">
+                        <span class="text-gray-400 text-xs">vs suku lepas</span>
+                        <span id="tooltip-trend" class="font-semibold text-xs"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
 
+        <!-- ===== FOCUS MODE MODAL ===== -->
+        <div id="focus-modal" class="modal fixed inset-0 z-[70] flex items-center justify-center p-4">
+            <div class="modal-content bg-white rounded-3xl shadow-2xl w-full max-w-sm p-7 relative" role="dialog" aria-modal="true">
+                <button id="focus-modal-close" class="absolute top-4 right-4 w-9 h-9 rounded-full bg-gray-100 hover:bg-red-50 hover:text-red-500 flex items-center justify-center text-gray-400 transition-all text-sm">
+                    <i class="fas fa-times"></i>
+                </button>
+                <!-- Gauge -->
+                <div class="flex justify-center mb-2">
+                    <div class="relative w-44 h-44">
+                        <canvas id="focus-gauge-canvas"></canvas>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center">
+                            <p id="focus-kpi-pct" class="text-3xl font-extrabold text-gray-800 leading-none">—</p>
+                            <p class="text-xs text-gray-400 mt-1">daripada sasaran</p>
+                        </div>
+                    </div>
+                </div>
+                <!-- Name -->
+                <h2 id="focus-kpi-name" class="text-base font-bold text-center text-gray-800 mb-5 leading-snug px-4">—</h2>
+                <!-- Stats -->
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                    <div class="bg-gray-50 rounded-2xl p-3.5 text-center">
+                        <p class="text-xs text-gray-400 font-medium mb-1">Pencapaian</p>
+                        <p id="focus-kpi-value" class="text-xl font-extrabold text-gray-800 leading-none">—</p>
+                    </div>
+                    <div class="bg-gray-50 rounded-2xl p-3.5 text-center">
+                        <p class="text-xs text-gray-400 font-medium mb-1">Sasaran</p>
+                        <p id="focus-kpi-target" class="text-xl font-extrabold text-gray-800 leading-none">—</p>
+                    </div>
+                </div>
+                <!-- Trend -->
+                <div id="focus-trend-row" class="flex justify-center"></div>
+            </div>
+        </div>
 
-        <div id="chart-modal"
+        <!-- Keyboard shortcut hint (shows briefly on first use) -->
+        <div id="kb-hint" class="hidden fixed bottom-24 left-1/2 -translate-x-1/2 z-50 bg-gray-900/90 text-white text-xs font-semibold px-4 py-2 rounded-full shadow-xl backdrop-blur-sm pointer-events-none">
+        </div>
             class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
             <div class="modal-content bg-white rounded-lg shadow-2xl w-full max-w-3xl p-6" role="dialog"
                 aria-modal="true" aria-labelledby="chart-modal-title">
