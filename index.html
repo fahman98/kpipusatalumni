@@ -33,6 +33,9 @@
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 
+    <!-- Phosphor Icons (Duotone) — KPI card icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/duotone/style.css">
+
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -706,18 +709,23 @@
                             required placeholder="100">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Ikon (FontAwesome)</label>
+                        <label class="block text-sm font-medium text-gray-700">Ikon</label>
                         <select id="new-kpi-icon"
                             class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-brand-primary focus:border-brand-primary">
-                            <option value="fa-users">👥 Users (Orang)</option>
-                            <option value="fa-chart-line">📈 Chart (Graf)</option>
-                            <option value="fa-money-bill-wave">💰 Money (Duit)</option>
-                            <option value="fa-handshake">🤝 Handshake (Kolaborasi)</option>
-                            <option value="fa-bullhorn">📢 Bullhorn (Hebahan)</option>
-                            <option value="fa-trophy">🏆 Trophy (Pencapaian)</option>
-                            <option value="fa-globe-asia">🌍 Globe (Global)</option>
-                            <option value="fa-graduation-cap">🎓 Cap (Graduasi)</option>
-                            <option value="fa-star">⭐ Star (Ikon)</option>
+                            <option value="ph-users">👥 Users (Orang)</option>
+                            <option value="ph-trend-up">📈 Trend (Graf)</option>
+                            <option value="ph-money">💰 Money (Duit)</option>
+                            <option value="ph-handshake">🤝 Handshake (Kolaborasi)</option>
+                            <option value="ph-megaphone">📢 Megaphone (Hebahan)</option>
+                            <option value="ph-trophy">🏆 Trophy (Pencapaian)</option>
+                            <option value="ph-globe">🌍 Globe (Global)</option>
+                            <option value="ph-graduation-cap">🎓 Graduation Cap (Graduasi)</option>
+                            <option value="ph-star">⭐ Star (Bintang)</option>
+                            <option value="ph-chart-bar">📊 Chart Bar (Graf Bar)</option>
+                            <option value="ph-buildings">🏢 Buildings (Bangunan)</option>
+                            <option value="ph-student">🎒 Student (Pelajar)</option>
+                            <option value="ph-calendar-check">📅 Calendar (Jadual)</option>
+                            <option value="ph-certificate">📜 Certificate (Sijil)</option>
                         </select>
                     </div>
                     <div>
@@ -803,7 +811,7 @@
                     <!-- Ring progress + icon (#ring) -->
                     <div class="kpi-ring-wrap">
                         <div class="kpi-icon-container kpi-ring-inner">
-                            <i class="kpi-icon fas text-xl"></i>
+                            <i class="kpi-icon ph-duotone text-xl"></i>
                         </div>
                     </div>
                     <!-- KPI Name -->

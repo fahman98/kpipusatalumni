@@ -14,7 +14,7 @@ import {
     showDetailsModal,
     showConfirmModal,
     showInputModal,
-
+    getPhosphorIcon,
 } from './ui.js';
 
 import {
@@ -1280,7 +1280,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td class="px-4 py-3">
                     <div class="flex items-center gap-3">
                         <div class="w-8 h-8 rounded-lg ${iconBg} flex items-center justify-center flex-shrink-0">
-                            <i class="${kpi.icon || 'fas fa-chart-bar'} ${iconClr} text-xs"></i>
+                            <i class="ph-duotone ${getPhosphorIcon(kpi.icon)} ${iconClr} text-xs"></i>
                         </div>
                         <span class="font-semibold text-gray-800 text-sm">${kpi.name}</span>
                     </div>

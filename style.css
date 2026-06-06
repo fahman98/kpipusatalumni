@@ -648,6 +648,16 @@ li:hover .item-actions {
     color: #0d47a1;
 }
 
+/* ===== PHOSPHOR ICONS (DUOTONE) ===== */
+/* Duotone fill layer opacity — subtle secondary layer */
+.kpi-icon-container { --ph-fill-opacity: 0.25; }
+.kpi-icon-container.icon-bg-good { --ph-fill-opacity: 0.2; }
+.kpi-icon-container.icon-bg-ok   { --ph-fill-opacity: 0.2; }
+.kpi-icon-container.icon-bg-bad  { --ph-fill-opacity: 0.2; }
+
+/* Phosphor icons size inside table view */
+#kpi-table-container .ph-duotone { --ph-fill-opacity: 0.2; font-size: 1rem; }
+
 /* #9: Icon container with background */
 .kpi-icon-container {
     width: 44px;
