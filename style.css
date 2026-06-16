@@ -1439,6 +1439,25 @@ body.dark-mode #focus-modal #focus-modal-close {
 .kpi-name { cursor: pointer; }
 .kpi-name:hover { text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 3px; }
 
+/* ===== BULAN BADGE (2026+) ===== */
+.kpi-bulan-badge {
+    display: inline-block;
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+    margin-top: 4px;
+    letter-spacing: 0.04em;
+}
+body.dark-mode .kpi-bulan-badge {
+    background: #1e3a8a;
+    color: #93c5fd;
+    border-color: #1e40af;
+}
+
 /* ===== YEAR PAGE TRANSITION VEIL ===== */
 #year-veil {
     position: fixed;

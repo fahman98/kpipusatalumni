@@ -404,7 +404,7 @@ export async function saveBulkKpiValues(kpiId, valuesObj) {
     }
 }
 
-export async function updateKpiValueInFirestore(quarterKey, kpiId, newValue) {
+export async function updateKpiValueInFirestore(quarterKey, kpiId, newValue, bulan = null) {
     if (!isEditMode) return;
     const basePath = `artifacts/${getAppId()}/public/data/kpi-${selectedYear}`;
     const startQuarterNum = parseInt(quarterKey.replace('q', ''), 10);
@@ -420,12 +420,16 @@ export async function updateKpiValueInFirestore(quarterKey, kpiId, newValue) {
             const kpiIndex = data.kpis.findIndex(k => k.id === kpiId);
             if (kpiIndex > -1) {
                 data.kpis[kpiIndex].value = newValue;
-                data.kpis[kpiIndex].updatedAt = new Date().toISOString(); // #4 tarikh kemaskini
+                data.kpis[kpiIndex].updatedAt = new Date().toISOString();
+                // bulan hanya disimpan untuk suku yang diedit, bukan propagate
+                if (i === startQuarterNum && bulan !== null) {
+                    data.kpis[kpiIndex].bulan = bulan;
+                }
                 batch.update(docRef, { kpis: data.kpis });
             }
         }
         await batch.commit();
-        await writeAuditLog('UPDATE_VALUE', { kpiId, quarterKey, newValue });
+        await writeAuditLog('UPDATE_VALUE', { kpiId, quarterKey, newValue, bulan });
         showToastNotification('Nilai dikemaskini!', 'success');
     } catch (e) {
         console.error(e);

@@ -247,18 +247,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (editValBtn) {
                     editValBtn.addEventListener('click', (e) => {
                         e.stopPropagation();
-                        // prevent edit if has details
-                        if (kpi.details && (kpi.details.items || (kpi.details.targetList && kpi.details.targetList.length > 0))) {
-                            return; // Validation handled by disabling button logic in UI, but double check
-                        }
+                        if (kpi.details && (kpi.details.items || (kpi.details.targetList && kpi.details.targetList.length > 0))) return;
                         const currentVal = calculateKpiValue(kpi);
+
+                        // Month selector — only for 2026 and beyond
+                        const showMonth = parseInt(selectedYear) >= 2026;
+                        const qNum = parseInt(quarterKey.replace('q', ''));
+                        const monthStart = (qNum - 1) * 3 + 1;
+                        const monthEnd = qNum * 3;
+                        const currentMonth = new Date().getMonth() + 1;
+                        const defaultMonth = kpi.bulan
+                            ? kpi.bulan
+                            : (currentMonth >= monthStart && currentMonth <= monthEnd ? currentMonth : monthStart);
 
                         showInputModal(
                             `Kemaskini Nilai: ${kpi.name}`,
                             "Masukkan nilai pencapaian terkini:",
                             currentVal,
-                            (newVal) => {
-                                if (newVal !== null && newVal.trim() !== "") {
+                            (newVal, bulan) => {
+                                if (newVal !== null && String(newVal).trim() !== "") {
                                     const parsed = parseFloat(newVal);
                                     if (isNaN(parsed) || parsed < 0) {
                                         showToastNotification("Nilai tidak sah. Sila masukkan angka positif.", "danger");
@@ -268,9 +275,10 @@ document.addEventListener('DOMContentLoaded', () => {
                                         showToastNotification("Nilai peratusan tidak boleh melebihi 100%.", "danger");
                                         return;
                                     }
-                                    updateKpiValueInFirestore(quarterKey, kpi.id, parsed);
+                                    updateKpiValueInFirestore(quarterKey, kpi.id, parsed, showMonth ? bulan : null);
                                 }
-                            }
+                            },
+                            showMonth ? { showMonth: true, defaultMonth, monthRange: [monthStart, monthEnd] } : {}
                         );
                     });
                 }

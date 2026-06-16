@@ -5,8 +5,11 @@ import {
     updateKpiTargetListItem,
     updateKpiBreakdownList,
     updateKpiProgressListItem,
-    kpiDataCache
+    kpiDataCache,
+    selectedYear
 } from './api.js';
+
+const BULAN_MY = ['', 'Jan', 'Feb', 'Mac', 'Apr', 'Mei', 'Jun', 'Jul', 'Ogos', 'Sep', 'Okt', 'Nov', 'Dis'];
 
 // ── Phosphor icon mapping (legacy FA names → Phosphor names) ──
 const FA_TO_PHOSPHOR = {
@@ -123,7 +126,7 @@ export function showConfirmModal(title, message, onConfirm) {
 }
 
 // --- INPUT MODAL ---
-export function showInputModal(title, message, currentValue, onConfirm) {
+export function showInputModal(title, message, currentValue, onConfirm, options = {}) {
     const modal = document.getElementById('input-modal');
     const titleEl = document.getElementById('input-modal-title');
     const msgEl = document.getElementById('input-modal-message');
@@ -137,6 +140,28 @@ export function showInputModal(title, message, currentValue, onConfirm) {
     msgEl.textContent = message;
     inputEl.value = currentValue || '';
 
+    // Month selector — show/hide and configure per options
+    const monthRow = document.getElementById('input-modal-month-row');
+    const monthSelect = document.getElementById('input-modal-month');
+    if (monthRow && monthSelect) {
+        if (options.showMonth) {
+            monthRow.classList.remove('hidden');
+            // Show only months valid for the quarter
+            if (options.monthRange) {
+                const [mStart, mEnd] = options.monthRange;
+                Array.from(monthSelect.options).forEach(opt => {
+                    const v = parseInt(opt.value);
+                    opt.hidden = v < mStart || v > mEnd;
+                });
+            } else {
+                Array.from(monthSelect.options).forEach(opt => { opt.hidden = false; });
+            }
+            if (options.defaultMonth) monthSelect.value = String(options.defaultMonth);
+        } else {
+            monthRow.classList.add('hidden');
+        }
+    }
+
     // Reset Listeners
     const newOk = okBtn.cloneNode(true);
     okBtn.parentNode.replaceChild(newOk, okBtn);
@@ -146,25 +171,23 @@ export function showInputModal(title, message, currentValue, onConfirm) {
 
     const closeModal = () => modal.classList.add('hidden');
 
+    const getMonthVal = () => (options.showMonth && monthSelect) ? parseInt(monthSelect.value) : null;
+
     newOk.addEventListener('click', () => {
-        const val = inputEl.value;
-        onConfirm(val);
+        onConfirm(inputEl.value, getMonthVal());
         closeModal();
     });
 
     newCancel.addEventListener('click', closeModal);
 
-    // Enter key support
     inputEl.onkeydown = (e) => {
         if (e.key === 'Enter') {
-            const val = inputEl.value;
-            onConfirm(val);
+            onConfirm(inputEl.value, getMonthVal());
             closeModal();
         }
     };
 
     modal.classList.remove('hidden');
-    // Focus input after small delay
     setTimeout(() => inputEl.focus(), 100);
 }
 
@@ -363,6 +386,17 @@ export function createKpiCard(kpi) {
             updatedAtEl.textContent = `Kemaskini: ${formatted}`;
         } else {
             updatedAtEl.remove();
+        }
+    }
+
+    // Month badge — hanya untuk 2026 dan ke atas
+    const bulanBadge = cardElement.querySelector('.kpi-bulan-badge');
+    if (bulanBadge) {
+        if (kpi.bulan && parseInt(selectedYear) >= 2026) {
+            bulanBadge.textContent = BULAN_MY[kpi.bulan] || '';
+            bulanBadge.classList.remove('hidden');
+        } else {
+            bulanBadge.remove();
         }
     }
 
