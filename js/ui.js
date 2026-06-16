@@ -5,11 +5,13 @@ import {
     updateKpiTargetListItem,
     updateKpiBreakdownList,
     updateKpiProgressListItem,
+    updateKpiBulan,
     kpiDataCache,
     selectedYear
 } from './api.js';
 
 const BULAN_MY = ['', 'Jan', 'Feb', 'Mac', 'Apr', 'Mei', 'Jun', 'Jul', 'Ogos', 'Sep', 'Okt', 'Nov', 'Dis'];
+const BULAN_FULL = ['', 'Januari', 'Februari', 'Mac', 'April', 'Mei', 'Jun', 'Julai', 'Ogos', 'September', 'Oktober', 'November', 'Disember'];
 
 // ── Phosphor icon mapping (legacy FA names → Phosphor names) ──
 const FA_TO_PHOSPHOR = {
@@ -389,10 +391,43 @@ export function createKpiCard(kpi) {
         }
     }
 
-    // Month badge — hanya untuk 2026 dan ke atas
+    // Month selector/badge — hanya untuk 2026 dan ke atas
     const bulanBadge = cardElement.querySelector('.kpi-bulan-badge');
     if (bulanBadge) {
-        if (kpi.bulan && parseInt(selectedYear) >= 2026) {
+        const is2026plus = parseInt(selectedYear) >= 2026;
+        if (!is2026plus) {
+            bulanBadge.remove();
+        } else if (isEditMode) {
+            // Admin: dropdown bulan terus pada kad (pre-filter ikut suku aktif)
+            const activeQ = getEl('pagination')?.querySelector('.active')?.dataset.quarter || '1';
+            const qNum = parseInt(activeQ);
+            const mStart = (qNum - 1) * 3 + 1;
+            const mEnd = qNum * 3;
+
+            const sel = document.createElement('select');
+            sel.className = 'kpi-bulan-select';
+            sel.title = 'Tetapkan bulan data';
+            const ph = document.createElement('option');
+            ph.value = '';
+            ph.textContent = '+ Bulan';
+            sel.appendChild(ph);
+            for (let m = mStart; m <= mEnd; m++) {
+                const o = document.createElement('option');
+                o.value = String(m);
+                o.textContent = BULAN_FULL[m];
+                if (kpi.bulan === m) o.selected = true;
+                sel.appendChild(o);
+            }
+            if (kpi.bulan) sel.classList.add('has-value');
+            sel.addEventListener('click', (e) => e.stopPropagation());
+            sel.addEventListener('change', (e) => {
+                e.stopPropagation();
+                const v = e.target.value ? parseInt(e.target.value) : null;
+                updateKpiBulan(`q${qNum}`, kpi.id, v);
+            });
+            bulanBadge.replaceWith(sel);
+        } else if (kpi.bulan) {
+            // Guest: badge sahaja
             bulanBadge.textContent = BULAN_MY[kpi.bulan] || '';
             bulanBadge.classList.remove('hidden');
         } else {
