@@ -5,13 +5,23 @@ import {
     updateKpiTargetListItem,
     updateKpiBreakdownList,
     updateKpiProgressListItem,
-    updateKpiBulan,
     kpiDataCache,
     selectedYear
 } from './api.js';
 
 const BULAN_MY = ['', 'Jan', 'Feb', 'Mac', 'Apr', 'Mei', 'Jun', 'Jul', 'Ogos', 'Sep', 'Okt', 'Nov', 'Dis'];
 const BULAN_FULL = ['', 'Januari', 'Februari', 'Mac', 'April', 'Mei', 'Jun', 'Julai', 'Ogos', 'September', 'Oktober', 'November', 'Disember'];
+
+// Build <option> tags for a quarter's valid months (Q1 → Jan–Mac, etc.)
+function bulanOptionsHTML(qNum, selectedBulan) {
+    const mStart = (qNum - 1) * 3 + 1;
+    const mEnd = qNum * 3;
+    let html = '<option value="">— Bulan —</option>';
+    for (let m = mStart; m <= mEnd; m++) {
+        html += `<option value="${m}"${selectedBulan === m ? ' selected' : ''}>${BULAN_FULL[m]}</option>`;
+    }
+    return html;
+}
 
 // ── Phosphor icon mapping (legacy FA names → Phosphor names) ──
 const FA_TO_PHOSPHOR = {
@@ -391,49 +401,6 @@ export function createKpiCard(kpi) {
         }
     }
 
-    // Month selector/badge — hanya untuk 2026 dan ke atas
-    const bulanBadge = cardElement.querySelector('.kpi-bulan-badge');
-    if (bulanBadge) {
-        const is2026plus = parseInt(selectedYear) >= 2026;
-        if (!is2026plus) {
-            bulanBadge.remove();
-        } else if (isEditMode) {
-            // Admin: dropdown bulan terus pada kad (pre-filter ikut suku aktif)
-            const activeQ = getEl('pagination')?.querySelector('.active')?.dataset.quarter || '1';
-            const qNum = parseInt(activeQ);
-            const mStart = (qNum - 1) * 3 + 1;
-            const mEnd = qNum * 3;
-
-            const sel = document.createElement('select');
-            sel.className = 'kpi-bulan-select';
-            sel.title = 'Tetapkan bulan data';
-            const ph = document.createElement('option');
-            ph.value = '';
-            ph.textContent = '+ Bulan';
-            sel.appendChild(ph);
-            for (let m = mStart; m <= mEnd; m++) {
-                const o = document.createElement('option');
-                o.value = String(m);
-                o.textContent = BULAN_FULL[m];
-                if (kpi.bulan === m) o.selected = true;
-                sel.appendChild(o);
-            }
-            if (kpi.bulan) sel.classList.add('has-value');
-            sel.addEventListener('click', (e) => e.stopPropagation());
-            sel.addEventListener('change', (e) => {
-                e.stopPropagation();
-                const v = e.target.value ? parseInt(e.target.value) : null;
-                updateKpiBulan(`q${qNum}`, kpi.id, v);
-            });
-            bulanBadge.replaceWith(sel);
-        } else if (kpi.bulan) {
-            // Guest: badge sahaja
-            bulanBadge.textContent = BULAN_MY[kpi.bulan] || '';
-            bulanBadge.classList.remove('hidden');
-        } else {
-            bulanBadge.remove();
-        }
-    }
 
     const editBtn = cardElement.querySelector('.edit-kpi-btn');
     if (isEditMode && kpi.hasOwnProperty('value')) {
@@ -752,11 +719,17 @@ export function showDetailsModal(kpiId, triggerElement) {
             };
         }
     } else if (type === 'breakdownList') {
+        // Pemilih bulan per-item hanya untuk 2026 dan ke atas
+        const showMonth = parseInt(selectedYear) >= 2026;
+        const qNum = parseInt(activeQuarter.replace('q', ''), 10);
+
         (items || []).forEach((item, index) => {
             const li = document.createElement('li');
             li.className = 'flex justify-between items-center p-2 rounded-lg hover:bg-gray-50';
+            const bulanBadge = (showMonth && item.bulan)
+                ? `<span class="breakdown-bulan-badge">${BULAN_MY[item.bulan]}</span>` : '';
             li.innerHTML = `
-                <span class="font-semibold flex-1 item-name">${item.name}</span>
+                <span class="font-semibold flex-1 item-name">${item.name}${bulanBadge}</span>
                 <span class="font-bold text-brand-primary mx-4 item-value">${item.value.toLocaleString()}</span>
                 ${isEditMode ? `
                 <div class="item-actions flex items-center">
@@ -768,11 +741,14 @@ export function showDetailsModal(kpiId, triggerElement) {
         });
 
         if (isEditMode) {
+            const addMonthField = showMonth
+                ? `<select id="new-breakdown-bulan" class="p-2 border rounded-lg bg-white text-sm">${bulanOptionsHTML(qNum, null)}</select>` : '';
             detailsAddNewWrapper.innerHTML = `
                 <div class="add-new-form-wrapper border-t pt-4 mt-4">
-                    <div class="flex gap-2">
-                        <input type="text" id="new-breakdown-name" placeholder="Nama Butiran" class="w-2/3 p-2 border rounded-lg">
-                        <input type="number" id="new-breakdown-value" placeholder="Nilai" class="w-1/3 p-2 border rounded-lg">
+                    <div class="flex gap-2 flex-wrap items-stretch">
+                        <input type="text" id="new-breakdown-name" placeholder="Nama Butiran" class="flex-1 min-w-[120px] p-2 border rounded-lg">
+                        <input type="number" id="new-breakdown-value" placeholder="Nilai" class="w-24 p-2 border rounded-lg">
+                        ${addMonthField}
                     </div>
                     <button id="save-new-breakdown-btn" class="w-full mt-2 bg-brand-primary text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-800 transition-all">
                         Simpan Butiran
@@ -782,12 +758,17 @@ export function showDetailsModal(kpiId, triggerElement) {
             document.getElementById('save-new-breakdown-btn').onclick = async () => {
                 const nameInput = document.getElementById('new-breakdown-name');
                 const valueInput = document.getElementById('new-breakdown-value');
+                const bulanSel = document.getElementById('new-breakdown-bulan');
                 const name = nameInput.value.trim();
                 const value = parseFloat(valueInput.value);
+                const bulan = bulanSel && bulanSel.value ? parseInt(bulanSel.value, 10) : null;
                 if (name && !isNaN(value)) {
-                    await updateKpiBreakdownList(activeQuarter, kpi.id, { name, value }, 'add');
+                    const payload = { name, value };
+                    if (bulan !== null) payload.bulan = bulan;
+                    await updateKpiBreakdownList(activeQuarter, kpi.id, payload, 'add');
                     nameInput.value = '';
                     valueInput.value = '';
+                    if (bulanSel) bulanSel.value = '';
                 } else {
                     showToastNotification('Sila isi nama dan nilai yang sah.', 'danger');
                 }
@@ -862,10 +843,15 @@ function handleEditListItem(liElement, kpiId, oldItemName) {
 function handleEditBreakdownItem(liElement, kpiId, itemIndex, item) {
     const originalHTML = liElement.innerHTML;
     const paginationContainer = getEl('pagination');
+    const qNum = parseInt(paginationContainer.querySelector('.active').dataset.quarter, 10);
+    const showMonth = parseInt(selectedYear) >= 2026;
+    const monthField = showMonth
+        ? `<select class="edit-bulan p-1 border rounded-lg bg-gray-100 mx-1 text-sm">${bulanOptionsHTML(qNum, item.bulan || null)}</select>` : '';
 
     liElement.innerHTML = `
         <input type="text" class="flex-1 p-1 border rounded-lg bg-gray-100 edit-name" value="${item.name}">
-        <input type="number" class="w-24 p-1 border rounded-lg bg-gray-100 mx-4 edit-value" value="${item.value}">
+        ${monthField}
+        <input type="number" class="w-20 p-1 border rounded-lg bg-gray-100 mx-1 edit-value" value="${item.value}">
         <div class="flex items-center">
             <button class="save-breakdown-item-btn text-green-500 hover:text-green-700"><i class="fas fa-check"></i></button>
             <button class="cancel-breakdown-edit-btn text-red-500 hover:text-red-700 ml-2"><i class="fas fa-times"></i></button>
@@ -879,10 +865,14 @@ function handleEditBreakdownItem(liElement, kpiId, itemIndex, item) {
     liElement.querySelector('.save-breakdown-item-btn').onclick = async () => {
         const newName = nameInput.value.trim();
         const newValue = parseFloat(liElement.querySelector('.edit-value').value);
+        const bulanSel = liElement.querySelector('.edit-bulan');
+        const bulan = bulanSel && bulanSel.value ? parseInt(bulanSel.value, 10) : null;
 
         if (newName && !isNaN(newValue)) {
+            const data = { name: newName, value: newValue };
+            if (bulan !== null) data.bulan = bulan;
             const activeQuarterKey = `q${paginationContainer.querySelector('.active').dataset.quarter}`;
-            await updateKpiBreakdownList(activeQuarterKey, kpiId, { index: itemIndex, data: { name: newName, value: newValue } }, 'edit');
+            await updateKpiBreakdownList(activeQuarterKey, kpiId, { index: itemIndex, data }, 'edit');
         } else {
             showToastNotification('Nama dan nilai tidak sah.', 'danger');
             liElement.innerHTML = originalHTML;

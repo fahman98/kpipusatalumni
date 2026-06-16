@@ -439,31 +439,6 @@ export async function updateKpiValueInFirestore(quarterKey, kpiId, newValue, bul
     }
 }
 
-// Simpan bulan untuk SATU suku sahaja (tidak propagate)
-export async function updateKpiBulan(quarterKey, kpiId, bulan) {
-    if (!isEditMode) return;
-    const basePath = `artifacts/${getAppId()}/public/data/kpi-${selectedYear}`;
-    try {
-        const docRef = db.collection(basePath).doc(quarterKey);
-        const doc = await docRef.get();
-        if (!doc.exists) return;
-        const data = doc.data();
-        const idx = data.kpis.findIndex(k => k.id === kpiId);
-        if (idx === -1) return;
-        if (bulan === null) {
-            delete data.kpis[idx].bulan;
-        } else {
-            data.kpis[idx].bulan = bulan;
-        }
-        await docRef.update({ kpis: data.kpis });
-        await writeAuditLog('UPDATE_BULAN', { kpiId, quarterKey, bulan });
-        showToastNotification('Bulan dikemaskini!', 'success');
-    } catch (e) {
-        console.error(e);
-        showToastNotification('Ralat simpan bulan.', 'danger');
-    }
-}
-
 export async function updateKpiDescriptionInFirestore(kpiId, text) {
     if (!isEditMode) return;
     const basePath = `artifacts/${getAppId()}/public/data/kpi-${selectedYear}`;

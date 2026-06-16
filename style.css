@@ -1439,52 +1439,22 @@ body.dark-mode #focus-modal #focus-modal-close {
 .kpi-name { cursor: pointer; }
 .kpi-name:hover { text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 3px; }
 
-/* ===== BULAN BADGE (2026+) ===== */
-.kpi-bulan-badge {
+/* ===== BULAN BADGE — breakdown items (2026+) ===== */
+.breakdown-bulan-badge {
     display: inline-block;
-    font-size: 0.68rem;
+    font-size: 0.62rem;
     font-weight: 700;
     padding: 1px 7px;
     border-radius: 999px;
     background: #eff6ff;
     color: #1d4ed8;
     border: 1px solid #bfdbfe;
-    margin-top: 4px;
+    margin-left: 8px;
+    vertical-align: middle;
     letter-spacing: 0.04em;
+    text-transform: uppercase;
 }
-body.dark-mode .kpi-bulan-badge {
-    background: #1e3a8a;
-    color: #93c5fd;
-    border-color: #1e40af;
-}
-
-/* Admin: per-card month selector */
-.kpi-bulan-select {
-    margin-top: 5px;
-    font-size: 0.7rem;
-    font-weight: 700;
-    padding: 2px 6px;
-    border-radius: 7px;
-    background: #f8fafc;
-    color: #64748b;
-    border: 1px dashed #cbd5e1;
-    cursor: pointer;
-    outline: none;
-    transition: all 0.15s ease;
-}
-.kpi-bulan-select:hover { border-color: #94a3b8; background: #f1f5f9; }
-.kpi-bulan-select:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.15); }
-.kpi-bulan-select.has-value {
-    background: #eff6ff;
-    color: #1d4ed8;
-    border: 1px solid #bfdbfe;
-}
-body.dark-mode .kpi-bulan-select {
-    background: #1f2937;
-    color: #9ca3af;
-    border-color: #4b5563;
-}
-body.dark-mode .kpi-bulan-select.has-value {
+body.dark-mode .breakdown-bulan-badge {
     background: #1e3a8a;
     color: #93c5fd;
     border-color: #1e40af;
