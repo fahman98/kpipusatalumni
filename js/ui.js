@@ -846,15 +846,21 @@ function handleEditBreakdownItem(liElement, kpiId, itemIndex, item) {
     const qNum = parseInt(paginationContainer.querySelector('.active').dataset.quarter, 10);
     const showMonth = parseInt(selectedYear) >= 2026;
     const monthField = showMonth
-        ? `<select class="edit-bulan p-1 border rounded-lg bg-gray-100 mx-1 text-sm">${bulanOptionsHTML(qNum, item.bulan || null)}</select>` : '';
+        ? `<select class="edit-bulan p-1 border rounded-lg bg-gray-100 text-sm">${bulanOptionsHTML(qNum, item.bulan || null)}</select>` : '';
 
     liElement.innerHTML = `
-        <input type="text" class="flex-1 p-1 border rounded-lg bg-gray-100 edit-name" value="${item.name}">
-        ${monthField}
-        <input type="number" class="w-20 p-1 border rounded-lg bg-gray-100 mx-1 edit-value" value="${item.value}">
-        <div class="flex items-center">
-            <button class="save-breakdown-item-btn text-green-500 hover:text-green-700"><i class="fas fa-check"></i></button>
-            <button class="cancel-breakdown-edit-btn text-red-500 hover:text-red-700 ml-2"><i class="fas fa-times"></i></button>
+        <div class="flex flex-col w-full gap-1">
+            <div class="flex gap-1 w-full">
+                <input type="text" class="flex-1 min-w-0 p-1 border rounded-lg bg-gray-100 edit-name text-sm" value="${item.name}">
+                ${monthField}
+            </div>
+            <div class="flex items-center gap-1">
+                <input type="number" class="w-24 p-1 border rounded-lg bg-gray-100 edit-value text-sm" value="${item.value}">
+                <div class="flex items-center ml-auto gap-2">
+                    <button class="save-breakdown-item-btn text-green-500 hover:text-green-700"><i class="fas fa-check"></i></button>
+                    <button class="cancel-breakdown-edit-btn text-red-500 hover:text-red-700"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
         </div>
     `;
 
