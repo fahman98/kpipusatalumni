@@ -634,7 +634,10 @@ export async function updateKpiBreakdownList(quarterKey, kpiId, payload, action)
             if (kpiIndex === -1) continue;
             const items = data.kpis[kpiIndex].details.items || [];
             if (action === 'add') {
-                if (!items.some(it => it.name === payload.name)) items.push(payload);
+                const isDup = payload.bulan != null
+                    ? items.some(it => it.name === payload.name && String(it.bulan ?? '') === String(payload.bulan ?? ''))
+                    : items.some(it => it.name === payload.name);
+                if (!isDup) items.push(payload);
             } else if (action === 'delete') {
                 const idx = items.findIndex(it => sameItem(it, targetIdentity));
                 if (idx !== -1) items.splice(idx, 1);

@@ -177,13 +177,12 @@ async function addRecord({ name, value, bulan }) {
         showToastNotification('Bulan tidak sah.', 'danger');
         return;
     }
-    // updateKpiBreakdownList dedups by exact `name` within a quarter, so a record
-    // sharing a source name with an existing one in the same starting quarter would
-    // be silently dropped. Detect and warn instead of losing data quietly.
+    // Block true duplicates (same name AND same bulan). Same name in a different
+    // month is intentional (e.g. "Tabung Alumni Care" Jan, Feb, Apr) and must be allowed.
     const existing = await getPendanaanItemsForQuarter(currentYear, quarterKey);
-    if (existing.some(it => it.name === name)) {
+    if (existing.some(it => it.name === name && String(it.bulan ?? '') === String(bulan ?? ''))) {
         showToastNotification(
-            `Sumber "${name}" sudah wujud dalam suku ini. Sila bezakan nama (cth: tambah bulan).`,
+            `Rekod "${name}" untuk bulan ini sudah wujud dalam suku ini.`,
             'danger'
         );
         return;
@@ -263,9 +262,9 @@ async function editRecord(orig, updated) {
         // Quarter changed — must delete from old, add to new. Guard against the
         // add being silently dropped due to a same-name item in the new quarter.
         const newQItems = await getPendanaanItemsForQuarter(currentYear, newQuarter);
-        if (newQItems.some(it => it.name === updated.name)) {
+        if (newQItems.some(it => it.name === updated.name && String(it.bulan ?? '') === String(updated.bulan ?? ''))) {
             showToastNotification(
-                `Sumber "${updated.name}" sudah wujud dalam suku sasaran. Sila bezakan nama.`,
+                `Rekod "${updated.name}" untuk bulan ini sudah wujud dalam suku sasaran.`,
                 'danger'
             );
             return;
