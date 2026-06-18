@@ -786,9 +786,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (overallChartBtn) overallChartBtn.addEventListener('click', (e) => showHistoryChart('overall', e.currentTarget));
     if (toastCloseBtn) toastCloseBtn.addEventListener('click', () => getEl('toast-notification').classList.remove('show'));
 
-    // What-If
-
-
     // Modals — klik luar untuk tutup, dan destroy chart bila chartModal ditutup
     [chartModal, detailsModal, editDescModal, addKpiModal, editStructureModal, inputModal].forEach(modal => {
         if (!modal) return;
