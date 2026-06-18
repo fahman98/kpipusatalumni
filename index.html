@@ -196,6 +196,24 @@
             <span class="ribbon-badge bg-amber-100 text-amber-700 text-xs font-bold px-2.5 py-1 rounded-full flex-shrink-0">EDIT MODE</span>
         </div>
 
+        <!-- MAIN NAVIGATION TABS (Dashboard / Takwim / Penjanaan) -->
+        <div id="main-nav"
+            class="bg-white rounded-xl shadow-sm border border-gray-100 p-1 flex gap-1 mb-4"
+            role="tablist" aria-label="Navigasi utama">
+            <button class="main-nav-tab active" data-view="dashboard" role="tab" aria-selected="true">
+                <i class="ph-duotone ph-gauge mr-1.5 align-middle"></i>Dashboard
+            </button>
+            <button class="main-nav-tab" data-view="takwim" role="tab" aria-selected="false">
+                <i class="ph-duotone ph-calendar-dots mr-1.5 align-middle"></i>Takwim
+            </button>
+            <button class="main-nav-tab" data-view="penjanaan" role="tab" aria-selected="false">
+                <i class="ph-duotone ph-currency-circle-dollar mr-1.5 align-middle"></i>Penjanaan
+            </button>
+        </div>
+
+        <!-- ===================== VIEW: DASHBOARD ===================== -->
+        <div id="view-dashboard">
+
         <!-- Empty State / Clone Data Container (Hidden by default) -->
         <div id="empty-state-container"
             class="hidden flex flex-col items-center justify-center p-8 bg-white rounded-xl shadow-lg border-2 border-dashed border-gray-300 mb-8 mt-4">
@@ -466,6 +484,14 @@
                 </button>
             </div>
         </div>
+
+        </div><!-- ===================== /VIEW: DASHBOARD ===================== -->
+
+        <!-- ===================== VIEW: TAKWIM ===================== -->
+        <div id="view-takwim" class="hidden"></div>
+
+        <!-- ===================== VIEW: PENJANAAN ===================== -->
+        <div id="view-penjanaan" class="hidden"></div>
 
         <footer class="mt-10 pt-5 border-t border-gray-200 mb-12 text-center">
 
@@ -1026,7 +1052,7 @@
         </div>
 
         <!-- Load Main Script as Module -->
-        <script type="module" src="js/main.js?v=2.1"></script>
+        <script type="module" src="js/main.js?v=2.2"></script>
 </body>
 
 </html>

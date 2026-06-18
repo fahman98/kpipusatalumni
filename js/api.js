@@ -683,3 +683,156 @@ export async function updateKpiProgressListItem(quarterKey, kpiId, itemName, sub
         hideLoading();
     }
 }
+
+// =====================================================================
+// TAKWIM (CALENDAR / ACTIVITY) FUNCTIONS
+// Path: artifacts/{appId}/public/data/takwim-{year}, single doc "main"
+// Doc shape: { events: [{ id, title, date, location, notes, createdAt }] }
+// =====================================================================
+
+const takwimDocRef = (year) =>
+    db.collection(`artifacts/${getAppId()}/public/data/takwim-${year}`).doc('main');
+
+export function subscribeTakwim(year, callback) {
+    try {
+        return takwimDocRef(year).onSnapshot((docSnap) => {
+            const events = (docSnap.exists && Array.isArray(docSnap.data().events))
+                ? docSnap.data().events
+                : [];
+            callback(events);
+        }, (error) => {
+            console.error("Ralat sync takwim:", error);
+            if (error.code !== 'permission-denied') {
+                showToastNotification("Terputus hubungan dengan server.", "danger");
+            }
+            callback([]);
+        });
+    } catch (e) {
+        console.error("subscribeTakwim error:", e);
+        callback([]);
+        return () => {};
+    }
+}
+
+export async function addTakwimEvent(year, eventData) {
+    if (!isEditMode) return;
+    if (!navigator.onLine) {
+        showToastNotification("Tiada sambungan internet.", "danger");
+        return;
+    }
+    showLoading("Menambah aktiviti...");
+    try {
+        const ref = takwimDocRef(year);
+        const doc = await ref.get();
+        const events = (doc.exists && Array.isArray(doc.data().events)) ? doc.data().events : [];
+        const newEvent = {
+            id: 'evt_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+            title: eventData.title || '',
+            date: eventData.date || '',
+            location: eventData.location || '',
+            notes: eventData.notes || '',
+            createdAt: new Date().toISOString()
+        };
+        events.push(newEvent);
+        await ref.set({ events }, { merge: true });
+        await writeAuditLog('ADD_TAKWIM', { year, title: newEvent.title });
+        showToastNotification("Aktiviti berjaya ditambah!", "success");
+    } catch (e) {
+        console.error("addTakwimEvent error:", e);
+        if (e.code === 'permission-denied') {
+            showToastNotification("AKSES DITOLAK: Admin sahaja.", "danger");
+        } else {
+            showToastNotification("Gagal menambah aktiviti.", "danger");
+        }
+    } finally {
+        hideLoading();
+    }
+}
+
+export async function updateTakwimEvent(year, eventId, updatedData) {
+    if (!isEditMode) return;
+    if (!navigator.onLine) {
+        showToastNotification("Tiada sambungan internet.", "danger");
+        return;
+    }
+    showLoading("Mengemaskini aktiviti...");
+    try {
+        const ref = takwimDocRef(year);
+        const doc = await ref.get();
+        if (!doc.exists) throw new Error("Takwim tidak dijumpai");
+        const events = Array.isArray(doc.data().events) ? doc.data().events : [];
+        const idx = events.findIndex(ev => ev.id === eventId);
+        if (idx === -1) throw new Error("Aktiviti tidak dijumpai");
+        events[idx] = {
+            ...events[idx],
+            title: updatedData.title !== undefined ? updatedData.title : events[idx].title,
+            date: updatedData.date !== undefined ? updatedData.date : events[idx].date,
+            location: updatedData.location !== undefined ? updatedData.location : events[idx].location,
+            notes: updatedData.notes !== undefined ? updatedData.notes : events[idx].notes
+        };
+        await ref.update({ events });
+        await writeAuditLog('EDIT_TAKWIM', { year, eventId });
+        showToastNotification("Aktiviti dikemaskini!", "success");
+    } catch (e) {
+        console.error("updateTakwimEvent error:", e);
+        if (e.code === 'permission-denied') {
+            showToastNotification("AKSES DITOLAK: Admin sahaja.", "danger");
+        } else {
+            showToastNotification("Gagal mengemaskini aktiviti.", "danger");
+        }
+    } finally {
+        hideLoading();
+    }
+}
+
+export async function deleteTakwimEvent(year, eventId) {
+    if (!isEditMode) return;
+    if (!navigator.onLine) {
+        showToastNotification("Tiada sambungan internet.", "danger");
+        return;
+    }
+    showLoading("Memadam aktiviti...");
+    try {
+        const ref = takwimDocRef(year);
+        const doc = await ref.get();
+        if (!doc.exists) throw new Error("Takwim tidak dijumpai");
+        const events = (Array.isArray(doc.data().events) ? doc.data().events : [])
+            .filter(ev => ev.id !== eventId);
+        await ref.update({ events });
+        await writeAuditLog('DELETE_TAKWIM', { year, eventId });
+        showToastNotification("Aktiviti dipadam.", "success");
+    } catch (e) {
+        console.error("deleteTakwimEvent error:", e);
+        if (e.code === 'permission-denied') {
+            showToastNotification("AKSES DITOLAK: Admin sahaja.", "danger");
+        } else {
+            showToastNotification("Gagal memadam aktiviti.", "danger");
+        }
+    } finally {
+        hideLoading();
+    }
+}
+
+// =====================================================================
+// PENJANAAN (FUNDRAISING) HELPERS
+// Reads the "pendanaan" KPI's details.items from the kpi-{year} collection.
+// =====================================================================
+
+export async function getPendanaanItemsForQuarter(year, quarterKey) {
+    try {
+        const docRef = db.collection(`artifacts/${getAppId()}/public/data/kpi-${year}`).doc(quarterKey);
+        const docSnap = await docRef.get();
+        if (!docSnap.exists) return [];
+        const data = docSnap.data();
+        const kpi = (data.kpis || []).find(k => k.id === 'pendanaan');
+        if (!kpi || !kpi.details || !Array.isArray(kpi.details.items)) return [];
+        return kpi.details.items;
+    } catch (e) {
+        console.error("getPendanaanItemsForQuarter error:", e);
+        return [];
+    }
+}
+
+export async function getAllPendanaanItems(year) {
+    return getPendanaanItemsForQuarter(year, 'q4');
+}

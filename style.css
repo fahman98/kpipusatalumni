@@ -1522,3 +1522,27 @@ body.dark-mode .year-veil-spinner {
 body.dark-mode .year-veil-text {
     color: #93c5fd;
 }
+
+/* =====================================================================
+   MAIN NAV TABS / TAKWIM / PENJANAAN
+   ===================================================================== */
+.main-nav-tab { flex:1; text-align:center; padding:0.6rem 0.75rem; border-radius:0.625rem; font-size:0.8125rem; font-weight:600; color:#6b7280; background:transparent; transition:all 0.18s; white-space:nowrap; cursor:pointer; }
+.main-nav-tab:not(.active):hover { background-color:#f3f4f6; color:#1f2937; }
+.main-nav-tab.active { background:var(--brand-primary); color:#fff; box-shadow:0 2px 8px rgba(13,71,161,0.25); }
+
+body.dark-mode #main-nav { background-color:var(--bg-card); border-color:var(--border-color); }
+body.dark-mode .main-nav-tab { color:#9ca3af; }
+body.dark-mode .main-nav-tab:not(.active):hover { background-color:#374151; color:#f3f4f6; }
+body.dark-mode .main-nav-tab.active { background:var(--brand-primary); color:#fff; }
+
+.takwim-card { transition:box-shadow 0.2s ease,transform 0.2s ease; }
+.takwim-card:hover { box-shadow:0 6px 16px -6px rgba(0,0,0,0.12); transform:translateY(-1px); }
+
+body.dark-mode .takwim-card,
+body.dark-mode .penjanaan-suku { background-color:var(--bg-card); border-color:var(--border-color); }
+body.dark-mode .takwim-date-badge { background-color:#1e3a5f; color:#93c5fd; }
+
+.penjanaan-suku .penjanaan-edit-btn:active,
+.penjanaan-suku .penjanaan-delete-btn:active { transform:scale(0.9); }
+body.dark-mode .penjanaan-suku .border-gray-50,
+body.dark-mode .penjanaan-suku .border-gray-100 { border-color:var(--border-color); }

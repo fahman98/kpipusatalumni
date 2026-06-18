@@ -34,6 +34,8 @@ import {
 
 import { renderGaugeChart, showHistoryChart, destroyKpiChart } from './charts.js';
 import { handleAdminLogin, resetTerminalModal, runBootSequence, randomGlitch, runLogoutSequence } from './admin.js';
+import { initTakwim } from './takwim.js';
+import { initPenjanaan } from './penjanaan.js';
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -82,6 +84,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const statusFilter = getEl('dashboard-status-filter');
 
     const statsBar = getEl('stats-bar');
+
+    const mainNav = getEl('main-nav');
+    const viewDashboard = getEl('view-dashboard');
+    const viewTakwim = getEl('view-takwim');
+    const viewPenjanaan = getEl('view-penjanaan');
+    let currentView = 'dashboard';
 
     const bulkEditModal = getEl('bulk-edit-modal');
     const exportPdfBtn = getEl('export-pdf-btn');
@@ -459,10 +467,53 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Trigger Load
             window.updateDashboard(activeQuarterKey);
+            renderCurrentView();
         });
     }
 
 
+
+    // --- VIEW SWITCHING (Dashboard / Takwim / Penjanaan) ---
+    function renderCurrentView() {
+        if (currentView === 'takwim' && viewTakwim) {
+            initTakwim(viewTakwim, isEditMode, selectedYear);
+        } else if (currentView === 'penjanaan' && viewPenjanaan) {
+            initPenjanaan(viewPenjanaan, isEditMode, selectedYear);
+        }
+    }
+
+    function switchView(view) {
+        if (!['dashboard', 'takwim', 'penjanaan'].includes(view)) view = 'dashboard';
+        currentView = view;
+
+        if (viewDashboard) viewDashboard.classList.toggle('hidden', view !== 'dashboard');
+        if (viewTakwim) viewTakwim.classList.toggle('hidden', view !== 'takwim');
+        if (viewPenjanaan) viewPenjanaan.classList.toggle('hidden', view !== 'penjanaan');
+
+        if (mainNav) {
+            mainNav.querySelectorAll('.main-nav-tab').forEach(tab => {
+                const active = tab.dataset.view === view;
+                tab.classList.toggle('active', active);
+                tab.setAttribute('aria-selected', active ? 'true' : 'false');
+            });
+        }
+
+        if (view === 'takwim' && viewTakwim) {
+            initTakwim(viewTakwim, isEditMode, selectedYear);
+        } else if (view === 'penjanaan' && viewPenjanaan) {
+            initPenjanaan(viewPenjanaan, isEditMode, selectedYear);
+        }
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    window.switchView = switchView;
+
+    if (mainNav) {
+        mainNav.addEventListener('click', (e) => {
+            const tab = e.target.closest('.main-nav-tab');
+            if (tab && tab.dataset.view) switchView(tab.dataset.view);
+        });
+    }
 
     // --- EVENT LISTENERS ---
 
@@ -479,6 +530,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     setApiYear(year);
                     initiallyLoadedQuarters.clear();
                     updateDashboard(currentQuarter);
+                    renderCurrentView();
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                     setTimeout(() => veil.classList.remove('active'), 320);
                 }, 280);
@@ -486,6 +538,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 setApiYear(year);
                 initiallyLoadedQuarters.clear();
                 updateDashboard(currentQuarter);
+                renderCurrentView();
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             }
         });
