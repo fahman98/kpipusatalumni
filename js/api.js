@@ -595,6 +595,36 @@ export async function updateKpiBreakdownList(quarterKey, kpiId, payload, action)
     const batch = db.batch();
     showLoading("Menyimpan...");
     try {
+        // breakdownList items are cumulative (an item added at Qn propagates Qn..Q4),
+        // but items starting at different quarters mean each quarter's `items` array can
+        // have a DIFFERENT order/length. So a fixed numeric index is only valid for the
+        // start quarter. For delete/edit we capture the target item's identity from the
+        // start quarter, then re-locate it by identity in every quarter Qn..Q4.
+        const sameItem = (a, b) =>
+            a && b &&
+            a.name === b.name &&
+            Number(a.value) === Number(b.value) &&
+            String(a.bulan ?? '') === String(b.bulan ?? '');
+
+        let targetIdentity = null;
+        if (action === 'delete' || action === 'edit') {
+            const startRef = db.collection(basePath).doc(`q${startQuarterNum}`);
+            const startDoc = await startRef.get();
+            if (startDoc.exists) {
+                const ki = startDoc.data().kpis.findIndex(k => k.id === kpiId);
+                if (ki !== -1) {
+                    const startItems = startDoc.data().kpis[ki].details.items || [];
+                    const targetIndex = action === 'delete' ? payload : payload.index;
+                    targetIdentity = startItems[targetIndex] || null;
+                }
+            }
+            if (!targetIdentity) {
+                hideLoading();
+                showToastNotification("Item tidak dijumpai.", "danger");
+                return;
+            }
+        }
+
         for (let i = startQuarterNum; i <= 4; i++) {
             const docRef = db.collection(basePath).doc(`q${i}`);
             const doc = await docRef.get();
@@ -603,9 +633,15 @@ export async function updateKpiBreakdownList(quarterKey, kpiId, payload, action)
             const kpiIndex = data.kpis.findIndex(k => k.id === kpiId);
             if (kpiIndex === -1) continue;
             const items = data.kpis[kpiIndex].details.items || [];
-            if (action === 'add') { if (!items.some(i => i.name === payload.name)) items.push(payload); }
-            else if (action === 'delete') { items.splice(payload, 1); }
-            else if (action === 'edit') { if (items[payload.index]) items[payload.index] = payload.data; }
+            if (action === 'add') {
+                if (!items.some(it => it.name === payload.name)) items.push(payload);
+            } else if (action === 'delete') {
+                const idx = items.findIndex(it => sameItem(it, targetIdentity));
+                if (idx !== -1) items.splice(idx, 1);
+            } else if (action === 'edit') {
+                const idx = items.findIndex(it => sameItem(it, targetIdentity));
+                if (idx !== -1) items[idx] = payload.data;
+            }
             data.kpis[kpiIndex].details.items = items;
             batch.update(docRef, { kpis: data.kpis });
         }
