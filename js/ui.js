@@ -723,7 +723,18 @@ export function showDetailsModal(kpiId, triggerElement) {
         const showMonth = parseInt(selectedYear) >= 2026;
         const qNum = parseInt(activeQuarter.replace('q', ''), 10);
 
-        (items || []).forEach((item, index) => {
+        // Auto-sort by month for 2026+ (items without bulan sink to the end).
+        // Keep the ORIGINAL array index so edit/delete still map to kpi.details.items.
+        let ordered = (items || []).map((item, index) => ({ item, index }));
+        if (showMonth) {
+            ordered = ordered.sort((a, b) => {
+                const ba = Number(a.item.bulan) || 99;
+                const bb = Number(b.item.bulan) || 99;
+                return ba !== bb ? ba - bb : a.index - b.index;
+            });
+        }
+
+        ordered.forEach(({ item, index }) => {
             const li = document.createElement('li');
             li.className = 'flex justify-between items-center p-2 rounded-lg hover:bg-gray-50';
             const bulanBadge = (showMonth && item.bulan)

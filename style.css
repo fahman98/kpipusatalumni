@@ -1546,3 +1546,5 @@ body.dark-mode .takwim-date-badge { background-color:#1e3a5f; color:#93c5fd; }
 .penjanaan-suku .penjanaan-delete-btn:active { transform:scale(0.9); }
 body.dark-mode .penjanaan-suku .border-gray-50,
 body.dark-mode .penjanaan-suku .border-gray-100 { border-color:var(--border-color); }
+body.dark-mode .penjanaan-month-divider { background-color:var(--bg-card-alt); }
+body.dark-mode .penjanaan-month-divider span { color:#d1d5db; }

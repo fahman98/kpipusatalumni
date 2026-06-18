@@ -298,11 +298,38 @@ function recordRowHtml(item, globalIndex) {
     </div>`;
 }
 
+function monthDividerHtml(monthNum, monthTotal) {
+    return `
+    <div class="penjanaan-month-divider flex items-center justify-between px-2.5 py-1.5 mt-2.5 mb-1 bg-gray-50 rounded-lg">
+        <span class="text-xs font-bold text-gray-600 uppercase tracking-wider">${escapeHtml(BULAN_FULL[monthNum] || BULAN_MY[monthNum] || '')}</span>
+        <span class="text-xs font-extrabold text-gray-500">${escapeHtml(formatRM(monthTotal))}</span>
+    </div>`;
+}
+
 function sukuGroupHtml(suku, items) {
     const subtotal = items.reduce((sum, it) => sum + (Number(it.value) || 0), 0);
-    const rows = items.length
-        ? items.map(it => recordRowHtml(it, it._index)).join('')
-        : `<p class="text-xs text-gray-400 italic py-2 px-1">Tiada rekod untuk suku ini.</p>`;
+
+    let body;
+    if (!items.length) {
+        body = `<p class="text-xs text-gray-400 italic py-2 px-1">Tiada rekod untuk suku ini.</p>`;
+    } else if (Array.isArray(suku.months) && suku.months.length) {
+        // Group records by month (in calendar order), each with its own divider + subtotal.
+        const parts = [];
+        suku.months.forEach(m => {
+            const monthItems = items.filter(it => Number(it.bulan) === m);
+            if (!monthItems.length) return;
+            const monthTotal = monthItems.reduce((sum, it) => sum + (Number(it.value) || 0), 0);
+            parts.push(monthDividerHtml(m, monthTotal));
+            parts.push(monthItems.map(it => recordRowHtml(it, it._index)).join(''));
+        });
+        // Defensive: any record whose bulan falls outside this suku (shouldn't happen).
+        const leftover = items.filter(it => !suku.months.includes(Number(it.bulan)));
+        if (leftover.length) parts.push(leftover.map(it => recordRowHtml(it, it._index)).join(''));
+        body = parts.join('');
+    } else {
+        // "Tidak Dinyatakan" — no month sequence, list as-is.
+        body = items.map(it => recordRowHtml(it, it._index)).join('');
+    }
 
     return `
     <div class="penjanaan-suku bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-3">
@@ -313,7 +340,7 @@ function sukuGroupHtml(suku, items) {
             </div>
             <span class="text-sm font-extrabold text-brand-primary">${escapeHtml(formatRM(subtotal))}</span>
         </div>
-        ${rows}
+        ${body}
     </div>`;
 }
 
