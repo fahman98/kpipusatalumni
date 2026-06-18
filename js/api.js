@@ -39,6 +39,37 @@ const nowFooterDate = () => new Date().toLocaleDateString('ms-MY', {
     day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
 });
 
+// --- GLOBAL "LAST UPDATED" --------------------------------------------------
+// One per-year marker bumped by EVERY write (KPI, Penjanaan, Takwim) so the
+// footer always shows the most recent change, regardless of quarter or tab.
+const lastUpdatedDocRef = (year) =>
+    db.collection(`artifacts/${getAppId()}/public/data/meta`).doc(String(year));
+
+async function touchLastUpdated(year = selectedYear) {
+    try {
+        const user = firebase.auth().currentUser;
+        await lastUpdatedDocRef(year).set({
+            label: nowFooterDate(),
+            by: user ? user.email : 'unknown',
+            ts: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+    } catch (e) {
+        console.error("touchLastUpdated error:", e);
+    }
+}
+
+export function subscribeLastUpdated(year, callback) {
+    try {
+        return lastUpdatedDocRef(year).onSnapshot(
+            (snap) => callback(snap.exists ? (snap.data().label || null) : null),
+            (err) => console.error("Ralat sync lastUpdated:", err)
+        );
+    } catch (e) {
+        console.error("subscribeLastUpdated error:", e);
+        return () => {};
+    }
+}
+
 // --- AUDIT LOG ---
 async function writeAuditLog(action, details) {
     try {
@@ -53,6 +84,8 @@ async function writeAuditLog(action, details) {
     } catch (e) {
         console.error("Audit log error:", e);
     }
+    // Any audited action also bumps the global "last updated" marker.
+    touchLastUpdated();
 }
 
 // --- FUNGSI REAL-TIME LISTENER ---
@@ -470,6 +503,7 @@ export async function updateKpiDescriptionInFirestore(kpiId, text) {
             }
         }
         await batch.commit();
+        touchLastUpdated();
         showToastNotification('Deskripsi disimpan!', 'success');
     } catch (e) {
         console.error(e);
@@ -507,6 +541,7 @@ export async function updateKpiDetailsList(quarterKey, kpiId, itemName, isChecke
             batch.update(docRef, { kpis: data.kpis, footerDate: nowFooterDate() });
         }
         await batch.commit();
+        touchLastUpdated();
         showToastNotification('Status dikemaskini!', 'success');
     } catch (e) {
         console.error(e);
@@ -588,6 +623,7 @@ export async function updateKpiTargetListItem(quarterKey, kpiId, payload, action
             batch.update(docRef, { kpis: data.kpis, footerDate: nowFooterDate() });
         }
         await batch.commit();
+        touchLastUpdated();
         showToastNotification('Senarai dikemaskini!', 'success');
         const btn = document.querySelector(`.show-details-btn[data-kpi-id="${kpiId}"]`);
         closeModal(document.getElementById('details-modal'));
@@ -668,6 +704,7 @@ export async function updateKpiBreakdownList(quarterKey, kpiId, payload, action)
             batch.update(docRef, { kpis: data.kpis, footerDate: nowFooterDate() });
         }
         await batch.commit();
+        touchLastUpdated();
         showToastNotification('Butiran dikemaskini!', 'success');
         const btn = document.querySelector(`.show-details-btn[data-kpi-id="${kpiId}"]`);
         closeModal(document.getElementById('details-modal'));
@@ -730,6 +767,7 @@ export async function updateKpiProgressListItem(quarterKey, kpiId, itemName, sub
             batch.update(docRef, { kpis: data.kpis, footerDate: nowFooterDate() });
         }
         await batch.commit();
+        touchLastUpdated();
         showToastNotification('Progres dikemaskini!', 'success');
         const btn = document.querySelector(`.show-details-btn[data-kpi-id="${kpiId}"]`);
         closeModal(document.getElementById('details-modal'));

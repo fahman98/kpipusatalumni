@@ -29,7 +29,8 @@ import {
     updateKpiValueInFirestore,
     updateKpiDescriptionInFirestore,
     getKpiDataFromFirestore,
-    saveBulkKpiValues
+    saveBulkKpiValues,
+    subscribeLastUpdated
 } from './api.js';
 
 import { renderGaugeChart, showHistoryChart, destroyKpiChart } from './charts.js';
@@ -116,6 +117,30 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentQuarter = 'q1';
     let quarterSwitchTimeout = null;
 
+    // --- GLOBAL "DATA DIKEMASKINI" FOOTER ---
+    // Driven by a single per-year marker bumped by ANY write (KPI / Penjanaan /
+    // Takwim). Falls back to the viewed quarter's footerDate until that marker
+    // exists for the year.
+    let lastUpdatedLabel = null;
+    let quarterFooterDate = '';
+    let unsubLastUpdated = null;
+
+    function renderFooter() {
+        if (!footerNote) return;
+        const label = lastUpdatedLabel || quarterFooterDate;
+        footerNote.textContent = label ? `Data dikemaskini pada ${label}.` : '';
+    }
+
+    function subscribeFooter(year) {
+        if (unsubLastUpdated) { unsubLastUpdated(); unsubLastUpdated = null; }
+        lastUpdatedLabel = null;
+        renderFooter();
+        unsubLastUpdated = subscribeLastUpdated(year, (label) => {
+            lastUpdatedLabel = label;
+            renderFooter();
+        });
+    }
+
     // --- INITIALIZE YEAR (DYNAMIC) ---
     const currentYear = new Date().getFullYear();
     const prevYear = currentYear - 1;
@@ -130,6 +155,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         setApiYear(String(currentYear));
     }
+    subscribeFooter(selectedYear);
 
     // Update admin action button labels with dynamic years
     const cloneBtnLabel = document.getElementById('clone-btn-label');
@@ -219,9 +245,8 @@ document.addEventListener('DOMContentLoaded', () => {
             // Update Title
             if (mainTitle) mainTitle.innerHTML = `Dashboard KPI ${selectedYear} <br> ${currentData.title || quarterKey.toUpperCase()}`;
             if (subTitle) subTitle.textContent = (currentData.subtitle || '').replace(/[()]/g, '');
-            if (footerNote && currentData.footerDate) {
-                footerNote.textContent = `Data dikemaskini pada ${currentData.footerDate}.`;
-            }
+            if (currentData.footerDate) quarterFooterDate = currentData.footerDate;
+            renderFooter();
 
             // Process KPIs
             const processedKpis = processKpisWithTrends(currentData.kpis, previousData ? previousData.kpis : null);
@@ -558,6 +583,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 veil.classList.add('active');
                 setTimeout(() => {
                     setApiYear(year);
+                    subscribeFooter(year);
                     initiallyLoadedQuarters.clear();
                     updateDashboard(currentQuarter);
                     renderCurrentView();
@@ -566,6 +592,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }, 280);
             } else {
                 setApiYear(year);
+                subscribeFooter(year);
                 initiallyLoadedQuarters.clear();
                 updateDashboard(currentQuarter);
                 renderCurrentView();
