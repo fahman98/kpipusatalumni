@@ -251,8 +251,13 @@ function render() {
 
     const tKey = todayKey();
     const sorted = [...cachedEvents].sort((a, b) => String(a.date).localeCompare(String(b.date)));
-    const upcoming = sorted.filter(ev => String(ev.date) >= tKey);
-    const past = sorted.filter(ev => String(ev.date) < tKey).reverse(); // most recent first
+
+    // Cancelled / postponed go to their own sections regardless of date
+    const cancelled  = sorted.filter(ev => ev.notes === 'Dibatalkan');
+    const postponed  = sorted.filter(ev => ev.notes === 'Ditangguhkan');
+    const active     = sorted.filter(ev => ev.notes !== 'Dibatalkan' && ev.notes !== 'Ditangguhkan');
+    const upcoming   = active.filter(ev => String(ev.date) >= tKey);
+    const past       = active.filter(ev => String(ev.date) < tKey).reverse(); // most recent first
 
     const addBtnHtml = isAdminMode
         ? `<button id="takwim-add-btn" class="bg-brand-primary text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-800 shadow-md transition-all text-sm flex items-center gap-2 flex-shrink-0">
@@ -272,7 +277,9 @@ function render() {
     } else {
         bodyHtml =
             sectionHtml('Akan Datang', 'ph-clock-countdown', upcoming) +
-            sectionHtml('Telah Berlangsung', 'ph-clock-counter-clockwise', past);
+            sectionHtml('Telah Berlangsung', 'ph-clock-counter-clockwise', past) +
+            sectionHtml('Ditangguhkan', 'ph-pause-circle', postponed) +
+            sectionHtml('Dibatalkan', 'ph-x-circle', cancelled);
     }
 
     currentContainer.innerHTML = `
