@@ -162,6 +162,90 @@ function openRecordModal(record) {
     openModal(modal);
 }
 
+// ---- Detail popup (tap a record to see full info) ---------------------
+// On small screens the source name is truncated; tapping a row opens this
+// read-only popup with the complete details (and admin actions).
+
+function ensureDetailModal() {
+    let modal = document.getElementById('penjanaan-detail-modal');
+    if (modal) return modal;
+
+    modal = document.createElement('div');
+    modal.id = 'penjanaan-detail-modal';
+    modal.className = 'modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50';
+    modal.innerHTML = `
+        <div class="modal-content bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6" role="dialog" aria-modal="true" aria-labelledby="penjanaan-detail-title">
+            <div class="flex justify-between items-start mb-4">
+                <h3 id="penjanaan-detail-title" class="text-lg font-bold text-brand-primary flex items-center gap-2">
+                    <i class="ph-duotone ph-receipt"></i><span>Butiran Rekod</span>
+                </h3>
+                <button type="button" id="penjanaan-detail-close" class="text-gray-500 hover:text-red-600 text-2xl font-bold leading-none" aria-label="Tutup">&times;</button>
+            </div>
+            <div id="penjanaan-detail-body" class="space-y-3"></div>
+            <div id="penjanaan-detail-actions" class="flex gap-2 pt-5"></div>
+        </div>`;
+    document.body.appendChild(modal);
+
+    const close = () => closeModal(modal);
+    modal.querySelector('#penjanaan-detail-close').addEventListener('click', close);
+    modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+
+    return modal;
+}
+
+function openDetailModal(record) {
+    const modal = ensureDetailModal();
+    const qk = bulanToQuarterKey(record.bulan);
+    const suku = SUKU.find(s => s.key === qk);
+    const bulanName = record.bulan ? (BULAN_FULL[parseInt(record.bulan, 10)] || '—') : 'Tidak Dinyatakan';
+    const sukuLabel = suku ? `${suku.label} · ${suku.range}` : 'Tidak Dinyatakan';
+
+    modal.querySelector('#penjanaan-detail-body').innerHTML = `
+        <div>
+            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Sumber</p>
+            <p class="text-base font-bold text-gray-800 break-words">${escapeHtml(record.name)}</p>
+        </div>
+        <div>
+            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Jumlah</p>
+            <p class="text-2xl font-extrabold text-brand-primary leading-none">${escapeHtml(formatRM(record.value))}</p>
+        </div>
+        <div class="grid grid-cols-2 gap-3 pt-1">
+            <div>
+                <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Bulan</p>
+                <p class="text-sm font-semibold text-gray-700">${escapeHtml(bulanName)}</p>
+            </div>
+            <div>
+                <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Suku</p>
+                <p class="text-sm font-semibold text-gray-700">${escapeHtml(sukuLabel)}</p>
+            </div>
+        </div>`;
+
+    const actions = modal.querySelector('#penjanaan-detail-actions');
+    if (isAdminMode) {
+        actions.innerHTML = `
+            <button type="button" id="penjanaan-detail-edit" class="flex-1 px-4 py-2 border border-blue-200 bg-blue-50 text-blue-700 rounded-lg font-semibold hover:bg-blue-100 transition-all flex items-center justify-center gap-2"><i class="fas fa-pencil-alt text-xs"></i> Edit</button>
+            <button type="button" id="penjanaan-detail-delete" class="flex-1 px-4 py-2 border border-red-200 bg-red-50 text-red-600 rounded-lg font-semibold hover:bg-red-100 transition-all flex items-center justify-center gap-2"><i class="fas fa-trash-alt text-xs"></i> Padam</button>`;
+        actions.querySelector('#penjanaan-detail-edit').addEventListener('click', () => {
+            closeModal(modal);
+            openRecordModal(record);
+        });
+        actions.querySelector('#penjanaan-detail-delete').addEventListener('click', () => {
+            closeModal(modal);
+            showConfirmModal(
+                'Padam Rekod?',
+                `Adakah anda pasti mahu memadam rekod "${record.name}" (${formatRM(record.value)})? Tindakan ini tidak boleh diundur.`,
+                async () => { await deleteRecord(record); }
+            );
+        });
+    } else {
+        actions.innerHTML = `
+            <button type="button" id="penjanaan-detail-ok" class="flex-1 bg-brand-primary text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-800 transition-all">Tutup</button>`;
+        actions.querySelector('#penjanaan-detail-ok').addEventListener('click', () => closeModal(modal));
+    }
+
+    openModal(modal);
+}
+
 // ---- Write operations -------------------------------------------------
 
 // Close the details-modal that updateKpiBreakdownList re-opens, then refresh.
@@ -290,9 +374,9 @@ function recordRowHtml(item, globalIndex) {
            </div>` : '';
 
     return `
-    <div class="flex items-center gap-2 py-2 px-1 border-b border-gray-50 last:border-0">
+    <div class="penjanaan-record-row flex items-center gap-2 py-2 px-1.5 border-b border-gray-50 last:border-0 cursor-pointer hover:bg-gray-50 rounded-lg transition-colors" data-idx="${globalIndex}" role="button" tabindex="0" title="Lihat butiran">
         ${bulanBadge}
-        <span class="flex-1 min-w-0 text-sm text-gray-700 truncate" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</span>
+        <span class="flex-1 min-w-0 text-sm text-gray-700 truncate">${escapeHtml(item.name)}</span>
         <span class="text-sm font-bold text-brand-primary flex-shrink-0">${escapeHtml(formatRM(item.value))}</span>
         ${adminHtml}
     </div>`;
@@ -430,6 +514,20 @@ function render() {
     // Wire listeners
     const addBtn = currentContainer.querySelector('#penjanaan-add-btn');
     if (addBtn) addBtn.addEventListener('click', () => openRecordModal(null));
+
+    // Tap any record row -> detail popup (full info, untruncated). Available to
+    // everyone; clicks on the inline admin buttons are ignored here.
+    currentContainer.querySelectorAll('.penjanaan-record-row').forEach(row => {
+        const open = (e) => {
+            if (e.target.closest('.penjanaan-edit-btn, .penjanaan-delete-btn')) return;
+            const item = itemsIndexed[parseInt(row.dataset.idx, 10)];
+            if (item) openDetailModal(item);
+        };
+        row.addEventListener('click', open);
+        row.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(e); }
+        });
+    });
 
     if (isAdminMode) {
         currentContainer.querySelectorAll('.penjanaan-edit-btn').forEach(btn => {
