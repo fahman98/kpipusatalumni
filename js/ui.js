@@ -1104,6 +1104,69 @@ export function closeModal(modalElement) {
     }
 }
 
+// ---- Accessibility: Esc-to-close + Tab focus-trap (centralised) -----------
+// Every modal — the .is-open system plus the .hidden overlays (confirm /
+// bulk-edit / ios) — behaves consistently for keyboard users. Focus restore
+// is already handled by openModal/closeModal via lastFocusedElement.
+
+function getFocusableEls(container) {
+    return Array.from(container.querySelectorAll(
+        'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    )).filter(el => el.offsetWidth > 0 || el.offsetHeight > 0 || el === document.activeElement);
+}
+
+function topOpenModal() {
+    // Overlay dialogs (toggled via .hidden) sit above the .is-open modals.
+    const overlayIds = ['confirm-modal', 'ios-install-modal', 'bulk-edit-modal'];
+    for (const id of overlayIds) {
+        const m = document.getElementById(id);
+        if (m && !m.classList.contains('hidden')) return m;
+    }
+    const open = document.querySelectorAll('.is-open');
+    return open.length ? open[open.length - 1] : null;
+}
+
+function dismissTopModal(modal) {
+    if (modal.classList.contains('is-open')) {
+        // Prefer the modal's own close button so any custom teardown runs
+        // (e.g. chart destroy, password-modal reset).
+        const closeBtn = modal.querySelector('[id$="-close"], [aria-label^="Tutup"]');
+        if (closeBtn) closeBtn.click();
+        else closeModal(modal);
+    } else {
+        // .hidden overlays: Esc simply dismisses/cancels them.
+        modal.classList.add('hidden');
+    }
+}
+
+document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' && e.key !== 'Tab') return;
+    const modal = topOpenModal();
+    if (!modal) return;
+
+    if (e.key === 'Escape') {
+        e.preventDefault();
+        dismissTopModal(modal);
+        return;
+    }
+
+    // Tab: keep focus inside the modal.
+    const focusables = getFocusableEls(modal);
+    if (!focusables.length) return;
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    if (!modal.contains(document.activeElement)) {
+        e.preventDefault();
+        first.focus();
+    } else if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+    }
+});
+
 // Helper Calculation for Cards (Exported)
 export function calculateKpiValue(kpi) {
     if (kpi.details && kpi.details.type === 'breakdownList' && kpi.details.items) {

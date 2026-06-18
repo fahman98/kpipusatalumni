@@ -713,9 +713,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const si = getEl('dashboard-search-input');
             if (si) { si.focus(); si.select(); showKbHint('/ Cari KPI...'); }
         }
-        if (e.key === 'Escape') {
-            if (focusModal && focusModal.classList.contains('is-open')) closeModal(focusModal);
-        }
+        // Escape-to-close is handled centrally in ui.js (covers all modals).
     });
 
     // ===== RIPPLE EFFECT =====
