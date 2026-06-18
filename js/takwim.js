@@ -83,6 +83,16 @@ function todayKey() {
     return `${t.getFullYear()}-${mm}-${dd}`;
 }
 
+// Known status values get a coloured pill; any other note is free text.
+const STATUS_STYLES = {
+    'Telah Berlangsung': { pill: 'bg-green-50 text-green-700 border-green-200', icon: 'ph-check-circle' },
+    'Ditangguhkan':      { pill: 'bg-amber-50 text-amber-700 border-amber-200', icon: 'ph-pause-circle' },
+    'Dibatalkan':        { pill: 'bg-red-50 text-red-600 border-red-200',       icon: 'ph-x-circle' }
+};
+function statusStyle(notes) {
+    return STATUS_STYLES[notes] || null;
+}
+
 // ---- Modal (dynamically created, reuses .modal / .is-open CSS) ---------
 
 function ensureModal() {
@@ -187,6 +197,95 @@ function openTakwimModal(eventObj) {
     openModal(modal);
 }
 
+// ---- Detail popup (tap a card to see full info) -----------------------
+// On small screens the title/location/notes get truncated; tapping a card
+// opens this read-only popup with the complete details (and admin actions).
+
+function ensureDetailModal() {
+    let modal = document.getElementById('takwim-detail-modal');
+    if (modal) return modal;
+
+    modal = document.createElement('div');
+    modal.id = 'takwim-detail-modal';
+    modal.className = 'modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50';
+    modal.innerHTML = `
+        <div class="modal-content bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6" role="dialog" aria-modal="true" aria-labelledby="takwim-detail-title">
+            <div class="flex justify-between items-start mb-4">
+                <h3 id="takwim-detail-title" class="text-lg font-bold text-brand-primary flex items-center gap-2">
+                    <i class="ph-duotone ph-calendar-dots"></i><span>Butiran Aktiviti</span>
+                </h3>
+                <button type="button" id="takwim-detail-close" class="text-gray-500 hover:text-red-600 text-2xl font-bold leading-none" aria-label="Tutup">&times;</button>
+            </div>
+            <div id="takwim-detail-body" class="space-y-3"></div>
+            <div id="takwim-detail-actions" class="flex gap-2 pt-5"></div>
+        </div>`;
+    document.body.appendChild(modal);
+
+    const close = () => closeModal(modal);
+    modal.querySelector('#takwim-detail-close').addEventListener('click', close);
+    modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+
+    return modal;
+}
+
+function openDetailModal(ev) {
+    const modal = ensureDetailModal();
+    const st = statusStyle(ev.notes);
+    const tarikh = ev.dateTo && ev.dateTo !== ev.date
+        ? `${formatDate(ev.date)} – ${formatDate(ev.dateTo)}`
+        : formatDate(ev.date);
+    const statusHtml = ev.notes
+        ? (st
+            ? `<span class="inline-flex items-center gap-1.5 text-sm font-bold ${st.pill} border rounded-full px-3 py-1"><i class="ph-duotone ${st.icon}"></i>${escapeHtml(ev.notes)}</span>`
+            : `<p class="text-sm font-semibold text-gray-700 break-words">${escapeHtml(ev.notes)}</p>`)
+        : `<p class="text-sm text-gray-400 italic">Tiada catatan</p>`;
+
+    modal.querySelector('#takwim-detail-body').innerHTML = `
+        <div>
+            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Aktiviti</p>
+            <p class="text-base font-bold text-gray-800 break-words">${escapeHtml(ev.title)}</p>
+        </div>
+        <div>
+            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Tarikh</p>
+            <p class="text-sm font-semibold text-gray-700">${escapeHtml(tarikh)}</p>
+        </div>
+        <div>
+            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Lokasi</p>
+            ${ev.location
+                ? `<p class="text-sm font-semibold text-gray-700 break-words">${escapeHtml(ev.location)}</p>`
+                : `<p class="text-sm text-gray-400 italic">Tiada lokasi</p>`}
+        </div>
+        <div>
+            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Status / Catatan</p>
+            ${statusHtml}
+        </div>`;
+
+    const actions = modal.querySelector('#takwim-detail-actions');
+    if (isAdminMode) {
+        actions.innerHTML = `
+            <button type="button" id="takwim-detail-edit" class="flex-1 px-4 py-2 border border-blue-200 bg-blue-50 text-blue-700 rounded-lg font-semibold hover:bg-blue-100 transition-all flex items-center justify-center gap-2"><i class="fas fa-pencil-alt text-xs"></i> Edit</button>
+            <button type="button" id="takwim-detail-delete" class="flex-1 px-4 py-2 border border-red-200 bg-red-50 text-red-600 rounded-lg font-semibold hover:bg-red-100 transition-all flex items-center justify-center gap-2"><i class="fas fa-trash-alt text-xs"></i> Padam</button>`;
+        actions.querySelector('#takwim-detail-edit').addEventListener('click', () => {
+            closeModal(modal);
+            openTakwimModal(ev);
+        });
+        actions.querySelector('#takwim-detail-delete').addEventListener('click', () => {
+            closeModal(modal);
+            showConfirmModal(
+                'Padam Aktiviti?',
+                `Adakah anda pasti mahu memadam "${ev.title}"? Tindakan ini tidak boleh diundur.`,
+                async () => { await deleteTakwimEvent(currentYear, ev.id); }
+            );
+        });
+    } else {
+        actions.innerHTML = `
+            <button type="button" id="takwim-detail-ok" class="flex-1 bg-brand-primary text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-800 transition-all">Tutup</button>`;
+        actions.querySelector('#takwim-detail-ok').addEventListener('click', () => closeModal(modal));
+    }
+
+    openModal(modal);
+}
+
 // ---- Rendering --------------------------------------------------------
 
 function eventCardHtml(ev) {
@@ -201,11 +300,17 @@ function eventCardHtml(ev) {
                <i class="ph-duotone ph-map-pin text-brand-primary"></i>
                <span>${escapeHtml(ev.location)}</span>
            </p>` : '';
+    const st = statusStyle(ev.notes);
     const notesHtml = ev.notes
-        ? `<p class="flex items-start gap-1.5 text-sm text-gray-500 mt-1">
-               <i class="ph-duotone ph-note text-brand-primary mt-0.5"></i>
-               <span>${escapeHtml(ev.notes)}</span>
-           </p>` : '';
+        ? (st
+            ? `<span class="inline-flex items-center gap-1 text-xs font-bold ${st.pill} border rounded-full px-2 py-0.5 mt-1.5">
+                   <i class="ph-duotone ${st.icon}"></i>${escapeHtml(ev.notes)}
+               </span>`
+            : `<p class="flex items-start gap-1.5 text-sm text-gray-500 mt-1">
+                   <i class="ph-duotone ph-note text-brand-primary mt-0.5"></i>
+                   <span>${escapeHtml(ev.notes)}</span>
+               </p>`)
+        : '';
     const adminHtml = isAdminMode
         ? `<div class="flex items-center gap-1 flex-shrink-0">
                <button class="takwim-edit-btn footer-action-btn bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200" data-id="${escapeHtml(ev.id)}" title="Edit">
@@ -217,7 +322,7 @@ function eventCardHtml(ev) {
            </div>` : '';
 
     return `
-    <div class="takwim-card bg-white rounded-xl shadow-sm border border-gray-100 p-3 flex gap-3 items-start">
+    <div class="takwim-card bg-white rounded-xl shadow-sm border border-gray-100 p-3 flex gap-3 items-start cursor-pointer hover:shadow-md hover:border-blue-100 transition-all" data-id="${escapeHtml(ev.id)}" role="button" tabindex="0" title="Lihat butiran">
         <div class="takwim-date-badge flex-shrink-0 flex flex-col items-center justify-center rounded-lg bg-blue-50 text-brand-primary w-14 py-2 px-1">
             <span class="text-base font-extrabold leading-none text-center">${escapeHtml(badge.day)}</span>
             <span class="text-[10px] font-bold tracking-wide leading-none mt-0.5">${escapeHtml(badge.mon)}</span>
@@ -252,12 +357,17 @@ function render() {
     const tKey = todayKey();
     const sorted = [...cachedEvents].sort((a, b) => String(a.date).localeCompare(String(b.date)));
 
+    // An event counts as "past" only once its LAST day is over, so multi-day
+    // programmes still in progress stay under "Akan Datang".
+    const endKey = (ev) => (ev.dateTo && String(ev.dateTo) >= String(ev.date))
+        ? String(ev.dateTo) : String(ev.date);
+
     // Cancelled / postponed go to their own sections regardless of date
     const cancelled  = sorted.filter(ev => ev.notes === 'Dibatalkan');
     const postponed  = sorted.filter(ev => ev.notes === 'Ditangguhkan');
     const active     = sorted.filter(ev => ev.notes !== 'Dibatalkan' && ev.notes !== 'Ditangguhkan');
-    const upcoming   = active.filter(ev => String(ev.date) >= tKey);
-    const past       = active.filter(ev => String(ev.date) < tKey).reverse(); // most recent first
+    const upcoming   = active.filter(ev => endKey(ev) >= tKey);
+    const past       = active.filter(ev => endKey(ev) < tKey).reverse(); // most recent first
 
     const addBtnHtml = isAdminMode
         ? `<button id="takwim-add-btn" class="bg-brand-primary text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-800 shadow-md transition-all text-sm flex items-center gap-2 flex-shrink-0">
@@ -297,6 +407,20 @@ function render() {
     // Wire up listeners
     const addBtn = currentContainer.querySelector('#takwim-add-btn');
     if (addBtn) addBtn.addEventListener('click', () => openTakwimModal(null));
+
+    // Tap any card -> detail popup (full info, untruncated). Available to
+    // everyone; clicks on the inline admin buttons are ignored here.
+    currentContainer.querySelectorAll('.takwim-card').forEach(card => {
+        const open = (e) => {
+            if (e.target.closest('.takwim-edit-btn, .takwim-delete-btn')) return;
+            const ev = cachedEvents.find(x => x.id === card.dataset.id);
+            if (ev) openDetailModal(ev);
+        };
+        card.addEventListener('click', open);
+        card.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(e); }
+        });
+    });
 
     if (isAdminMode) {
         currentContainer.querySelectorAll('.takwim-edit-btn').forEach(btn => {

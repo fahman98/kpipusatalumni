@@ -937,11 +937,22 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     if ('serviceWorker' in navigator) {
+        // Reload once when a new SW takes control (a fresh deploy activated).
+        // Guarded so it never loops and never fires on the very first install.
+        let swRefreshing = false;
+        if (navigator.serviceWorker.controller) {
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (swRefreshing) return;
+                swRefreshing = true;
+                sessionStorage.setItem('kpi_sw_updated', '1');
+                window.location.reload();
+            });
+        }
+
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('./sw.js').then(
-                registration => console.log('SW Registered'),
-                err => console.log('SW Failed')
-            );
+            navigator.serviceWorker.register('./sw.js')
+                .then((registration) => { registration.update(); })
+                .catch(() => { /* registration failed — app still works online */ });
         });
 
         // 1. Android / Desktop (Chrome) - Auto Trigger
@@ -1411,6 +1422,12 @@ document.addEventListener('DOMContentLoaded', () => {
             link.type = 'image/png';
             link.href = canvas.toDataURL();
         } catch(e) {}
+    }
+
+    // After an automatic SW update + reload, let the user know once.
+    if (sessionStorage.getItem('kpi_sw_updated')) {
+        sessionStorage.removeItem('kpi_sw_updated');
+        setTimeout(() => showToastNotification('Aplikasi dikemas kini ke versi terbaharu.', 'success'), 800);
     }
 
     // Start App
