@@ -1,0 +1,59 @@
+rules_version = '2';
+
+// ============================================================================
+// Firestore Security Rules — Pusat Alumni UPSI · KPI Dashboard
+// ----------------------------------------------------------------------------
+// Model:
+//   • Public dashboard data (KPI quarters + Takwim) is world-readable so guests
+//     can view it without signing in.
+//   • Only the admin account (email below) may create/update/delete data.
+//   • Audit logs are admin-only to read and append-only (never edited/deleted).
+//
+// All application data lives under:
+//     artifacts/{appId}/public/data/
+//         ├─ kpi-{year}/{q1..q4}      ← KPI dashboard
+//         ├─ takwim-{year}/main       ← activity calendar
+//         └─ audit-logs/{autoId}      ← admin action trail
+//
+// Deploy: Firebase Console → Firestore Database → Rules → paste → Publish
+//         (or:  firebase deploy --only firestore:rules)
+// ============================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // The single admin account permitted to modify data. Guests authenticate
+    // anonymously (no email claim) and therefore can never satisfy this.
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.email == 'alumni@upsi.edu.my';
+    }
+
+    match /artifacts/{appId}/public/data {
+
+      // ----- Audit trail: admin-only, append-only ------------------------
+      match /audit-logs/{logId} {
+        allow read:   if isAdmin();
+        allow create: if isAdmin();
+        allow update, delete: if false;   // immutable once written
+      }
+
+      // ----- KPI (kpi-YYYY), Takwim (takwim-YYYY) & any other public -----
+      // collection: anyone may read; only the admin may write.
+      // (audit-logs is excluded here — it is governed solely by the rule above.)
+      match /{collection}/{docId} {
+        allow read:  if collection != 'audit-logs';
+        allow write: if isAdmin() && collection != 'audit-logs';
+
+        // Defensive: same policy for any nested subcollections.
+        match /{sub=**} {
+          allow read:  if collection != 'audit-logs';
+          allow write: if isAdmin() && collection != 'audit-logs';
+        }
+      }
+    }
+
+    // Anything outside artifacts/{appId}/public/data is denied by default
+    // (Firestore denies any path with no matching allow).
+  }
+}
