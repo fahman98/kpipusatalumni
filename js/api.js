@@ -768,6 +768,7 @@ export async function addTakwimEvent(year, eventData) {
             id: 'evt_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
             title: eventData.title || '',
             date: eventData.date || '',
+            dateTo: eventData.dateTo || '',
             location: eventData.location || '',
             notes: eventData.notes || '',
             createdAt: new Date().toISOString()
@@ -806,6 +807,7 @@ export async function updateTakwimEvent(year, eventId, updatedData) {
             ...events[idx],
             title: updatedData.title !== undefined ? updatedData.title : events[idx].title,
             date: updatedData.date !== undefined ? updatedData.date : events[idx].date,
+            dateTo: updatedData.dateTo !== undefined ? updatedData.dateTo : (events[idx].dateTo || ''),
             location: updatedData.location !== undefined ? updatedData.location : events[idx].location,
             notes: updatedData.notes !== undefined ? updatedData.notes : events[idx].notes
         };

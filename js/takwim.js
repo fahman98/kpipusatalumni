@@ -49,16 +49,30 @@ function formatDate(dateStr) {
     return `${day} ${BULAN_MY[monthIdx] || m} ${y}`;
 }
 
-// Split date badge into day / month-year for a stacked badge look.
-function dateBadgeParts(dateStr) {
-    const parts = String(dateStr || '').split('-');
-    if (parts.length !== 3) return { day: '?', mon: '', year: '' };
-    const monthIdx = parseInt(parts[1], 10);
-    return {
-        day: String(parseInt(parts[2], 10) || '?'),
-        mon: (BULAN_MY[monthIdx] || '').toUpperCase(),
-        year: parts[0]
-    };
+// Split date badge into day / mon / year. Supports optional dateTo for ranges.
+function dateBadgeParts(dateStr, dateToStr) {
+    const p = String(dateStr || '').split('-');
+    if (p.length !== 3) return { day: '?', mon: '', year: '', range: '' };
+    const startDay = parseInt(p[2], 10) || '?';
+    const startMon = (BULAN_MY[parseInt(p[1], 10)] || '').toUpperCase();
+    const startYear = p[0];
+
+    if (dateToStr && dateToStr !== dateStr) {
+        const q = String(dateToStr).split('-');
+        if (q.length === 3) {
+            const endDay = parseInt(q[2], 10) || '?';
+            const endMon = (BULAN_MY[parseInt(q[1], 10)] || '').toUpperCase();
+            const endYear = q[0];
+            const sameMon = startMon === endMon && startYear === endYear;
+            return {
+                day: sameMon ? `${startDay}–${endDay}` : String(startDay),
+                mon: startMon,
+                year: startYear,
+                range: sameMon ? '' : `– ${endDay} ${endMon} ${endYear}`
+            };
+        }
+    }
+    return { day: String(startDay), mon: startMon, year: startYear, range: '' };
 }
 
 // Today at local midnight (for past/future comparison by date only).
@@ -92,8 +106,13 @@ function ensureModal() {
                         class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-brand-primary focus:border-brand-primary">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Tarikh <span class="text-red-500">*</span></label>
+                    <label class="block text-sm font-medium text-gray-700">Tarikh Mula <span class="text-red-500">*</span></label>
                     <input type="date" id="takwim-date" required
+                        class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-brand-primary focus:border-brand-primary">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Tarikh Akhir <span class="text-xs text-gray-400 font-normal">(kosongkan jika 1 hari)</span></label>
+                    <input type="date" id="takwim-date-to"
                         class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-brand-primary focus:border-brand-primary">
                 </div>
                 <div>
@@ -132,18 +151,23 @@ function ensureModal() {
         const id = modal.querySelector('#takwim-event-id').value;
         const title = modal.querySelector('#takwim-title').value.trim();
         const date = modal.querySelector('#takwim-date').value;
+        const dateTo = modal.querySelector('#takwim-date-to').value || '';
         const location = modal.querySelector('#takwim-location').value.trim();
         const notes = modal.querySelector('#takwim-notes').value.trim();
 
         if (!title || !date) {
-            showToastNotification('Sila isi Tajuk dan Tarikh.', 'danger');
+            showToastNotification('Sila isi Tajuk dan Tarikh Mula.', 'danger');
+            return;
+        }
+        if (dateTo && dateTo < date) {
+            showToastNotification('Tarikh Akhir mesti sama atau selepas Tarikh Mula.', 'danger');
             return;
         }
         close();
         if (id) {
-            await updateTakwimEvent(currentYear, id, { title, date, location, notes });
+            await updateTakwimEvent(currentYear, id, { title, date, dateTo, location, notes });
         } else {
-            await addTakwimEvent(currentYear, { title, date, location, notes });
+            await addTakwimEvent(currentYear, { title, date, dateTo, location, notes });
         }
         // Real-time listener will refresh the list automatically.
     });
@@ -157,6 +181,7 @@ function openTakwimModal(eventObj) {
     modal.querySelector('#takwim-event-id').value = eventObj ? eventObj.id : '';
     modal.querySelector('#takwim-title').value = eventObj ? (eventObj.title || '') : '';
     modal.querySelector('#takwim-date').value = eventObj ? (eventObj.date || '') : '';
+    modal.querySelector('#takwim-date-to').value = eventObj ? (eventObj.dateTo || '') : '';
     modal.querySelector('#takwim-location').value = eventObj ? (eventObj.location || '') : '';
     modal.querySelector('#takwim-notes').value = eventObj ? (eventObj.notes || '') : '';
     openModal(modal);
@@ -165,7 +190,12 @@ function openTakwimModal(eventObj) {
 // ---- Rendering --------------------------------------------------------
 
 function eventCardHtml(ev) {
-    const badge = dateBadgeParts(ev.date);
+    const badge = dateBadgeParts(ev.date, ev.dateTo);
+    const rangeHtml = badge.range
+        ? `<p class="flex items-center gap-1.5 text-sm text-gray-500 mt-1">
+               <i class="ph-duotone ph-calendar-dots text-brand-primary"></i>
+               <span>${escapeHtml(formatDate(ev.date))} ${escapeHtml(badge.range)}</span>
+           </p>` : '';
     const locationHtml = ev.location
         ? `<p class="flex items-center gap-1.5 text-sm text-gray-500 mt-1">
                <i class="ph-duotone ph-map-pin text-brand-primary"></i>
@@ -188,13 +218,14 @@ function eventCardHtml(ev) {
 
     return `
     <div class="takwim-card bg-white rounded-xl shadow-sm border border-gray-100 p-3 flex gap-3 items-start">
-        <div class="takwim-date-badge flex-shrink-0 flex flex-col items-center justify-center rounded-lg bg-blue-50 text-brand-primary w-14 py-2">
-            <span class="text-lg font-extrabold leading-none">${escapeHtml(badge.day)}</span>
+        <div class="takwim-date-badge flex-shrink-0 flex flex-col items-center justify-center rounded-lg bg-blue-50 text-brand-primary w-14 py-2 px-1">
+            <span class="text-base font-extrabold leading-none text-center">${escapeHtml(badge.day)}</span>
             <span class="text-[10px] font-bold tracking-wide leading-none mt-0.5">${escapeHtml(badge.mon)}</span>
             <span class="text-[10px] text-gray-400 leading-none mt-0.5">${escapeHtml(badge.year)}</span>
         </div>
         <div class="flex-1 min-w-0">
             <h4 class="font-bold text-gray-800 text-sm sm:text-base leading-snug break-words">${escapeHtml(ev.title)}</h4>
+            ${rangeHtml}
             ${locationHtml}
             ${notesHtml}
         </div>
