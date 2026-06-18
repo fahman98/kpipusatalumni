@@ -235,7 +235,7 @@ function render() {
     } else {
         bodyHtml =
             sectionHtml('Akan Datang', 'ph-clock-countdown', upcoming) +
-            sectionHtml('Sudah Berlalu', 'ph-clock-counter-clockwise', past);
+            sectionHtml('Telah Berlangsung', 'ph-clock-counter-clockwise', past);
     }
 
     currentContainer.innerHTML = `
