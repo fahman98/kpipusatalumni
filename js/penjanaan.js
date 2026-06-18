@@ -13,10 +13,10 @@ import {
 import {
     updateKpiBreakdownList,
     getAllPendanaanItems,
-    getPendanaanItemsForQuarter
+    getPendanaanItemsForQuarter,
+    getPendanaanKpiTarget
 } from './api.js';
 
-const PENDANAAN_TARGET = 70000;
 const PENDANAAN_KPI_ID = 'pendanaan';
 
 const BULAN_MY = ['', 'Jan', 'Feb', 'Mac', 'Apr', 'Mei', 'Jun', 'Jul', 'Ogos', 'Sep', 'Okt', 'Nov', 'Dis'];
@@ -35,6 +35,7 @@ let currentContainer = null;
 let currentYear = null;
 let isAdminMode = false;
 let cachedItems = [];
+let cachedTarget = 0;
 
 // ---- Helpers ----------------------------------------------------------
 
@@ -336,8 +337,8 @@ function render() {
     // Attach a stable global index to each item so admin actions can map back.
     const itemsIndexed = cachedItems.map((it, i) => ({ ...it, _index: i }));
     const total = itemsIndexed.reduce((sum, it) => sum + (Number(it.value) || 0), 0);
-    const pct = PENDANAAN_TARGET > 0 ? Math.min((total / PENDANAAN_TARGET) * 100, 100) : 0;
-    const pctRaw = PENDANAAN_TARGET > 0 ? (total / PENDANAAN_TARGET) * 100 : 0;
+    const pct = cachedTarget > 0 ? Math.min((total / cachedTarget) * 100, 100) : 0;
+    const pctRaw = cachedTarget > 0 ? (total / cachedTarget) * 100 : 0;
     const barColor = pctRaw >= 75 ? 'bg-status-good' : pctRaw >= 30 ? 'bg-status-ok' : 'bg-status-bad';
 
     const addBtnHtml = isAdminMode
@@ -388,7 +389,7 @@ function render() {
                 </div>
                 <div class="text-right flex-shrink-0">
                     <p class="text-white/70 text-xs font-medium mb-1">Sasaran</p>
-                    <p class="text-base font-bold leading-none">${escapeHtml(formatRM(PENDANAAN_TARGET))}</p>
+                    <p class="text-base font-bold leading-none">${escapeHtml(formatRM(cachedTarget))}</p>
                 </div>
             </div>
             <div class="w-full bg-white/20 rounded-full h-3 overflow-hidden">
@@ -425,11 +426,14 @@ function render() {
     }
 }
 
-// Re-fetch cumulative items and re-render.
+// Re-fetch cumulative items + KPI target and re-render.
 async function refresh() {
     if (!currentContainer) return;
     if (parseInt(currentYear, 10) < 2026) { render(); return; }
-    cachedItems = await getAllPendanaanItems(currentYear);
+    [cachedItems, cachedTarget] = await Promise.all([
+        getAllPendanaanItems(currentYear),
+        getPendanaanKpiTarget(currentYear)
+    ]);
     render();
 }
 

@@ -836,3 +836,16 @@ export async function getPendanaanItemsForQuarter(year, quarterKey) {
 export async function getAllPendanaanItems(year) {
     return getPendanaanItemsForQuarter(year, 'q4');
 }
+
+export async function getPendanaanKpiTarget(year) {
+    try {
+        const docRef = db.collection(`artifacts/${getAppId()}/public/data/kpi-${year}`).doc('q4');
+        const docSnap = await docRef.get();
+        if (!docSnap.exists) return 0;
+        const kpi = (docSnap.data().kpis || []).find(k => k.id === 'pendanaan');
+        return (kpi && typeof kpi.target === 'number') ? kpi.target : 0;
+    } catch (e) {
+        console.error("getPendanaanKpiTarget error:", e);
+        return 0;
+    }
+}
