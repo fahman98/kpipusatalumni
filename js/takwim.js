@@ -1,0 +1,310 @@
+// --- JS/TAKWIM.JS ---
+// Takwim Aktiviti (Activity Calendar) feature module.
+// Renders a year's events into a container, with real-time Firestore sync,
+// and admin add/edit/delete via a dynamically-created modal.
+
+import {
+    showToastNotification,
+    openModal,
+    closeModal,
+    showConfirmModal
+} from './ui.js';
+
+import {
+    subscribeTakwim,
+    addTakwimEvent,
+    updateTakwimEvent,
+    deleteTakwimEvent
+} from './api.js';
+
+const BULAN_MY = ['', 'Jan', 'Feb', 'Mac', 'Apr', 'Mei', 'Jun', 'Jul', 'Ogos', 'Sep', 'Okt', 'Nov', 'Dis'];
+
+// Module-level state
+let unsubscribe = null;       // active Firestore listener cleanup
+let currentYear = null;
+let currentContainer = null;
+let isAdminMode = false;
+let cachedEvents = [];
+
+// ---- Helpers ----------------------------------------------------------
+
+function escapeHtml(str) {
+    return String(str == null ? '' : str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+// Format an ISO date string (YYYY-MM-DD) into "15 Jun 2026".
+function formatDate(dateStr) {
+    if (!dateStr) return '';
+    const parts = String(dateStr).split('-');
+    if (parts.length !== 3) return escapeHtml(dateStr);
+    const [y, m, d] = parts;
+    const monthIdx = parseInt(m, 10);
+    const day = parseInt(d, 10);
+    if (isNaN(monthIdx) || isNaN(day)) return escapeHtml(dateStr);
+    return `${day} ${BULAN_MY[monthIdx] || m} ${y}`;
+}
+
+// Split date badge into day / month-year for a stacked badge look.
+function dateBadgeParts(dateStr) {
+    const parts = String(dateStr || '').split('-');
+    if (parts.length !== 3) return { day: '?', mon: '', year: '' };
+    const monthIdx = parseInt(parts[1], 10);
+    return {
+        day: String(parseInt(parts[2], 10) || '?'),
+        mon: (BULAN_MY[monthIdx] || '').toUpperCase(),
+        year: parts[0]
+    };
+}
+
+// Today at local midnight (for past/future comparison by date only).
+function todayKey() {
+    const t = new Date();
+    const mm = String(t.getMonth() + 1).padStart(2, '0');
+    const dd = String(t.getDate()).padStart(2, '0');
+    return `${t.getFullYear()}-${mm}-${dd}`;
+}
+
+// ---- Modal (dynamically created, reuses .modal / .is-open CSS) ---------
+
+function ensureModal() {
+    let modal = document.getElementById('takwim-modal');
+    if (modal) return modal;
+
+    modal = document.createElement('div');
+    modal.id = 'takwim-modal';
+    modal.className = 'modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50';
+    modal.innerHTML = `
+        <div class="modal-content bg-white rounded-lg shadow-2xl w-full max-w-md p-6" role="dialog" aria-modal="true" aria-labelledby="takwim-modal-title">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="takwim-modal-title" class="text-xl font-bold text-brand-primary">Tambah Aktiviti</h3>
+                <button type="button" id="takwim-modal-close" class="text-gray-500 hover:text-red-600 text-2xl font-bold" aria-label="Tutup modal">&times;</button>
+            </div>
+            <form id="takwim-form" class="space-y-4">
+                <input type="hidden" id="takwim-event-id">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Tajuk <span class="text-red-500">*</span></label>
+                    <input type="text" id="takwim-title" required placeholder="Contoh: Majlis Alumni Tahunan"
+                        class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-brand-primary focus:border-brand-primary">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Tarikh <span class="text-red-500">*</span></label>
+                    <input type="date" id="takwim-date" required
+                        class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-brand-primary focus:border-brand-primary">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Lokasi</label>
+                    <input type="text" id="takwim-location" placeholder="Contoh: Dewan Besar UPSI"
+                        class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-brand-primary focus:border-brand-primary">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Catatan</label>
+                    <textarea id="takwim-notes" rows="3" placeholder="Maklumat tambahan (pilihan)"
+                        class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-brand-primary focus:border-brand-primary"></textarea>
+                </div>
+                <div class="flex gap-2 pt-2">
+                    <button type="button" id="takwim-cancel-btn"
+                        class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-semibold">Batal</button>
+                    <button type="submit"
+                        class="flex-1 bg-brand-primary text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-800 transition-all">Simpan</button>
+                </div>
+            </form>
+        </div>`;
+    document.body.appendChild(modal);
+
+    const close = () => closeModal(modal);
+    modal.querySelector('#takwim-modal-close').addEventListener('click', close);
+    modal.querySelector('#takwim-cancel-btn').addEventListener('click', close);
+    modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+
+    modal.querySelector('#takwim-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = modal.querySelector('#takwim-event-id').value;
+        const title = modal.querySelector('#takwim-title').value.trim();
+        const date = modal.querySelector('#takwim-date').value;
+        const location = modal.querySelector('#takwim-location').value.trim();
+        const notes = modal.querySelector('#takwim-notes').value.trim();
+
+        if (!title || !date) {
+            showToastNotification('Sila isi Tajuk dan Tarikh.', 'danger');
+            return;
+        }
+        close();
+        if (id) {
+            await updateTakwimEvent(currentYear, id, { title, date, location, notes });
+        } else {
+            await addTakwimEvent(currentYear, { title, date, location, notes });
+        }
+        // Real-time listener will refresh the list automatically.
+    });
+
+    return modal;
+}
+
+function openTakwimModal(eventObj) {
+    const modal = ensureModal();
+    modal.querySelector('#takwim-modal-title').textContent = eventObj ? 'Edit Aktiviti' : 'Tambah Aktiviti';
+    modal.querySelector('#takwim-event-id').value = eventObj ? eventObj.id : '';
+    modal.querySelector('#takwim-title').value = eventObj ? (eventObj.title || '') : '';
+    modal.querySelector('#takwim-date').value = eventObj ? (eventObj.date || '') : '';
+    modal.querySelector('#takwim-location').value = eventObj ? (eventObj.location || '') : '';
+    modal.querySelector('#takwim-notes').value = eventObj ? (eventObj.notes || '') : '';
+    openModal(modal);
+}
+
+// ---- Rendering --------------------------------------------------------
+
+function eventCardHtml(ev) {
+    const badge = dateBadgeParts(ev.date);
+    const locationHtml = ev.location
+        ? `<p class="flex items-center gap-1.5 text-sm text-gray-500 mt-1">
+               <i class="ph-duotone ph-map-pin text-brand-primary"></i>
+               <span>${escapeHtml(ev.location)}</span>
+           </p>` : '';
+    const notesHtml = ev.notes
+        ? `<p class="flex items-start gap-1.5 text-sm text-gray-500 mt-1">
+               <i class="ph-duotone ph-note text-brand-primary mt-0.5"></i>
+               <span>${escapeHtml(ev.notes)}</span>
+           </p>` : '';
+    const adminHtml = isAdminMode
+        ? `<div class="flex items-center gap-1 flex-shrink-0">
+               <button class="takwim-edit-btn footer-action-btn bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200" data-id="${escapeHtml(ev.id)}" title="Edit">
+                   <i class="fas fa-pencil-alt"></i>
+               </button>
+               <button class="takwim-delete-btn footer-action-btn bg-red-50 text-red-600 hover:bg-red-100 border-red-200" data-id="${escapeHtml(ev.id)}" title="Padam">
+                   <i class="fas fa-trash-alt"></i>
+               </button>
+           </div>` : '';
+
+    return `
+    <div class="takwim-card bg-white rounded-xl shadow-sm border border-gray-100 p-3 flex gap-3 items-start">
+        <div class="takwim-date-badge flex-shrink-0 flex flex-col items-center justify-center rounded-lg bg-blue-50 text-brand-primary w-14 py-2">
+            <span class="text-lg font-extrabold leading-none">${escapeHtml(badge.day)}</span>
+            <span class="text-[10px] font-bold tracking-wide leading-none mt-0.5">${escapeHtml(badge.mon)}</span>
+            <span class="text-[10px] text-gray-400 leading-none mt-0.5">${escapeHtml(badge.year)}</span>
+        </div>
+        <div class="flex-1 min-w-0">
+            <h4 class="font-bold text-gray-800 text-sm sm:text-base leading-snug break-words">${escapeHtml(ev.title)}</h4>
+            ${locationHtml}
+            ${notesHtml}
+        </div>
+        ${adminHtml}
+    </div>`;
+}
+
+function sectionHtml(titleText, iconClass, events) {
+    if (!events.length) return '';
+    const cards = events.map(eventCardHtml).join('');
+    return `
+    <div class="mb-6">
+        <h3 class="flex items-center gap-2 text-sm font-bold text-gray-500 uppercase tracking-wide mb-3">
+            <i class="ph-duotone ${iconClass} text-base text-brand-primary"></i>${escapeHtml(titleText)}
+            <span class="text-xs font-semibold bg-gray-100 text-gray-500 rounded-full px-2 py-0.5">${events.length}</span>
+        </h3>
+        <div class="space-y-3">${cards}</div>
+    </div>`;
+}
+
+function render() {
+    if (!currentContainer) return;
+
+    const tKey = todayKey();
+    const sorted = [...cachedEvents].sort((a, b) => String(a.date).localeCompare(String(b.date)));
+    const upcoming = sorted.filter(ev => String(ev.date) >= tKey);
+    const past = sorted.filter(ev => String(ev.date) < tKey).reverse(); // most recent first
+
+    const addBtnHtml = isAdminMode
+        ? `<button id="takwim-add-btn" class="bg-brand-primary text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-800 shadow-md transition-all text-sm flex items-center gap-2 flex-shrink-0">
+               <i class="fas fa-plus-circle"></i><span>Tambah Aktiviti</span>
+           </button>` : '';
+
+    let bodyHtml;
+    if (!cachedEvents.length) {
+        bodyHtml = `
+        <div class="flex flex-col items-center justify-center text-center p-10 bg-white rounded-xl shadow-sm border-2 border-dashed border-gray-200">
+            <div class="bg-blue-50 p-4 rounded-full mb-4">
+                <i class="ph-duotone ph-calendar-dots text-brand-primary text-4xl"></i>
+            </div>
+            <h3 class="text-lg font-bold text-gray-700 mb-1">Tiada Aktiviti</h3>
+            <p class="text-gray-500 text-sm">${isAdminMode ? 'Tekan "Tambah Aktiviti" untuk mula merekod takwim tahun ini.' : 'Belum ada aktiviti direkodkan untuk tahun ini.'}</p>
+        </div>`;
+    } else {
+        bodyHtml =
+            sectionHtml('Akan Datang', 'ph-clock-countdown', upcoming) +
+            sectionHtml('Sudah Berlalu', 'ph-clock-counter-clockwise', past);
+    }
+
+    currentContainer.innerHTML = `
+    <div class="takwim-wrapper">
+        <div class="flex items-center justify-between gap-3 mb-5">
+            <h2 class="text-lg sm:text-xl font-bold text-brand-primary flex items-center gap-2 min-w-0">
+                <i class="ph-duotone ph-calendar-dots flex-shrink-0"></i>
+                <span class="truncate">Takwim Aktiviti ${escapeHtml(currentYear)}</span>
+            </h2>
+            ${addBtnHtml}
+        </div>
+        ${bodyHtml}
+    </div>`;
+
+    // Wire up listeners
+    const addBtn = currentContainer.querySelector('#takwim-add-btn');
+    if (addBtn) addBtn.addEventListener('click', () => openTakwimModal(null));
+
+    if (isAdminMode) {
+        currentContainer.querySelectorAll('.takwim-edit-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const ev = cachedEvents.find(e => e.id === btn.dataset.id);
+                if (ev) openTakwimModal(ev);
+            });
+        });
+        currentContainer.querySelectorAll('.takwim-delete-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const ev = cachedEvents.find(e => e.id === btn.dataset.id);
+                if (!ev) return;
+                showConfirmModal(
+                    'Padam Aktiviti?',
+                    `Adakah anda pasti mahu memadam "${ev.title}"? Tindakan ini tidak boleh diundur.`,
+                    async () => { await deleteTakwimEvent(currentYear, ev.id); }
+                );
+            });
+        });
+    }
+}
+
+// ---- Public API -------------------------------------------------------
+
+export function initTakwim(containerEl, isAdmin, year) {
+    if (!containerEl) return;
+    currentContainer = containerEl;
+    isAdminMode = !!isAdmin;
+    const yearStr = String(year);
+
+    // Always show a loading placeholder while (re)subscribing.
+    containerEl.innerHTML = `
+        <div class="flex items-center justify-center p-10 text-gray-400">
+            <i class="fas fa-spinner fa-spin mr-2"></i> Memuatkan takwim...
+        </div>`;
+
+    // If the year changed (or first run), reset the listener.
+    if (year && yearStr !== currentYear) {
+        if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+        currentYear = yearStr;
+        cachedEvents = [];
+    } else {
+        currentYear = yearStr;
+    }
+
+    if (!unsubscribe) {
+        unsubscribe = subscribeTakwim(currentYear, (events) => {
+            cachedEvents = events || [];
+            render();
+        });
+    } else {
+        // Re-render with cached data (e.g. admin mode toggled without year change).
+        render();
+    }
+}

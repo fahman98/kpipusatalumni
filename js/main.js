@@ -34,6 +34,8 @@ import {
 
 import { renderGaugeChart, showHistoryChart, destroyKpiChart } from './charts.js';
 import { handleAdminLogin, resetTerminalModal, runBootSequence, randomGlitch, runLogoutSequence } from './admin.js';
+import { initTakwim } from './takwim.js';
+import { initPenjanaan } from './penjanaan.js';
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -67,6 +69,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const kpiGridContainer = getEl('kpi-grid-container');
     const paginationContainer = getEl('pagination');
+
+    // --- MAIN NAV / VIEWS (Dashboard / Takwim / Penjanaan) ---
+    const mainNav = getEl('main-nav');
+    const viewDashboard = getEl('view-dashboard');
+    const viewTakwim = getEl('view-takwim');
+    const viewPenjanaan = getEl('view-penjanaan');
+    let currentView = 'dashboard';
+
     const chartModal = getEl('chart-modal');
     const detailsModal = getEl('details-modal');
     const emptyStateContainer = getEl('empty-state-container');
@@ -428,12 +438,67 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Trigger Load
             window.updateDashboard(activeQuarterKey);
+            // Re-render Takwim/Penjanaan so admin controls appear/disappear on auth change.
+            renderCurrentView();
         });
     }
 
 
 
     // --- EVENT LISTENERS ---
+
+    // --- VIEW SWITCHING (Dashboard / Takwim / Penjanaan) ---
+    function renderCurrentView() {
+        // (Re)render the active non-dashboard view with the latest year/admin state.
+        if (currentView === 'takwim' && viewTakwim) {
+            initTakwim(viewTakwim, isEditMode, selectedYear);
+        } else if (currentView === 'penjanaan' && viewPenjanaan) {
+            initPenjanaan(viewPenjanaan, isEditMode, selectedYear);
+        }
+    }
+
+    function switchView(view) {
+        if (!['dashboard', 'takwim', 'penjanaan'].includes(view)) view = 'dashboard';
+        currentView = view;
+
+        // Toggle view containers
+        if (viewDashboard) viewDashboard.classList.toggle('hidden', view !== 'dashboard');
+        if (viewTakwim) viewTakwim.classList.toggle('hidden', view !== 'takwim');
+        if (viewPenjanaan) viewPenjanaan.classList.toggle('hidden', view !== 'penjanaan');
+
+        // Quarter tabs only relevant for dashboard (they live inside #view-dashboard,
+        // but keep this explicit in case the markup changes).
+        if (paginationContainer) {
+            const pagWrap = paginationContainer.parentElement;
+            if (pagWrap) pagWrap.classList.toggle('hidden', view !== 'dashboard');
+        }
+
+        // Update nav tab active states
+        if (mainNav) {
+            mainNav.querySelectorAll('.main-nav-tab').forEach(tab => {
+                const active = tab.dataset.view === view;
+                tab.classList.toggle('active', active);
+                tab.setAttribute('aria-selected', active ? 'true' : 'false');
+            });
+        }
+
+        // Lazy-init / re-render the selected feature view
+        if (view === 'takwim' && viewTakwim) {
+            initTakwim(viewTakwim, isEditMode, selectedYear);
+        } else if (view === 'penjanaan' && viewPenjanaan) {
+            initPenjanaan(viewPenjanaan, isEditMode, selectedYear);
+        }
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    window.switchView = switchView;
+
+    if (mainNav) {
+        mainNav.addEventListener('click', (e) => {
+            const tab = e.target.closest('.main-nav-tab');
+            if (tab && tab.dataset.view) switchView(tab.dataset.view);
+        });
+    }
 
     // Year Change
     if (yearSelector) {
@@ -442,6 +507,8 @@ document.addEventListener('DOMContentLoaded', () => {
             setApiYear(year);
             initiallyLoadedQuarters.clear();
             updateDashboard(currentQuarter);
+            // Keep Takwim / Penjanaan in sync with the global year.
+            renderCurrentView();
             window.scrollTo({ top: 0, behavior: 'smooth' });
         });
     }
