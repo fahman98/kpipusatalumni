@@ -102,9 +102,15 @@ function ensureModal() {
                         class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-brand-primary focus:border-brand-primary">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Catatan</label>
-                    <textarea id="takwim-notes" rows="3" placeholder="Maklumat tambahan (pilihan)"
-                        class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-brand-primary focus:border-brand-primary"></textarea>
+                    <label class="block text-sm font-medium text-gray-700">Catatan / Status</label>
+                    <input type="text" id="takwim-notes" list="takwim-notes-options" autocomplete="off"
+                        placeholder="Pilih status atau taip sendiri"
+                        class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-brand-primary focus:border-brand-primary">
+                    <datalist id="takwim-notes-options">
+                        <option value="Telah Berlangsung"></option>
+                        <option value="Ditangguhkan"></option>
+                        <option value="Dibatalkan"></option>
+                    </datalist>
                 </div>
                 <div class="flex gap-2 pt-2">
                     <button type="button" id="takwim-cancel-btn"
