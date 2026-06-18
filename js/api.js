@@ -33,6 +33,12 @@ const getAppId = () => {
     return "dashboard-alumni-kpi";
 };
 
+// Timestamp string for the "Data dikemaskini pada ..." dashboard footer.
+// Stamped on every KPI write so the footer reflects the latest change.
+const nowFooterDate = () => new Date().toLocaleDateString('ms-MY', {
+    day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
+});
+
 // --- AUDIT LOG ---
 async function writeAuditLog(action, details) {
     try {
@@ -205,7 +211,7 @@ export async function addNewKpi(kpiData) {
                 title: title,
                 subtitle: subtitle,
                 kpis: currentKpis,
-                footerDate: new Date().toLocaleDateString('ms-MY', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                footerDate: nowFooterDate()
             }, { merge: true });
         }
 
@@ -251,7 +257,7 @@ export async function updateKpiStructure(kpiId, newName, newTarget) {
                 return k;
             });
 
-            batch.update(docRef, { kpis: kpis });
+            batch.update(docRef, { kpis: kpis, footerDate: nowFooterDate() });
         }
         await batch.commit();
         await writeAuditLog('EDIT_KPI_STRUCTURE', { kpiId, newName, newTarget });
@@ -290,7 +296,7 @@ export function deleteKpi(kpiId) {
                     const data = doc.data();
                     const filteredKpis = data.kpis.filter(k => k.id !== kpiId);
 
-                    batch.update(docRef, { kpis: filteredKpis });
+                    batch.update(docRef, { kpis: filteredKpis, footerDate: nowFooterDate() });
                 }
                 await batch.commit();
                 await writeAuditLog('DELETE_KPI', { kpiId });
@@ -359,7 +365,7 @@ export async function cloneFromYear(sourceYear) {
                     title: title,
                     subtitle: subtitle,
                     kpis: cleanKpis,
-                    footerDate: new Date().toLocaleDateString('ms-MY')
+                    footerDate: nowFooterDate()
                 });
             }
         }
@@ -396,7 +402,7 @@ export async function saveBulkKpiValues(kpiId, valuesObj) {
             const kpiIndex = data.kpis.findIndex(k => k.id === kpiId);
             if (kpiIndex > -1) {
                 data.kpis[kpiIndex].value = valuesObj[qKey];
-                batch.update(docRef, { kpis: data.kpis });
+                batch.update(docRef, { kpis: data.kpis, footerDate: nowFooterDate() });
             }
         }
         await batch.commit();
@@ -431,7 +437,7 @@ export async function updateKpiValueInFirestore(quarterKey, kpiId, newValue, bul
                 if (i === startQuarterNum && bulan !== null) {
                     data.kpis[kpiIndex].bulan = bulan;
                 }
-                batch.update(docRef, { kpis: data.kpis });
+                batch.update(docRef, { kpis: data.kpis, footerDate: nowFooterDate() });
             }
         }
         await batch.commit();
@@ -459,7 +465,7 @@ export async function updateKpiDescriptionInFirestore(kpiId, text) {
                 const idx = kpis.findIndex(k => k.id === kpiId);
                 if (idx > -1) {
                     kpis[idx].description = text;
-                    batch.update(ref, { kpis });
+                    batch.update(ref, { kpis, footerDate: nowFooterDate() });
                 }
             }
         }
@@ -498,7 +504,7 @@ export async function updateKpiDetailsList(quarterKey, kpiId, itemName, isChecke
                 data.kpis[kpiIndex].value = achieved.length;
             }
 
-            batch.update(docRef, { kpis: data.kpis });
+            batch.update(docRef, { kpis: data.kpis, footerDate: nowFooterDate() });
         }
         await batch.commit();
         showToastNotification('Status dikemaskini!', 'success');
@@ -545,7 +551,7 @@ export async function updateKpiTargetListItem(quarterKey, kpiId, payload, action
         sourceKpi.details.achieved = achieved;
         if (Array.isArray(targetList)) sourceKpi.target = targetList.length;
 
-        batch.update(sourceDocRef, { kpis: sourceData.kpis });
+        batch.update(sourceDocRef, { kpis: sourceData.kpis, footerDate: nowFooterDate() });
 
         // 3. Propagate to Future Quarters (Overwrite List)
         for (let i = startQuarterNum + 1; i <= 4; i++) {
@@ -579,7 +585,7 @@ export async function updateKpiTargetListItem(quarterKey, kpiId, payload, action
                 data.kpis[idx].value = qAchieved.length;
             }
 
-            batch.update(docRef, { kpis: data.kpis });
+            batch.update(docRef, { kpis: data.kpis, footerDate: nowFooterDate() });
         }
         await batch.commit();
         showToastNotification('Senarai dikemaskini!', 'success');
@@ -659,7 +665,7 @@ export async function updateKpiBreakdownList(quarterKey, kpiId, payload, action)
                 if (idx !== -1) items[idx] = payload.data;
             }
             data.kpis[kpiIndex].details.items = items;
-            batch.update(docRef, { kpis: data.kpis });
+            batch.update(docRef, { kpis: data.kpis, footerDate: nowFooterDate() });
         }
         await batch.commit();
         showToastNotification('Butiran dikemaskini!', 'success');
@@ -721,7 +727,7 @@ export async function updateKpiProgressListItem(quarterKey, kpiId, itemName, sub
                     kpi.value = totalScore / totalItems;
                 }
             }
-            batch.update(docRef, { kpis: data.kpis });
+            batch.update(docRef, { kpis: data.kpis, footerDate: nowFooterDate() });
         }
         await batch.commit();
         showToastNotification('Progres dikemaskini!', 'success');
