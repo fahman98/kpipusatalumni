@@ -17,6 +17,8 @@ import {
     getPendanaanKpiTarget
 } from './api.js';
 
+import { statusBarClass } from './status.js';
+
 const PENDANAAN_KPI_ID = 'pendanaan';
 
 const BULAN_MY = ['', 'Jan', 'Feb', 'Mac', 'Apr', 'Mei', 'Jun', 'Jul', 'Ogos', 'Sep', 'Okt', 'Nov', 'Dis'];
@@ -465,7 +467,7 @@ function render() {
     const total = itemsIndexed.reduce((sum, it) => sum + (Number(it.value) || 0), 0);
     const pct = cachedTarget > 0 ? Math.min((total / cachedTarget) * 100, 100) : 0;
     const pctRaw = cachedTarget > 0 ? (total / cachedTarget) * 100 : 0;
-    const barColor = pctRaw >= 75 ? 'bg-status-good' : pctRaw >= 30 ? 'bg-status-ok' : 'bg-status-bad';
+    const barColor = statusBarClass(pctRaw);
 
     const addBtnHtml = isAdminMode
         ? `<button id="penjanaan-add-btn" class="bg-brand-primary text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-800 shadow-md transition-all text-sm flex items-center gap-2 flex-shrink-0">

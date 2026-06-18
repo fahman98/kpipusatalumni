@@ -9,6 +9,8 @@ import {
     selectedYear
 } from './api.js';
 
+import { statusTier, statusHex, statusBarClass } from './status.js';
+
 const BULAN_MY = ['', 'Jan', 'Feb', 'Mac', 'Apr', 'Mei', 'Jun', 'Jul', 'Ogos', 'Sep', 'Okt', 'Nov', 'Dis'];
 const BULAN_FULL = ['', 'Januari', 'Februari', 'Mac', 'April', 'Mei', 'Jun', 'Julai', 'Ogos', 'September', 'Oktober', 'November', 'Disember'];
 
@@ -286,26 +288,20 @@ export function createKpiCard(kpi) {
     // #9: Status-tinted icon container background
     const iconContainer = cardElement.querySelector('.kpi-icon-container');
     if (iconContainer) {
-        const statusColor = getStatusColor(displayPercentage);
-        const iconBgClass = statusColor === 'bg-status-good' ? 'icon-bg-good' :
-                            statusColor === 'bg-status-ok'   ? 'icon-bg-ok'   : 'icon-bg-bad';
-        iconContainer.classList.add(iconBgClass);
+        iconContainer.classList.add('icon-bg-' + statusTier(displayPercentage));
     }
 
     // Gradient text on KPI value
     const animatedValueEl = cardElement.querySelector('.animated-value');
     if (animatedValueEl) {
-        const gradClass = displayPercentage >= 75 ? 'value-gradient-good' :
-                          displayPercentage >= 30 ? 'value-gradient-ok'   : 'value-gradient-bad';
-        animatedValueEl.classList.add(gradClass);
+        animatedValueEl.classList.add('value-gradient-' + statusTier(displayPercentage));
     }
 
     // Ring progress: set CSS vars for conic-gradient
     const ringWrap = cardElement.querySelector('.kpi-ring-wrap');
     if (ringWrap) {
         const cappedPct = Math.min(displayPercentage, 100);
-        const ringColor = displayPercentage >= 75 ? '#43a047' :
-                          displayPercentage >= 30 ? '#f59e0b' : '#e53935';
+        const ringColor = statusHex(displayPercentage);
         ringWrap.style.setProperty('--ring-pct', `${cappedPct}%`);
         ringWrap.style.setProperty('--ring-color', ringColor);
     }
@@ -1050,9 +1046,7 @@ export function animateValue(element, start, end, duration, formatter) {
 }
 
 export function getStatusColor(percentage) {
-    if (percentage >= 75) return 'bg-status-good';
-    if (percentage >= 30) return 'bg-status-ok';
-    return 'bg-status-bad';
+    return statusBarClass(percentage);
 }
 
 export function showToastNotification(message, type = 'info') {

@@ -73,9 +73,10 @@ export function subscribeToQuarterData(quarterKey, onUpdateCallback) {
     // Dynamic Path based on YEAR using safe ID
     const basePath = `artifacts/${getAppId()}/public/data/kpi-${selectedYear}`;
 
-    // Fetch previous quarter once (for trend)
+    // Fetch previous quarter once (for trend). A failure here must NOT block the
+    // main listener — fall back to "no previous data" so trends are simply absent.
     const prevQuarterPromise = previousQuarterKey
-        ? db.collection(basePath).doc(previousQuarterKey).get()
+        ? db.collection(basePath).doc(previousQuarterKey).get().catch(() => null)
         : Promise.resolve(null);
 
     prevQuarterPromise.then(prevSnap => {
@@ -113,15 +114,20 @@ export function subscribeToQuarterData(quarterKey, onUpdateCallback) {
             if (generation !== listenerGeneration) return;
             console.error("Ralat Sync:", error);
             hideLoading();
-            if (error.code !== 'permission-denied') {
-                showToastNotification("Terputus hubungan dengan server.", "danger");
-            }
+            const msg = error.code === 'permission-denied'
+                ? "Tiada kebenaran membaca data."
+                : "Gagal memuatkan data. Semak sambungan internet.";
+            showToastNotification(msg, "danger");
+            // Tell the UI to render an error/retry state instead of leaving skeletons.
+            onUpdateCallback(null, null, false, error);
         });
 
     }).catch(error => {
         if (generation !== listenerGeneration) return;
-        console.error("Ralat fetch previous quarter:", error);
+        console.error("Ralat sync:", error);
         hideLoading();
+        showToastNotification("Gagal memuatkan data. Semak sambungan internet.", "danger");
+        onUpdateCallback(null, null, false, error);
     });
 }
 

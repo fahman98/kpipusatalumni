@@ -36,6 +36,7 @@ import { renderGaugeChart, showHistoryChart, destroyKpiChart } from './charts.js
 import { handleAdminLogin, resetTerminalModal, runBootSequence, randomGlitch, runLogoutSequence } from './admin.js';
 import { initTakwim } from './takwim.js';
 import { initPenjanaan } from './penjanaan.js';
+import { statusTier, statusHex } from './status.js';
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -164,7 +165,35 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // 4. Subscribe to Real-time Data
-        subscribeToQuarterData(quarterKey, (currentData, previousData, isEmpty) => {
+        subscribeToQuarterData(quarterKey, (currentData, previousData, isEmpty, error) => {
+
+            // Handle Load Error State — show a clear retry panel, never leave the
+            // skeletons spinning forever.
+            if (error) {
+                if (kpiGridContainer) {
+                    kpiGridContainer.classList.remove('grid-exit');
+                    kpiGridContainer.innerHTML = `
+                    <div class="col-span-full flex flex-col items-center justify-center text-center p-10 bg-white rounded-xl shadow-sm border-2 border-dashed border-red-200">
+                        <div class="bg-red-50 p-4 rounded-full mb-4">
+                            <i class="ph-duotone ph-wifi-slash text-red-500 text-4xl"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-gray-700 mb-1">Gagal Memuatkan Data</h3>
+                        <p class="text-gray-500 text-sm mb-4">${error.code === 'permission-denied' ? 'Tiada kebenaran membaca data.' : 'Semak sambungan internet anda dan cuba lagi.'}</p>
+                        <button id="kpi-error-retry" class="bg-brand-primary text-white px-5 py-2 rounded-lg font-bold hover:bg-blue-800 transition-all text-sm flex items-center gap-2">
+                            <i class="fas fa-sync-alt"></i><span>Cuba Lagi</span>
+                        </button>
+                    </div>`;
+                    const retryBtn = getEl('kpi-error-retry');
+                    if (retryBtn) retryBtn.addEventListener('click', () => window.updateDashboard(quarterKey));
+                }
+                if (mainContentWrapper) mainContentWrapper.classList.remove('hidden');
+                if (emptyStateContainer) emptyStateContainer.classList.add('hidden');
+                if (statsBar) statsBar.classList.add('hidden');
+                if (achieverPanel) achieverPanel.classList.add('hidden');
+                if (adminSetupActions) adminSetupActions.classList.add('hidden');
+                if (mainTitle) mainTitle.innerHTML = `Dashboard KPI ${selectedYear} <br> Ralat Sambungan`;
+                return;
+            }
 
             // Handle Empty Year State
             if (isEmpty) {
@@ -321,8 +350,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 totalPct += cappedPct;
                 count++;
 
-                if (pct >= 75) goodCount++;
-                else if (pct >= 30) okCount++;
+                const tier = statusTier(pct);
+                if (tier === 'good') goodCount++;
+                else if (tier === 'ok') okCount++;
                 else badCount++;
 
                 if (pct > maxPercentage) {
@@ -578,7 +608,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const valStr = kpi.isCurrency ? 'RM ' + Math.floor(val).toLocaleString()
                      : kpi.isPercentage ? val.toFixed(1) + '%'
                      : Math.floor(val).toLocaleString();
-        const color = pct >= 75 ? '#43a047' : pct >= 30 ? '#f59e0b' : '#e53935';
+        const color = statusHex(pct);
 
         getEl('focus-kpi-name').textContent = kpi.name;
         getEl('focus-kpi-pct').textContent = cappedPct.toFixed(1) + '%';
@@ -1082,7 +1112,8 @@ document.addEventListener('DOMContentLoaded', () => {
             data.processedKpis.forEach(kpi => {
                 const p = getKpiPercentage(kpi);
                 totalPctPdf += Math.min(p, 100);
-                if (p >= 75) goodCnt++; else if (p >= 30) okCnt++; else badCnt++;
+                const t = statusTier(p);
+                if (t === 'good') goodCnt++; else if (t === 'ok') okCnt++; else badCnt++;
             });
             const kpiCnt = data.processedKpis.length;
             const overallPdf = kpiCnt > 0 ? totalPctPdf / kpiCnt : 0;
@@ -1337,7 +1368,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 ? 'RM ' + val.toLocaleString('en-US', { minimumFractionDigits: 0 })
                 : kpi.isPercentage ? val.toFixed(1) + '%'
                 : Math.floor(val).toLocaleString();
-            const dotColor  = pct >= 75 ? '#43a047' : pct >= 30 ? '#f59e0b' : '#e53935';
+            const dotColor  = statusHex(pct);
             const badge     = pct >= 75 ? 'bg-green-100 text-green-700'
                             : pct >= 30 ? 'bg-amber-100 text-amber-700'
                             :             'bg-red-100 text-red-600';
@@ -1393,7 +1424,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const canvas = document.createElement('canvas');
             canvas.width = size; canvas.height = size;
             const ctx = canvas.getContext('2d');
-            const color = pct >= 75 ? '#43a047' : pct >= 30 ? '#f59e0b' : '#e53935';
+            const color = statusHex(pct);
 
             // Coloured background circle
             ctx.fillStyle = color;

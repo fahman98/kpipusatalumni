@@ -23,6 +23,7 @@ const PRECACHE_ASSETS = [
     './js/main.js',
     './js/api.js',
     './js/ui.js',
+    './js/status.js',
     './js/charts.js',
     './js/admin.js',
     './js/takwim.js',
