@@ -60,6 +60,11 @@ function bulanToQuarterKey(bulan) {
     return SUKU[Math.floor((b - 1) / 3)].key;
 }
 
+// Stable unique id for a record, so edit/delete never confuse look-alike rows.
+function genId() {
+    return 'pnj-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+}
+
 // ---- Modal (dynamically created, reuses .modal / .is-open CSS) ---------
 
 function ensureModal() {
@@ -84,6 +89,7 @@ function ensureModal() {
                 <input type="hidden" id="penjanaan-orig-bulan">
                 <input type="hidden" id="penjanaan-orig-name">
                 <input type="hidden" id="penjanaan-orig-value">
+                <input type="hidden" id="penjanaan-orig-id">
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Sumber <span class="text-red-500">*</span></label>
                     <input type="text" id="penjanaan-sumber" required placeholder="Contoh: Sumbangan Korporat"
@@ -137,7 +143,8 @@ function ensureModal() {
                 index: parseInt(origIndexRaw, 10),
                 bulan: parseInt(modal.querySelector('#penjanaan-orig-bulan').value, 10),
                 name: modal.querySelector('#penjanaan-orig-name').value,
-                value: parseFloat(modal.querySelector('#penjanaan-orig-value').value)
+                value: parseFloat(modal.querySelector('#penjanaan-orig-value').value),
+                id: modal.querySelector('#penjanaan-orig-id').value || null
             };
             await editRecord(orig, { name: sumber, value: jumlah, bulan });
         } else {
@@ -159,6 +166,7 @@ function openRecordModal(record) {
     modal.querySelector('#penjanaan-orig-bulan').value = isEdit && record.bulan ? String(record.bulan) : '';
     modal.querySelector('#penjanaan-orig-name').value = isEdit ? (record.name || '') : '';
     modal.querySelector('#penjanaan-orig-value').value = isEdit ? String(record.value != null ? record.value : '') : '';
+    modal.querySelector('#penjanaan-orig-id').value = isEdit && record.id ? String(record.id) : '';
     openModal(modal);
 }
 
@@ -223,8 +231,8 @@ function openDetailModal(record) {
     const actions = modal.querySelector('#penjanaan-detail-actions');
     if (isAdminMode) {
         actions.innerHTML = `
-            <button type="button" id="penjanaan-detail-edit" class="flex-1 px-4 py-2 border border-blue-200 bg-blue-50 text-blue-700 rounded-lg font-semibold hover:bg-blue-100 transition-all flex items-center justify-center gap-2"><i class="fas fa-pencil-alt text-xs"></i> Edit</button>
-            <button type="button" id="penjanaan-detail-delete" class="flex-1 px-4 py-2 border border-red-200 bg-red-50 text-red-600 rounded-lg font-semibold hover:bg-red-100 transition-all flex items-center justify-center gap-2"><i class="fas fa-trash-alt text-xs"></i> Padam</button>`;
+            <button type="button" id="penjanaan-detail-edit" class="detail-btn-edit flex-1 px-4 py-2 border border-blue-200 bg-blue-50 text-blue-700 rounded-lg font-semibold hover:bg-blue-100 transition-all flex items-center justify-center gap-2"><i class="fas fa-pencil-alt text-xs"></i> Edit</button>
+            <button type="button" id="penjanaan-detail-delete" class="detail-btn-delete flex-1 px-4 py-2 border border-red-200 bg-red-50 text-red-600 rounded-lg font-semibold hover:bg-red-100 transition-all flex items-center justify-center gap-2"><i class="fas fa-trash-alt text-xs"></i> Padam</button>`;
         actions.querySelector('#penjanaan-detail-edit').addEventListener('click', () => {
             closeModal(modal);
             openRecordModal(record);
@@ -271,13 +279,18 @@ async function addRecord({ name, value, bulan }) {
         );
         return;
     }
-    await updateKpiBreakdownList(quarterKey, PENDANAAN_KPI_ID, { name, value, bulan }, 'add');
+    await updateKpiBreakdownList(quarterKey, PENDANAAN_KPI_ID, { id: genId(), name, value, bulan }, 'add');
     afterWrite();
 }
 
 // Find the index of an item within a given quarter's items array.
 function matchIndex(items, target) {
-    // Prefer exact bulan match; fall back to name+value if bulan missing on old records.
+    // Prefer the stable id when present — unambiguous even for look-alike rows.
+    if (target && target.id != null && target.id !== '') {
+        const byId = items.findIndex(it => it.id != null && String(it.id) === String(target.id));
+        if (byId !== -1) return byId;
+    }
+    // Fall back to bulan-aware match, then name+value (legacy records).
     let idx = items.findIndex(it =>
         it.name === target.name &&
         Number(it.value) === Number(target.value) &&
@@ -338,10 +351,14 @@ async function editRecord(orig, updated) {
     const oldQuarter = loc.quarterKey;
     const idx = loc.index;
 
+    // Keep the record's id stable; lazily assign one to legacy records so they
+    // become unambiguous from this edit onward.
+    const id = orig.id || genId();
+    const data = { id, name: updated.name, value: updated.value, bulan: updated.bulan };
+
     if (oldQuarter === newQuarter) {
         // Same starting quarter — edit in place.
-        await updateKpiBreakdownList(oldQuarter, PENDANAAN_KPI_ID,
-            { index: idx, data: { name: updated.name, value: updated.value, bulan: updated.bulan } }, 'edit');
+        await updateKpiBreakdownList(oldQuarter, PENDANAAN_KPI_ID, { index: idx, data }, 'edit');
     } else {
         // Quarter changed — must delete from old, add to new. Guard against the
         // add being silently dropped due to a same-name item in the new quarter.
@@ -354,8 +371,7 @@ async function editRecord(orig, updated) {
             return;
         }
         await updateKpiBreakdownList(oldQuarter, PENDANAAN_KPI_ID, idx, 'delete');
-        await updateKpiBreakdownList(newQuarter, PENDANAAN_KPI_ID,
-            { name: updated.name, value: updated.value, bulan: updated.bulan }, 'add');
+        await updateKpiBreakdownList(newQuarter, PENDANAAN_KPI_ID, data, 'add');
     }
     afterWrite();
 }

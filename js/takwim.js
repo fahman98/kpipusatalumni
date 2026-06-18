@@ -84,10 +84,11 @@ function todayKey() {
 }
 
 // Known status values get a coloured pill; any other note is free text.
+// Colours live in CSS (.status-pill-*) so they adapt to dark mode cleanly.
 const STATUS_STYLES = {
-    'Telah Berlangsung': { pill: 'bg-green-50 text-green-700 border-green-200', icon: 'ph-check-circle' },
-    'Ditangguhkan':      { pill: 'bg-amber-50 text-amber-700 border-amber-200', icon: 'ph-pause-circle' },
-    'Dibatalkan':        { pill: 'bg-red-50 text-red-600 border-red-200',       icon: 'ph-x-circle' }
+    'Telah Berlangsung': { pill: 'status-pill status-pill-green', icon: 'ph-check-circle' },
+    'Ditangguhkan':      { pill: 'status-pill status-pill-amber', icon: 'ph-pause-circle' },
+    'Dibatalkan':        { pill: 'status-pill status-pill-red',   icon: 'ph-x-circle' }
 };
 function statusStyle(notes) {
     return STATUS_STYLES[notes] || null;
@@ -263,8 +264,8 @@ function openDetailModal(ev) {
     const actions = modal.querySelector('#takwim-detail-actions');
     if (isAdminMode) {
         actions.innerHTML = `
-            <button type="button" id="takwim-detail-edit" class="flex-1 px-4 py-2 border border-blue-200 bg-blue-50 text-blue-700 rounded-lg font-semibold hover:bg-blue-100 transition-all flex items-center justify-center gap-2"><i class="fas fa-pencil-alt text-xs"></i> Edit</button>
-            <button type="button" id="takwim-detail-delete" class="flex-1 px-4 py-2 border border-red-200 bg-red-50 text-red-600 rounded-lg font-semibold hover:bg-red-100 transition-all flex items-center justify-center gap-2"><i class="fas fa-trash-alt text-xs"></i> Padam</button>`;
+            <button type="button" id="takwim-detail-edit" class="detail-btn-edit flex-1 px-4 py-2 border border-blue-200 bg-blue-50 text-blue-700 rounded-lg font-semibold hover:bg-blue-100 transition-all flex items-center justify-center gap-2"><i class="fas fa-pencil-alt text-xs"></i> Edit</button>
+            <button type="button" id="takwim-detail-delete" class="detail-btn-delete flex-1 px-4 py-2 border border-red-200 bg-red-50 text-red-600 rounded-lg font-semibold hover:bg-red-100 transition-all flex items-center justify-center gap-2"><i class="fas fa-trash-alt text-xs"></i> Padam</button>`;
         actions.querySelector('#takwim-detail-edit').addEventListener('click', () => {
             closeModal(modal);
             openTakwimModal(ev);

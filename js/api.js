@@ -600,11 +600,18 @@ export async function updateKpiBreakdownList(quarterKey, kpiId, payload, action)
         // have a DIFFERENT order/length. So a fixed numeric index is only valid for the
         // start quarter. For delete/edit we capture the target item's identity from the
         // start quarter, then re-locate it by identity in every quarter Qn..Q4.
-        const sameItem = (a, b) =>
-            a && b &&
-            a.name === b.name &&
-            Number(a.value) === Number(b.value) &&
-            String(a.bulan ?? '') === String(b.bulan ?? '');
+        // Identity match. When BOTH items carry a stable `id` (new Penjanaan
+        // records), match purely by id — bulletproof even for look-alike rows.
+        // Otherwise fall back to name+value+bulan (legacy items / other KPIs).
+        const sameItem = (a, b) => {
+            if (!a || !b) return false;
+            if (a.id != null && a.id !== '' && b.id != null && b.id !== '') {
+                return String(a.id) === String(b.id);
+            }
+            return a.name === b.name &&
+                Number(a.value) === Number(b.value) &&
+                String(a.bulan ?? '') === String(b.bulan ?? '');
+        };
 
         let targetIdentity = null;
         if (action === 'delete' || action === 'edit') {

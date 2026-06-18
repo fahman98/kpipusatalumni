@@ -1548,3 +1548,20 @@ body.dark-mode .penjanaan-suku .border-gray-50,
 body.dark-mode .penjanaan-suku .border-gray-100 { border-color:var(--border-color); }
 body.dark-mode .penjanaan-month-divider { background-color:var(--bg-card-alt); }
 body.dark-mode .penjanaan-month-divider span { color:#d1d5db; }
+
+/* ---- Status pills (Takwim) + detail popup action buttons ---------------- */
+/* Colours defined here so they stay legible in both light and dark mode,
+   without globally overriding Tailwind's -50 utilities used elsewhere.      */
+.status-pill { border: 1px solid transparent; }
+.status-pill-green { background:#f0fdf4; color:#15803d; border-color:#bbf7d0; }
+.status-pill-amber { background:#fffbeb; color:#b45309; border-color:#fde68a; }
+.status-pill-red   { background:#fef2f2; color:#dc2626; border-color:#fecaca; }
+
+body.dark-mode .status-pill-green { background:#052e16; color:#4ade80; border-color:#166534; }
+body.dark-mode .status-pill-amber { background:#451a03; color:#fbbf24; border-color:#78350f; }
+body.dark-mode .status-pill-red   { background:#450a0a; color:#f87171; border-color:#7f1d1d; }
+
+body.dark-mode .detail-btn-edit        { background:#1e3a8a; color:#bfdbfe; border-color:#1e40af; }
+body.dark-mode .detail-btn-edit:hover  { background:#1e40af; }
+body.dark-mode .detail-btn-delete      { background:#450a0a; color:#fca5a5; border-color:#7f1d1d; }
+body.dark-mode .detail-btn-delete:hover{ background:#5b1414; }
