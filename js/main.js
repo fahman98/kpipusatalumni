@@ -160,6 +160,27 @@ document.addEventListener('DOMContentLoaded', () => {
     // AFTER anonymous sign-in. Subscribing here (pre-auth) caused listener churn
     // that left Suku 1 blank on first load.
 
+    // Restore the last active quarter (persisted in updateDashboard). This runs
+    // BEFORE initializeApp(), so the auth callback reads the restored `.active`
+    // button and loads the right quarter — a refresh / SW update no longer dumps
+    // the user back to Suku 1.
+    try {
+        const savedQuarter = sessionStorage.getItem('kpi_active_quarter');
+        if (savedQuarter && /^q[1-4]$/.test(savedQuarter)) {
+            const qNum = savedQuarter.slice(1);
+            const savedBtn = document.querySelector(`.quarter-btn[data-quarter="${qNum}"]`);
+            if (savedBtn && !savedBtn.classList.contains('active')) {
+                document.querySelectorAll('.quarter-btn').forEach(b => {
+                    b.classList.remove('active');
+                    b.setAttribute('aria-selected', 'false');
+                });
+                savedBtn.classList.add('active');
+                savedBtn.setAttribute('aria-selected', 'true');
+            }
+            currentQuarter = savedQuarter;
+        }
+    } catch (e) { /* sessionStorage unavailable — default to Suku 1 */ }
+
     // Update admin action button labels with dynamic years
     const cloneBtnLabel = document.getElementById('clone-btn-label');
     if (cloneBtnLabel) cloneBtnLabel.textContent = `Copy Struktur ${prevYear}`;
@@ -171,6 +192,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- MAIN FUNCTION: UPDATE DASHBOARD ---
     window.updateDashboard = function (quarterKey) {
         currentQuarter = quarterKey;
+        // Remember the active quarter so a refresh or SW update restores the
+        // user's place instead of snapping back to Suku 1.
+        try { sessionStorage.setItem('kpi_active_quarter', quarterKey); } catch (e) {}
         initiallyLoadedQuarters.delete(quarterKey);
 
         // Quarter transition: fade out existing grid
@@ -1012,12 +1036,28 @@ document.addEventListener('DOMContentLoaded', () => {
         // Reload once when a new SW takes control (a fresh deploy activated).
         // Guarded so it never loops and never fires on the very first install.
         let swRefreshing = false;
+        const applySwUpdate = () => {
+            if (swRefreshing) return;
+            swRefreshing = true;
+            sessionStorage.setItem('kpi_sw_updated', '1');
+            window.location.reload();
+        };
         if (navigator.serviceWorker.controller) {
             navigator.serviceWorker.addEventListener('controllerchange', () => {
-                if (swRefreshing) return;
-                swRefreshing = true;
-                sessionStorage.setItem('kpi_sw_updated', '1');
-                window.location.reload();
+                // A new version activated. DON'T reload out from under the user
+                // mid-action — that was snapping them back to Suku 1 whenever the
+                // activation happened to land while they were reading/closing a
+                // modal. Apply it only while the tab is hidden; if it's currently
+                // visible, wait until they navigate away. The active quarter is
+                // persisted (sessionStorage), so the reloaded page restores their
+                // place regardless.
+                if (document.visibilityState === 'hidden') {
+                    applySwUpdate();
+                } else {
+                    document.addEventListener('visibilitychange', () => {
+                        if (document.visibilityState === 'hidden') applySwUpdate();
+                    }, { once: true });
+                }
             });
         }
 
