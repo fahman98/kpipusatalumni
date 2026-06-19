@@ -155,7 +155,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         setApiYear(String(currentYear));
     }
-    subscribeFooter(selectedYear);
+    // NOTE: footer subscription is started inside initializeApp() once Firebase
+    // auth has settled, so every Firestore listener (KPI + footer) is created
+    // AFTER anonymous sign-in. Subscribing here (pre-auth) caused listener churn
+    // that left Suku 1 blank on first load.
 
     // Update admin action button labels with dynamic years
     const cloneBtnLabel = document.getElementById('clone-btn-label');
@@ -484,6 +487,28 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- AUTHENTICATION INIT ---
     function initializeApp() {
         firebase.auth().onAuthStateChanged(async (user) => {
+            // FIRST-LOAD GUARD:
+            // On a brand-new visit Firebase fires this twice — once with `null`,
+            // then again with the anonymous user after sign-in completes. If we
+            // loaded the dashboard on BOTH, two subscribeToQuarterData('q1') calls
+            // would subscribe→kill→re-subscribe the SAME Firestore doc within a
+            // few microtasks, and Firestore can drop the initial snapshot of the
+            // relisten — leaving Suku 1 blank until the user switches quarters.
+            //
+            // So when nobody is signed in yet, kick off anonymous sign-in and
+            // RETURN. The resulting auth-state change re-enters this handler with
+            // the anonymous user and performs a single, clean load.
+            if (!user) {
+                try {
+                    await firebase.auth().signInAnonymously();
+                    return; // success → the anon auth-change will drive the load
+                } catch (error) {
+                    console.error("Anonymous auth error:", error);
+                    // Sign-in failed (e.g. offline) — fall through and try to
+                    // render anyway so the user is never stuck on a blank page.
+                }
+            }
+
             // Get active quarter from DOM
             const activeBtn = paginationContainer ? paginationContainer.querySelector('.active') : null;
             const activeQuarterKey = activeBtn ? `q${activeBtn.dataset.quarter}` : 'q1';
@@ -503,7 +528,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 showToastNotification(`Selamat datang, Admin (${user.email})`, "success");
             } else {
-                // GUEST MODE
+                // GUEST MODE (anonymous, or signed-out fallback)
                 setEditMode(false);
                 if (modeIndicator) modeIndicator.innerHTML = '<span class="inline-flex items-center bg-blue-100 text-blue-800 text-xs font-semibold px-2 md:px-2.5 py-1 rounded-full border border-blue-200 whitespace-nowrap"><i class="fas fa-eye md:mr-1"></i><span class="hidden md:inline">Paparan Awam</span></span>';
                 if (adminLogoutBtn) adminLogoutBtn.classList.add('hidden');
@@ -512,16 +537,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // Hide admin specific elements immediately
                 if (adminSetupActions) adminSetupActions.classList.add('hidden');
-
-                // If not logged in at all, login anonymously
-                if (!user) {
-                    try { await firebase.auth().signInAnonymously(); }
-                    catch (error) { console.error("Anonymous auth error:", error); }
-                }
             }
 
-            // Trigger Load
+            // Trigger Load (single, after auth has settled)
             window.updateDashboard(activeQuarterKey);
+            subscribeFooter(selectedYear);
             renderCurrentView();
         });
     }
