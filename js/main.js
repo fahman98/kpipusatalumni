@@ -398,8 +398,47 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- AUTHENTICATION INIT ---
+    // Tracks the last meaningful auth state so Firebase token-refresh events
+    // (which re-fire onAuthStateChanged with the same user type) don't tear
+    // down and re-create the Firestore listener, which was the mechanism that
+    // caused the N→N-1 quarter navigation bug.
+    let _lastAuthType = null; // 'anon' | 'admin'
+
     function initializeApp() {
         firebase.auth().onAuthStateChanged(async (user) => {
+            // FIRST-LOAD GUARD:
+            // On a brand-new visit Firebase fires this twice — once with `null`,
+            // then again with the anonymous user after sign-in completes. If we
+            // loaded the dashboard on BOTH, two subscribeToQuarterData('q1') calls
+            // would subscribe→kill→re-subscribe the SAME Firestore doc within a
+            // few microtasks, and Firestore can drop the initial snapshot of the
+            // relisten — leaving Suku 1 blank until the user switches quarters.
+            //
+            // So when nobody is signed in yet, kick off anonymous sign-in and
+            // RETURN. The resulting auth-state change re-enters this handler with
+            // the anonymous user and performs a single, clean load.
+            if (!user) {
+                try {
+                    await firebase.auth().signInAnonymously();
+                    return; // success → the anon auth-change will drive the load
+                } catch (error) {
+                    console.error("Anonymous auth error:", error);
+                    // Sign-in failed (e.g. offline) — fall through and try to
+                    // render anyway so the user is never stuck on a blank page.
+                }
+            }
+
+            // REPEAT-FIRE GUARD:
+            // Firebase re-fires onAuthStateChanged on network reconnects and
+            // token refreshes even when the user hasn't changed. Re-running
+            // updateDashboard in those cases kills the live Firestore listener
+            // and re-creates it, which (combined with the prevQuarterPromise
+            // async fetch) can briefly restore the previous quarter. Skip the
+            // reload if the auth type is unchanged.
+            const newAuthType = (user && !user.isAnonymous) ? 'admin' : 'anon';
+            if (_lastAuthType !== null && newAuthType === _lastAuthType) return;
+            _lastAuthType = newAuthType;
+
             // Get active quarter from DOM
             const activeBtn = paginationContainer ? paginationContainer.querySelector('.active') : null;
             const activeQuarterKey = activeBtn ? `q${activeBtn.dataset.quarter}` : 'q1';

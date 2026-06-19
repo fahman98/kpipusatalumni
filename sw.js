@@ -1,6 +1,19 @@
-// Naik taraf versi ini setiap kali deploy baru untuk paksa cache refresh
-const CACHE_NAME = 'kpi-dashboard-v2';
-const ASSETS_TO_CACHE = [
+// sw.js — Service Worker for the KPI Dashboard PWA.
+//
+// Strategy:
+//   • Same-origin app shell (HTML/CSS/JS) → NETWORK-FIRST. New deploys appear
+//     immediately while online; the cache is only a fallback for offline use.
+//     This removes the old "stale Cache-First" problem that needed a manual
+//     CACHE_NAME bump + hard refresh after every deploy.
+//   • Cross-origin CDNs (Tailwind, FontAwesome, Chart.js) → STALE-WHILE-
+//     REVALIDATE: instant from cache, refreshed in the background.
+//   • Firebase / Firestore / Google APIs → bypass entirely (always network).
+
+const CACHE_VERSION = 'v6';
+const CACHE_NAME = `kpi-dashboard-${CACHE_VERSION}`;
+
+// Same-origin app shell — kept complete & in sync with the real file list.
+const PRECACHE_ASSETS = [
     './',
     './index.html',
     './style.css',
@@ -11,53 +24,82 @@ const ASSETS_TO_CACHE = [
     './js/ui.js',
     './js/charts.js',
     './js/admin.js',
-    'https://cdn.tailwindcss.com',
-    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css',
-    'https://cdn.jsdelivr.net/npm/chart.js'
 ];
 
-// Install Service Worker
+const CDN_HOSTS = [
+    'cdn.tailwindcss.com',
+    'cdnjs.cloudflare.com',
+    'cdn.jsdelivr.net',
+    'cdn-icons-png.flaticon.com',
+    'unpkg.com',
+];
+
+// Install: precache same-origin app shell only
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME)
-            .then((cache) => {
-                console.log('[Service Worker] Caching all assets');
-                return cache.addAll(ASSETS_TO_CACHE);
-            })
+            .then(cache => cache.addAll(PRECACHE_ASSETS))
+            .then(() => self.skipWaiting())
     );
 });
 
-// Activate Service Worker
+// Activate: delete all old caches, claim clients immediately
 self.addEventListener('activate', (event) => {
     event.waitUntil(
-        caches.keys().then((cacheNames) => {
-            return Promise.all(
-                cacheNames.map((cache) => {
-                    if (cache !== CACHE_NAME) {
-                        console.log('[Service Worker] Clearing old cache');
-                        return caches.delete(cache);
-                    }
-                })
-            );
-        })
+        caches.keys()
+            .then(keys => Promise.all(
+                keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
+            ))
+            .then(() => self.clients.claim())
     );
 });
 
-// Fetch Data
+// Fetch routing
 self.addEventListener('fetch', (event) => {
-    // Untuk request ke Firebase/External API, guna Network First
-    if (event.request.url.includes('firestore') || event.request.url.includes('googleapis')) {
-        return; 
+    const { request } = event;
+    let url;
+    try { url = new URL(request.url); } catch (_) { return; }
+
+    // Bypass Firebase / Google APIs — always go straight to network
+    if (
+        url.hostname.includes('firebaseapp.com') ||
+        url.hostname.includes('firebaseio.com') ||
+        url.hostname.includes('googleapis.com') ||
+        url.hostname.includes('google.com') ||
+        url.hostname.includes('firestore')
+    ) {
+        return;
     }
 
-    // Untuk fail statik (HTML, CSS, JS), guna Cache First, then Network
-    event.respondWith(
-        caches.match(event.request)
-            .then((response) => {
-                if (response) {
+    // CDN assets: stale-while-revalidate
+    if (CDN_HOSTS.some(h => url.hostname.includes(h))) {
+        event.respondWith(
+            caches.open(CACHE_NAME).then(cache =>
+                cache.match(request).then(cached => {
+                    const networkFetch = fetch(request).then(response => {
+                        if (response && response.status === 200) {
+                            cache.put(request, response.clone());
+                        }
+                        return response;
+                    }).catch(() => null);
+                    return cached || networkFetch;
+                })
+            )
+        );
+        return;
+    }
+
+    // Same-origin app shell: network-first, fall back to cache when offline
+    if (url.origin === self.location.origin) {
+        event.respondWith(
+            fetch(request)
+                .then(response => {
+                    if (response && response.status === 200) {
+                        caches.open(CACHE_NAME).then(cache => cache.put(request, response.clone()));
+                    }
                     return response;
-                }
-                return fetch(event.request);
-            })
-    );
+                })
+                .catch(() => caches.match(request))
+        );
+    }
 });

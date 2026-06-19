@@ -1005,7 +1005,14 @@ export function openModal(modalElement, triggerElement) {
 export function closeModal(modalElement) {
     if (!modalElement) return;
     modalElement.classList.remove('is-open');
-    if (lastFocusedElement) lastFocusedElement.focus();
+    if (lastFocusedElement) {
+        const el = lastFocusedElement;
+        // Defer focus to the next frame so any pending touch/click events from the
+        // close gesture are fully processed before we shift focus. Without this,
+        // on mobile the focus call could interact with the synthetic click that
+        // follows a touchend, causing unexpected navigation.
+        requestAnimationFrame(() => { try { el.focus(); } catch (_) {} });
+    }
 
     if (modalElement.id === 'password-modal') {
         const event = new CustomEvent('modal-closed', { detail: { modalId: 'password-modal' } });
