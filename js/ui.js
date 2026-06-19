@@ -1096,7 +1096,16 @@ export function openModal(modalElement, triggerElement) {
 export function closeModal(modalElement) {
     if (!modalElement) return;
     modalElement.classList.remove('is-open');
-    if (lastFocusedElement) lastFocusedElement.focus();
+    // Defer focus restore to the next frame. The trigger that opened the modal
+    // (e.g. a card's "butiran" button) sits behind the modal; focusing it
+    // synchronously while the close gesture's touch/click events are still in
+    // flight let those events resolve against the now-focused element behind
+    // the overlay — contributing to the N→N-1 quarter jump. One rAF lets the
+    // pending input events flush first.
+    if (lastFocusedElement) {
+        const el = lastFocusedElement;
+        requestAnimationFrame(() => { try { el.focus(); } catch (_) {} });
+    }
 
     if (modalElement.id === 'password-modal') {
         const event = new CustomEvent('modal-closed', { detail: { modalId: 'password-modal' } });

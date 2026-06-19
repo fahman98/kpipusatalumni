@@ -509,6 +509,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- AUTHENTICATION INIT ---
+    // Tracks the last meaningful auth state so Firebase token-refresh / network
+    // reconnect events (which re-fire onAuthStateChanged with the same user
+    // type) don't tear down and re-create the live Firestore listener — the
+    // mechanism that caused the N→N-1 quarter navigation bug.
+    let _lastAuthType = null; // 'anon' | 'admin'
+
     function initializeApp() {
         firebase.auth().onAuthStateChanged(async (user) => {
             // FIRST-LOAD GUARD:
@@ -532,6 +538,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     // render anyway so the user is never stuck on a blank page.
                 }
             }
+
+            // REPEAT-FIRE GUARD:
+            // Firebase re-fires onAuthStateChanged on network reconnects and
+            // token refreshes even when the user hasn't changed. Re-running
+            // updateDashboard in those cases kills the live Firestore listener
+            // and re-creates it, and the async prevQuarterPromise fetch during
+            // that re-subscription can briefly surface the PREVIOUS quarter's
+            // data — the N→N-1 jump. Skip the reload when the auth type is
+            // unchanged; a real login/logout still flips the type and reloads.
+            const newAuthType = (user && !user.isAnonymous) ? 'admin' : 'anon';
+            if (_lastAuthType !== null && newAuthType === _lastAuthType) return;
+            _lastAuthType = newAuthType;
 
             // Get active quarter from DOM
             const activeBtn = paginationContainer ? paginationContainer.querySelector('.active') : null;

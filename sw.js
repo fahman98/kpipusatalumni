@@ -9,7 +9,7 @@
 //     REVALIDATE: instant from cache, refreshed in the background.
 //   • Firebase / Firestore / Google APIs → bypass entirely (always network).
 
-const CACHE_VERSION = 'v5';
+const CACHE_VERSION = 'v6';
 const CACHE_NAME = `kpi-dashboard-${CACHE_VERSION}`;
 
 // Same-origin app shell — kept complete & in sync with the real file list.

@@ -202,14 +202,23 @@ button:active,
 
 /* Styling untuk modal */
 .modal {
-    transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+    /* Keep `visibility: visible` for the FULL fade-out (delay the flip to
+       hidden until opacity has finished) so the overlay keeps blocking
+       pointer events while it animates out. Otherwise ghost/synthetic
+       clicks from the close gesture fall through to the controls behind the
+       modal — e.g. the quarter-pagination buttons — which was causing the
+       N→N-1 quarter jump when closing the details modal. */
+    transition: opacity 0.3s ease-in-out, visibility 0s linear 0.3s;
     opacity: 0;
     visibility: hidden;
+    pointer-events: none;
 }
 
 .modal.is-open {
+    transition: opacity 0.3s ease-in-out, visibility 0s linear 0s;
     opacity: 1;
     visibility: visible;
+    pointer-events: auto;
 }
 
 .modal .modal-content {
@@ -973,9 +982,17 @@ body.dark-mode .theme-toggle-btn:hover {
         padding-top: 24px !important;
     }
 
-    /* Faster slide animation for backdrop */
+    /* Faster slide animation for backdrop. Keep `visibility` in the
+       transition (delayed flip) so the bottom-sheet overlay keeps blocking
+       touches during the close fade — without this the modal stops
+       intercepting taps the instant it starts closing and the gesture lands
+       on the quarter buttons behind it (N→N-1 quarter jump bug). */
     .modal {
-        transition: opacity 0.2s ease;
+        transition: opacity 0.2s ease, visibility 0s linear 0.2s;
+    }
+
+    .modal.is-open {
+        transition: opacity 0.2s ease, visibility 0s linear 0s;
     }
 }
 
