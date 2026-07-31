@@ -38,6 +38,7 @@ import { handleAdminLogin, resetTerminalModal, runBootSequence, randomGlitch, ru
 import { initTakwim } from './takwim.js';
 import { initPenjanaan } from './penjanaan.js';
 import { statusTier, statusHex } from './status.js';
+import { isAdminUser } from './auth.js';
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -539,6 +540,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
+            // ADMIN ALLOW-LIST:
+            // Hanya akaun admin yang ditetapkan (lihat auth.js) boleh memegang
+            // sesi bukan-anonymous. Tanpa semakan ini, MANA-MANA akaun yang
+            // wujud dalam projek Firebase akan membuka UI admin — butang edit,
+            // padam, tambah KPI — walaupun setiap tulisan nanti ditolak oleh
+            // firestore.rules. Tendang keluar dan jatuh semula ke mod tetamu.
+            //
+            // Semakan ini mesti berada SEBELUM repeat-fire guard di bawah:
+            // akaun bukan-admin dikira 'anon', jadi guard itu akan return awal
+            // dan kita takkan sempat menolaknya.
+            if (user && !user.isAnonymous && !isAdminUser(user)) {
+                console.warn('Akaun bukan admin ditolak:', user.email);
+                try {
+                    await firebase.auth().signOut();
+                } catch (error) {
+                    console.error('Sign-out error:', error);
+                }
+                showToastNotification('Akaun ini tiada kebenaran admin.', 'danger');
+                return; // auth-change seterusnya akan log masuk anonymous
+            }
+
             // REPEAT-FIRE GUARD:
             // Firebase re-fires onAuthStateChanged on network reconnects and
             // token refreshes even when the user hasn't changed. Re-running
@@ -547,7 +569,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // that re-subscription can briefly surface the PREVIOUS quarter's
             // data — the N→N-1 jump. Skip the reload when the auth type is
             // unchanged; a real login/logout still flips the type and reloads.
-            const newAuthType = (user && !user.isAnonymous) ? 'admin' : 'anon';
+            const newAuthType = isAdminUser(user) ? 'admin' : 'anon';
             if (_lastAuthType !== null && newAuthType === _lastAuthType) return;
             _lastAuthType = newAuthType;
 
@@ -560,7 +582,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 setApiYear(yearSelector.value);
             }
 
-            if (user && !user.isAnonymous) {
+            if (isAdminUser(user)) {
                 // ADMIN MODE
                 setEditMode(true);
                 if (modeIndicator) modeIndicator.innerHTML = '<span class="inline-block bg-green-200 text-green-800 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-green-300">Mod Admin</span>';

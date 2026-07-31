@@ -1,5 +1,6 @@
 // --- JS/ADMIN.JS ---
 import { openModal, closeModal, showToastNotification } from './ui.js';
+import { isAdminUser } from './auth.js';
 
 let glitchTimeout;
 let bootSequenceTimeouts = [];
@@ -223,6 +224,21 @@ export function handleAdminLogin() {
     
     firebase.auth().signInWithEmailAndPassword(email, password)
         .then((userCredential) => {
+             // Firebase menerima MANA-MANA akaun sah dalam projek ini. Hanya
+             // email admin yang layak — tolak yang lain di sini supaya pengguna
+             // dapat sebab yang jelas, bukan ditendang senyap oleh main.js.
+             if (!isAdminUser(userCredential.user)) {
+                 firebase.auth().signOut().catch(() => {});
+                 failedAttempts++;
+                 if (failedAttempts >= 3) {
+                     triggerLockdown();
+                 } else if (feedback) {
+                     feedback.textContent = "> [ACCESS DENIED] ACCOUNT NOT AUTHORIZED.";
+                     feedback.classList.add('access-denied');
+                 }
+                 return;
+             }
+
              // Clear lockout state on successful login
              sessionStorage.removeItem(SS_LOCK_UNTIL);
              sessionStorage.removeItem(SS_ATTEMPTS);
