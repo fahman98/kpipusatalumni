@@ -7,7 +7,8 @@ import {
     showToastNotification,
     openModal,
     closeModal,
-    showConfirmModal
+    showConfirmModal,
+    escapeHtml
 } from './ui.js';
 
 import {
@@ -27,15 +28,6 @@ let isAdminMode = false;
 let cachedEvents = [];
 
 // ---- Helpers ----------------------------------------------------------
-
-function escapeHtml(str) {
-    return String(str == null ? '' : str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-}
 
 // Format an ISO date string (YYYY-MM-DD) into "15 Jun 2026".
 function formatDate(dateStr) {

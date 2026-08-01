@@ -14,6 +14,27 @@ import { statusTier, statusHex, statusBarClass } from './status.js';
 const BULAN_MY = ['', 'Jan', 'Feb', 'Mac', 'Apr', 'Mei', 'Jun', 'Jul', 'Ogos', 'Sep', 'Okt', 'Nov', 'Dis'];
 const BULAN_FULL = ['', 'Januari', 'Februari', 'Mac', 'April', 'Mei', 'Jun', 'Julai', 'Ogos', 'September', 'Oktober', 'November', 'Disember'];
 
+// Escape a value before it goes into an HTML string. Covers both element content
+// and quoted-attribute contexts.
+//
+// Everything rendered from Firestore — KPI names, checklist items, breakdown
+// rows — is admin-authored free text, and the details modal and table view built
+// it straight into innerHTML. A name containing markup therefore executed in
+// every visitor's browser, on the app's own origin, for as long as it stayed in
+// the document. takwim.js and penjanaan.js already escaped; this is the shared
+// copy they now all use.
+//
+// Round-trips safely through data-* attributes: the parser decodes the entity on
+// its way into the DOM, so `dataset.itemName` still reads back the original text.
+export function escapeHtml(str) {
+    return String(str == null ? '' : str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
 // Build <option> tags for a quarter's valid months (Q1 → Jan–Mac, etc.)
 function bulanOptionsHTML(qNum, selectedBulan) {
     const mStart = (qNum - 1) * 3 + 1;
@@ -42,7 +63,10 @@ const FA_TO_PHOSPHOR = {
 
 export function getPhosphorIcon(faIcon) {
     if (!faIcon) return 'ph-chart-bar';
-    if (faIcon.startsWith('ph-')) return faIcon;
+    // Allow-list rather than passthrough: this value is interpolated into a
+    // quoted class="" attribute in the table view, so an icon name like
+    // `ph-x" onmouseover="…` would otherwise break straight out of it.
+    if (/^ph-[a-z0-9-]+$/.test(faIcon)) return faIcon;
     return FA_TO_PHOSPHOR[faIcon] || 'ph-chart-bar';
 }
 
@@ -358,7 +382,7 @@ export function createKpiCard(kpi) {
     if (kpi.trend) {
         const chipClass = kpi.trendColor.includes('green') ? 'kpi-trend-chip-up' :
                           kpi.trendColor.includes('red')   ? 'kpi-trend-chip-down' : 'kpi-trend-chip-flat';
-        trendElement.innerHTML = `<i class="fas ${kpi.trendIcon} text-xs mr-1"></i>${kpi.trend}`;
+        trendElement.innerHTML = `<i class="fas ${escapeHtml(kpi.trendIcon)} text-xs mr-1"></i>${escapeHtml(kpi.trend)}`;
         trendElement.className = `kpi-trend inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${chipClass}`;
         trendElement.title = 'vs suku lepas';
         if (isComplete) {
@@ -597,8 +621,8 @@ export function showDetailsModal(kpiId, triggerElement) {
 
             li.innerHTML = `
                 <label class="flex items-center flex-grow cursor-pointer">
-                    <input type="checkbox" class="form-checkbox h-5 w-5 text-brand-primary rounded focus:ring-brand-primary" ${isAchieved ? 'checked' : ''} ${!isEditMode ? 'disabled' : ''} data-item-name="${item}">
-                    <span class="ml-3 font-semibold item-name">${item}</span>
+                    <input type="checkbox" class="form-checkbox h-5 w-5 text-brand-primary rounded focus:ring-brand-primary" ${isAchieved ? 'checked' : ''} ${!isEditMode ? 'disabled' : ''} data-item-name="${escapeHtml(item)}">
+                    <span class="ml-3 font-semibold item-name">${escapeHtml(item)}</span>
                 </label>
                 ${isEditMode ? `
                 <div class="item-actions flex items-center">
@@ -669,10 +693,10 @@ export function showDetailsModal(kpiId, triggerElement) {
             const statusBarColor = getStatusColor(percentage);
             li.innerHTML = `<div class="w-full">
                     <div class="flex justify-between mb-1 items-center">
-                        <span class="text-base font-medium text-gray-700">${item.name}</span>
+                        <span class="text-base font-medium text-gray-700">${escapeHtml(item.name)}</span>
                         <span class="text-sm font-medium text-gray-700 value-wrapper flex items-center">
                             <span class="value-text">${percentage.toFixed(2)}%</span>
-                            ${isEditMode && item.hasOwnProperty('value') ? `<button class="edit-kpi-btn" data-item-name="${item.name}" aria-label="Edit Nilai"><i class="fas fa-pencil-alt"></i></button>` : ''}
+                            ${isEditMode && item.hasOwnProperty('value') ? `<button class="edit-kpi-btn" data-item-name="${escapeHtml(item.name)}" aria-label="Edit Nilai"><i class="fas fa-pencil-alt"></i></button>` : ''}
                         </span>
                     </div>
                     <div class="w-full bg-gray-200 rounded-full h-2.5">
@@ -688,10 +712,10 @@ export function showDetailsModal(kpiId, triggerElement) {
                     const subStatusBarColor = getStatusColor(subPercentage);
                     subLi.innerHTML = `<div class="w-full">
                             <div class="flex justify-between mb-1 items-center">
-                                <span class="text-sm font-medium text-gray-600">${subItem.name}</span>
+                                <span class="text-sm font-medium text-gray-600">${escapeHtml(subItem.name)}</span>
                                 <span class="text-xs font-medium text-gray-600 value-wrapper flex items-center">
                                         <span class="value-text">${subPercentage.toFixed(2)}%</span>
-                                    ${isEditMode ? `<button class="edit-kpi-btn" data-item-name="${item.name}" data-subitem-name="${subItem.name}" aria-label="Edit Nilai"><i class="fas fa-pencil-alt"></i></button>` : ''}
+                                    ${isEditMode ? `<button class="edit-kpi-btn" data-item-name="${escapeHtml(item.name)}" data-subitem-name="${escapeHtml(subItem.name)}" aria-label="Edit Nilai"><i class="fas fa-pencil-alt"></i></button>` : ''}
                                 </span>
                             </div>
                             <div class="w-full bg-gray-200 rounded-full h-2">
@@ -736,8 +760,8 @@ export function showDetailsModal(kpiId, triggerElement) {
             const bulanBadge = (showMonth && item.bulan)
                 ? `<span class="breakdown-bulan-badge">${BULAN_MY[item.bulan]}</span>` : '';
             li.innerHTML = `
-                <span class="font-semibold flex-1 item-name">${item.name}${bulanBadge}</span>
-                <span class="font-bold text-brand-primary mx-4 item-value">${item.value.toLocaleString()}</span>
+                <span class="font-semibold flex-1 item-name">${escapeHtml(item.name)}${bulanBadge}</span>
+                <span class="font-bold text-brand-primary mx-4 item-value">${escapeHtml(item.value.toLocaleString())}</span>
                 ${isEditMode ? `
                 <div class="item-actions flex items-center">
                     <button class="edit-breakdown-item-btn text-gray-400 hover:text-brand-primary" data-index="${index}"><i class="fas fa-pencil-alt"></i></button>
@@ -865,11 +889,11 @@ function handleEditBreakdownItem(liElement, kpiId, itemIndex, item) {
     liElement.innerHTML = `
         <div class="flex flex-col w-full gap-1">
             <div class="flex gap-1 w-full">
-                <input type="text" class="flex-1 min-w-0 p-1 border rounded-lg bg-gray-100 edit-name text-sm" value="${item.name}">
+                <input type="text" class="flex-1 min-w-0 p-1 border rounded-lg bg-gray-100 edit-name text-sm" value="${escapeHtml(item.name)}">
                 ${monthField}
             </div>
             <div class="flex items-center gap-1">
-                <input type="number" class="w-24 p-1 border rounded-lg bg-gray-100 edit-value text-sm" value="${item.value}">
+                <input type="number" class="w-24 p-1 border rounded-lg bg-gray-100 edit-value text-sm" value="${escapeHtml(item.value)}">
                 <div class="flex items-center ml-auto gap-2">
                     <button class="save-breakdown-item-btn text-green-500 hover:text-green-700"><i class="fas fa-check"></i></button>
                     <button class="cancel-breakdown-edit-btn text-red-500 hover:text-red-700"><i class="fas fa-times"></i></button>

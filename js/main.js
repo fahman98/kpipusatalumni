@@ -15,6 +15,7 @@ import {
     showConfirmModal,
     showInputModal,
     getPhosphorIcon,
+    escapeHtml,
 } from './ui.js';
 
 import {
@@ -271,7 +272,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (mainContentWrapper) mainContentWrapper.classList.remove('hidden');
 
             // Update Title
-            if (mainTitle) mainTitle.innerHTML = `Dashboard KPI ${selectedYear} <br> ${currentData.title || quarterKey.toUpperCase()}`;
+            if (mainTitle) mainTitle.innerHTML = `Dashboard KPI ${escapeHtml(selectedYear)} <br> ${escapeHtml(currentData.title || quarterKey.toUpperCase())}`;
             if (subTitle) subTitle.textContent = (currentData.subtitle || '').replace(/[()]/g, '');
             if (currentData.footerDate) quarterFooterDate = currentData.footerDate;
             renderFooter();
@@ -731,7 +732,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (kpi.trend && trendRow) {
             const chipClass = kpi.trendColor && kpi.trendColor.includes('green') ? 'kpi-trend-chip-up' :
                               kpi.trendColor && kpi.trendColor.includes('red')   ? 'kpi-trend-chip-down' : 'kpi-trend-chip-flat';
-            trendRow.innerHTML = `<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${chipClass}"><i class="fas ${kpi.trendIcon} mr-1.5 text-xs"></i>${kpi.trend} vs suku lepas</span>`;
+            trendRow.innerHTML = `<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${chipClass}"><i class="fas ${escapeHtml(kpi.trendIcon)} mr-1.5 text-xs"></i>${escapeHtml(kpi.trend)} vs suku lepas</span>`;
         } else if (trendRow) {
             trendRow.innerHTML = '';
         }
@@ -1507,15 +1508,15 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div class="w-8 h-8 rounded-lg ${iconBg} flex items-center justify-center flex-shrink-0">
                             <i class="ph-duotone ${getPhosphorIcon(kpi.icon)} ${iconClr} text-xs"></i>
                         </div>
-                        <span class="font-semibold text-gray-800 text-sm">${kpi.name}</span>
+                        <span class="font-semibold text-gray-800 text-sm">${escapeHtml(kpi.name)}</span>
                     </div>
                 </td>
                 <td class="px-4 py-3 text-right font-bold text-gray-800 text-sm">${valStr}</td>
-                <td class="px-4 py-3 text-right text-gray-400 text-sm">${kpi.target}</td>
+                <td class="px-4 py-3 text-right text-gray-400 text-sm">${escapeHtml(kpi.target)}</td>
                 <td class="px-4 py-3 text-right">
                     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${badge}">${cappedPct.toFixed(1)}%</span>
                 </td>
-                <td class="px-4 py-3 text-center text-sm font-bold ${trendClr} hidden sm:table-cell">${trendTxt}</td>
+                <td class="px-4 py-3 text-center text-sm font-bold ${escapeHtml(trendClr)} hidden sm:table-cell">${escapeHtml(trendTxt)}</td>
                 <td class="px-4 py-3 text-center hidden sm:table-cell">
                     <span class="w-2.5 h-2.5 rounded-full inline-block" style="background:${dotColor}"></span>
                 </td>`;

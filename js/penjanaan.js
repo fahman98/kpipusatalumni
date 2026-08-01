@@ -7,7 +7,8 @@ import {
     showToastNotification,
     openModal,
     closeModal,
-    showConfirmModal
+    showConfirmModal,
+    escapeHtml
 } from './ui.js';
 
 import {
@@ -40,15 +41,6 @@ let cachedItems = [];
 let cachedTarget = 0;
 
 // ---- Helpers ----------------------------------------------------------
-
-function escapeHtml(str) {
-    return String(str == null ? '' : str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-}
 
 function formatRM(value) {
     const n = Number(value) || 0;
