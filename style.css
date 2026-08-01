@@ -613,6 +613,16 @@ body.dark-mode .animate-pulse .border-gray-50 {
     box-shadow: 0 0 0 3px rgba(13, 71, 161, 0.1);
 }
 
+/* The rule above sets `color` by ID, which outranks the generic
+   `body.dark-mode textarea` rule — but NOT its background. In dark mode that
+   left #1f2937 text on a #374151 field: about 1.4:1, i.e. the admin could not
+   read what they were typing. */
+body.dark-mode #desc-input {
+    background-color: #374151;
+    color: #f3f4f6;
+    border-color: #4b5563;
+}
+
 /* --- NEW: Fixed Header & Glowing Dot Styles --- */
 
 /* 1. Header: flex row — icon, name, action cluster (#7 refactor) */
@@ -958,9 +968,13 @@ body.dark-mode .theme-toggle-btn:hover {
         box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.3) !important;
     }
 
-    /* When modal is visible, slide up */
-    .modal:not(.hidden) .modal-content {
-        transform: translateY(0);
+    /* When modal is visible, slide up.
+       Keyed on .is-open, which is the class the JS actually toggles. It used to
+       say :not(.hidden) — and since no .modal ever receives a `hidden` class,
+       that matched ALWAYS, pinning the sheet at translateY(0) in both states. So
+       the signature slide-up-from-the-bottom never ran; the sheet just faded. */
+    .modal.is-open .modal-content {
+        transform: translateY(0) !important;
     }
 
     /* Drag Handle */
@@ -1016,8 +1030,9 @@ body.dark-mode .theme-toggle-btn:hover {
     }
 }
 
-/* Pulse animation on first load (optional enhancement) */
-.modal:not(.hidden) .modal-content::before {
+/* Pulse the drag handle when a sheet opens — same class-name fix as above, which
+   also stops every sheet in the document pulsing simultaneously on page load. */
+.modal.is-open .modal-content::before {
     animation: handle-pulse 1.5s ease-in-out 0.5s 2;
 }
 
@@ -1610,4 +1625,76 @@ body.dark-mode .detail-btn-delete:hover{ background:#5b1414; }
         transition-duration: 0.01ms !important;
         scroll-behavior: auto !important;
     }
+}
+
+/* ===== TOUCH TARGET SIZES =====
+   Scoped to coarse pointers so the denser mouse layout is untouched. Sizes are
+   raised toward the 44px guidance but capped where a bigger control would start
+   squeezing the KPI name beside it — 40px with the existing 2px gap is a real
+   improvement over 28px without reflowing the card header.
+   Expanding the hit area with a ::after overlay was the other option, but the
+   buttons sit 2px apart, so the overlays would overlap and cause mis-taps. */
+@media (pointer: coarse) {
+    .kpi-action-btn {
+        width: 40px;
+        height: 40px;
+        font-size: 0.95rem;
+    }
+
+    /* Footer actions computed to roughly 25px tall. */
+    .footer-action-btn {
+        min-height: 40px;
+        padding-top: 8px;
+        padding-bottom: 8px;
+    }
+
+    /* The quarter tabs are the PRIMARY navigation on a phone and were ~29px. */
+    #pagination .quarter-btn {
+        min-height: 44px;
+    }
+
+    /* Per-item edit/delete controls inside the Butiran modal. */
+    .edit-kpi-btn,
+    .item-actions button {
+        min-width: 40px;
+        min-height: 40px;
+    }
+}
+
+/* ===== TEXT CONTRAST =====
+   These greys carry meaning — sub-title, stat labels, "Sasaran: X", table
+   headers, timestamps, footer notes — but were used at ratios that fail WCAG AA
+   on white: gray-400 (#9ca3af) is 2.27:1 and gray-300 (#d1d5db) is 1.47:1,
+   effectively invisible. Nudged to gray-500 (#6b7280), which is 4.83:1 and
+   visually very close, so the hierarchy still reads as "secondary".
+
+   Selectors are prefixed with `body` on purpose: the Tailwind Play CDN injects
+   its stylesheet into <head> at runtime, i.e. AFTER this file, so a bare
+   .text-gray-400 rule would lose on source order at equal specificity.
+   Dark mode already remaps these (they sit on a dark surface there) and its
+   rules are more specific, so they continue to win. */
+body .text-gray-400,
+body .text-gray-300 {
+    color: #6b7280;
+}
+
+body.dark-mode .text-gray-300 {
+    color: #9ca3af;
+}
+
+/* Amber on white is 2.0:1 — below even the large-text threshold. The bar fills
+   keep the brighter tone; only the text is darkened. */
+body #stat-ok {
+    color: #b45309;
+}
+
+/* The quarter tabs are the primary mobile navigation and had no dark-mode
+   colour at all, leaving #6b7280 on #1f2937 — about 3.04:1. */
+body.dark-mode .quarter-btn {
+    color: #d1d5db;
+}
+
+body.dark-mode .quarter-btn:not(.active):hover {
+    background-color: #374151;
+    color: #f9fafb;
 }

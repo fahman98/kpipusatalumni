@@ -1096,13 +1096,17 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Filters
-    if (searchInput) searchInput.addEventListener('input', (e) => filterDashboardCards(e.target.value, statusFilter.value));
+    if (searchInput) searchInput.addEventListener('input', (e) => {
+        filterDashboardCards(e.target.value, statusFilter.value);
+        if (isTableView) renderTableView();   // the table needs re-filtering too
+    });
     if (statusFilter) statusFilter.addEventListener('change', (e) => {
         // Reset stat card active state bila dropdown digunakan secara manual
         document.querySelectorAll('.stat-card').forEach(c => c.classList.remove('stat-card-active'));
         const matchingCard = document.querySelector(`.stat-card[data-filter="${e.target.value}"]`);
         if (matchingCard && e.target.value !== 'all') matchingCard.classList.add('stat-card-active');
         filterDashboardCards(searchInput.value, e.target.value);
+        if (isTableView) renderTableView();
     });
 
 
@@ -1570,8 +1574,23 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = kpiDataCache[currentQuarter];
         if (!data || !data.processedKpis) return;
 
+        // Honour the search box and status filter. This used to render every KPI
+        // unconditionally, so switching to Jadual with a filter set brought all
+        // the rows back — and "Tiada KPI sepadan" could sit above a full table,
+        // because that message is driven by hidden *cards* which aren't shown here.
+        const term = (searchInput ? searchInput.value : '').trim().toLowerCase();
+        const wantStatus = statusFilter ? statusFilter.value : 'all';
+        const visibleKpis = data.processedKpis.filter(kpi => {
+            const matchesSearch = !term || String(kpi.name || '').toLowerCase().includes(term);
+            const matchesStatus = wantStatus === 'all' || statusTier(getKpiPercentage(kpi)) === wantStatus;
+            return matchesSearch && matchesStatus;
+        });
+
+        const emptyState = getEl('empty-search-state');
+        if (emptyState) emptyState.classList.toggle('hidden', visibleKpis.length > 0);
+
         tbody.innerHTML = '';
-        data.processedKpis.forEach(kpi => {
+        visibleKpis.forEach(kpi => {
             const pct = getKpiPercentage(kpi);
             const cappedPct = Math.min(pct, 100);
             const val = calculateKpiValue(kpi);
