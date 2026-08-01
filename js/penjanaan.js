@@ -13,6 +13,7 @@ import {
 
 import {
     updateKpiBreakdownList,
+    moveKpiBreakdownItem,
     getAllPendanaanItems,
     getPendanaanItemsForQuarter,
     getPendanaanKpiTarget
@@ -284,18 +285,28 @@ function matchIndex(items, target) {
         const byId = items.findIndex(it => it.id != null && String(it.id) === String(target.id));
         if (byId !== -1) return byId;
     }
-    // Fall back to bulan-aware match, then name+value (legacy records).
+    // Fall back to a bulan-aware match.
+    //
+    // bulan is compared as a string with a '' sentinel, NOT via Number(): a
+    // legacy record carries no bulan, so Number(undefined) is NaN and NaN never
+    // equals itself — this comparison could NEVER match such a record, and every
+    // lookup for one silently dropped through to the looser name+value branch
+    // below, which just returns the first look-alike it finds.
     let idx = items.findIndex(it =>
         it.name === target.name &&
         Number(it.value) === Number(target.value) &&
-        Number(it.bulan) === Number(target.bulan)
+        String(it.bulan ?? '') === String(target.bulan ?? '')
     );
-    if (idx === -1) {
-        idx = items.findIndex(it =>
-            it.name === target.name && Number(it.value) === Number(target.value)
-        );
-    }
-    return idx;
+    if (idx !== -1) return idx;
+
+    // Last resort for legacy records: name+value only. Accept it ONLY when it is
+    // unambiguous — with two look-alike rows we would otherwise pick the wrong
+    // one and then propagate that mistake across every quarter.
+    const loose = [];
+    items.forEach((it, i) => {
+        if (it.name === target.name && Number(it.value) === Number(target.value)) loose.push(i);
+    });
+    return loose.length === 1 ? loose[0] : -1;
 }
 
 // Locate an item's index within a specific starting quarter.
@@ -311,13 +322,24 @@ async function resolveRecordLocation(record) {
     const preferred = bulanToQuarterKey(record.bulan);
     if (preferred) {
         const idx = await findItemIndexInQuarter(preferred, record);
-        if (idx !== -1) return { quarterKey: preferred, index: idx };
+        if (idx !== -1) return { quarterKey: preferred, index: idx, item: record };
+        // The record's own month says which quarter it belongs to. If it isn't
+        // there, something is wrong — do NOT go hunting through the other
+        // quarters. Because items are cumulative, a look-alike sitting in Q1
+        // would match, and the caller would then delete THAT unrelated record
+        // out of every quarter while leaving the intended one untouched.
+        return { quarterKey: null, index: -1, item: null };
     }
+
+    // No bulan (legacy record added via the dashboard breakdown modal): fall back
+    // to finding the earliest quarter that contains it — that IS its starting
+    // quarter, since items propagate forward.
     for (const s of SUKU) {
-        const idx = await findItemIndexInQuarter(s.key, record);
-        if (idx !== -1) return { quarterKey: s.key, index: idx };
+        const items = await getPendanaanItemsForQuarter(currentYear, s.key);
+        const idx = matchIndex(items, record);
+        if (idx !== -1) return { quarterKey: s.key, index: idx, item: items[idx] };
     }
-    return { quarterKey: null, index: -1 };
+    return { quarterKey: null, index: -1, item: null };
 }
 
 async function deleteRecord(record) {
@@ -326,7 +348,13 @@ async function deleteRecord(record) {
         showToastNotification('Rekod tidak dijumpai untuk dipadam.', 'danger');
         return;
     }
-    await updateKpiBreakdownList(loc.quarterKey, PENDANAAN_KPI_ID, loc.index, 'delete');
+    // Pass the row we actually resolved so api.js can verify the index still
+    // points at it before deleting anything.
+    await updateKpiBreakdownList(
+        loc.quarterKey, PENDANAAN_KPI_ID,
+        { index: loc.index, expect: loc.item || record },
+        'delete'
+    );
     afterWrite();
 }
 
@@ -352,7 +380,11 @@ async function editRecord(orig, updated) {
 
     if (oldQuarter === newQuarter) {
         // Same starting quarter — edit in place.
-        await updateKpiBreakdownList(oldQuarter, PENDANAAN_KPI_ID, { index: idx, data }, 'edit');
+        await updateKpiBreakdownList(
+            oldQuarter, PENDANAAN_KPI_ID,
+            { index: idx, data, expect: loc.item || orig },
+            'edit'
+        );
     } else {
         // Quarter changed — must delete from old, add to new. Guard against the
         // add being silently dropped due to a same-name item in the new quarter.
@@ -364,8 +396,14 @@ async function editRecord(orig, updated) {
             );
             return;
         }
-        await updateKpiBreakdownList(oldQuarter, PENDANAAN_KPI_ID, idx, 'delete');
-        await updateKpiBreakdownList(newQuarter, PENDANAAN_KPI_ID, data, 'add');
+        // ONE atomic move. This used to be a delete followed by a separate add;
+        // if the add failed the record was gone, and editRecord could not tell
+        // because updateKpiBreakdownList swallowed its own errors and resolved
+        // normally either way. For fundraising records that is money lost.
+        const ok = await moveKpiBreakdownItem(
+            PENDANAAN_KPI_ID, oldQuarter, newQuarter, loc.item || orig, data
+        );
+        if (!ok) return;   // nothing was written; the helper already explained why
     }
     afterWrite();
 }

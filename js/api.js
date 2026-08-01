@@ -246,6 +246,24 @@ const sameNumber = (a, b) => {
     return na === nb;
 };
 
+// Identity match for breakdown items. When BOTH carry a stable `id` (new
+// Penjanaan records) match purely by id — bulletproof even for look-alike rows.
+// Otherwise fall back to name+value+bulan (legacy items / other KPIs).
+//
+// `bulan` is compared as a string with a '' sentinel, NOT via Number(): a record
+// with no bulan gives Number(undefined) === NaN, and NaN never equals itself, so
+// a numeric compare could never match a legacy record and every lookup silently
+// degraded to the looser name+value path.
+const sameItem = (a, b) => {
+    if (!a || !b) return false;
+    if (a.id != null && a.id !== '' && b.id != null && b.id !== '') {
+        return String(a.id) === String(b.id);
+    }
+    return a.name === b.name &&
+        Number(a.value) === Number(b.value) &&
+        String(a.bulan ?? '') === String(b.bulan ?? '');
+};
+
 // Stable id for new breakdown items. Existing items keep whatever they have
 // (usually nothing) — `sameItem` still falls back to name+value+bulan for them,
 // so nothing already stored needs to change.
@@ -574,7 +592,7 @@ export async function updateKpiDescriptionInFirestore(kpiId, text) {
             if (idx === -1) return false;
             data.kpis[idx].description = text;
         });
-        touchLastUpdated();
+        await writeAuditLog('EDIT_KPI_DESCRIPTION', { kpiId });
         showToastNotification('Deskripsi disimpan!', 'success');
     } catch (e) {
         console.error(e);
@@ -604,7 +622,7 @@ export async function updateKpiDetailsList(quarterKey, kpiId, itemName, isChecke
                 data.kpis[kpiIndex].value = achieved.length;
             }
         });
-        touchLastUpdated();
+        await writeAuditLog('TOGGLE_CHECKLIST_ITEM', { kpiId, quarterKey, itemName, isChecked });
         showToastNotification('Status dikemaskini!', 'success');
     } catch (e) {
         console.error(e);
@@ -662,7 +680,7 @@ export async function updateKpiTargetListItem(quarterKey, kpiId, payload, action
             // were actually editing showing a count one too high.
             if (kpi.details.targetList) kpi.value = achieved.length;
         });
-        touchLastUpdated();
+        await writeAuditLog('UPDATE_TARGET_LIST', { kpiId, quarterKey, action, payload });
         showToastNotification('Senarai dikemaskini!', 'success');
         const btn = document.querySelector(`.show-details-btn[data-kpi-id="${kpiId}"]`);
         closeModal(document.getElementById('details-modal'));
@@ -689,18 +707,6 @@ export async function updateKpiBreakdownList(quarterKey, kpiId, payload, action)
         // have a DIFFERENT order/length. So a fixed numeric index is only valid for the
         // start quarter. For delete/edit we capture the target item's identity from the
         // start quarter, then re-locate it by identity in every quarter Qn..Q4.
-        // Identity match. When BOTH items carry a stable `id` (new Penjanaan
-        // records), match purely by id — bulletproof even for look-alike rows.
-        // Otherwise fall back to name+value+bulan (legacy items / other KPIs).
-        const sameItem = (a, b) => {
-            if (!a || !b) return false;
-            if (a.id != null && a.id !== '' && b.id != null && b.id !== '') {
-                return String(a.id) === String(b.id);
-            }
-            return a.name === b.name &&
-                Number(a.value) === Number(b.value) &&
-                String(a.bulan ?? '') === String(b.bulan ?? '');
-        };
 
         // EDIT touches every quarter, ADD/DELETE only Qn..Q4.
         //
@@ -825,7 +831,7 @@ export async function updateKpiBreakdownList(quarterKey, kpiId, payload, action)
             pending.forEach(([ref, data]) =>
                 t.update(ref, { kpis: data.kpis, footerDate: nowFooterDate() }));
         });
-        touchLastUpdated();
+        await writeAuditLog('UPDATE_BREAKDOWN_ITEM', { kpiId, quarterKey, action });
         showToastNotification('Butiran dikemaskini!', 'success');
         const btn = document.querySelector(`.show-details-btn[data-kpi-id="${kpiId}"]`);
         closeModal(document.getElementById('details-modal'));
@@ -841,6 +847,98 @@ export async function updateKpiBreakdownList(quarterKey, kpiId, payload, action)
         }
         console.error(e);
         showToastNotification("Ralat simpan.", "danger");
+    } finally {
+        hideLoading();
+    }
+}
+
+// Move a breakdown item from one starting quarter to another, ATOMICALLY.
+//
+// Breakdown items are cumulative: one that starts at Qn exists in Qn..Q4. So
+// changing which quarter a record belongs to means removing it from its old
+// range and inserting it into the new one. That used to be two separate
+// updateKpiBreakdownList calls — a delete, then an add. If the second one failed
+// (network drop, permission error, tab closed) the record was simply GONE, and
+// the caller could not even tell, because the writer caught its own error and
+// resolved normally. For fundraising records that is money quietly vanishing.
+//
+// One transaction: either the record moves, or nothing changes at all.
+export async function moveKpiBreakdownItem(kpiId, fromQuarterKey, toQuarterKey, targetIdentity, newData) {
+    if (!isEditMode) return false;
+    if (!assertOnline()) return false;
+
+    const basePath = `artifacts/${getAppId()}/public/data/kpi-${selectedYear}`;
+    const fromNum = parseInt(fromQuarterKey.replace('q', ''), 10);
+    const toNum = parseInt(toQuarterKey.replace('q', ''), 10);
+    const NOT_FOUND = 'kpi/item-not-found';
+    // Mint once, outside the callback — a retry must not change the id.
+    const item = { ...newData, id: newData.id || targetIdentity?.id || genItemId() };
+
+    showLoading("Memindahkan...");
+    try {
+        await db.runTransaction(async (t) => {
+            const refs = ALL_QUARTERS.map(n => db.collection(basePath).doc(`q${n}`));
+            const snaps = await Promise.all(refs.map(ref => t.get(ref)));   // ALL reads first
+
+            // Confirm the record really is where the caller thinks it is before
+            // touching anything.
+            let found = false;
+            const fromSnap = snaps[fromNum - 1];
+            if (fromSnap && fromSnap.exists) {
+                const ki = fromSnap.data().kpis.findIndex(k => k.id === kpiId);
+                if (ki !== -1) {
+                    const items = fromSnap.data().kpis[ki].details.items || [];
+                    found = items.some(it => sameItem(it, targetIdentity));
+                }
+            }
+            if (!found) {
+                const missing = new Error('Item not found at source quarter');
+                missing.code = NOT_FOUND;
+                throw missing;
+            }
+
+            const pending = [];
+            snaps.forEach((snap, i) => {
+                if (!snap.exists) return;
+                const qNum = i + 1;
+                const data = snap.data();
+                const ki = data.kpis.findIndex(k => k.id === kpiId);
+                if (ki === -1) return;
+                const items = data.kpis[ki].details.items || [];
+                let changed = false;
+
+                if (qNum >= fromNum) {                       // out of the old range
+                    const idx = items.findIndex(it => sameItem(it, targetIdentity));
+                    if (idx !== -1) { items.splice(idx, 1); changed = true; }
+                }
+                if (qNum >= toNum) {                         // into the new range
+                    items.push(item);
+                    changed = true;
+                }
+                if (!changed) return;
+
+                data.kpis[ki].details.items = items;
+                pending.push([refs[i], data]);
+            });
+
+            pending.forEach(([ref, data]) =>
+                t.update(ref, { kpis: data.kpis, footerDate: nowFooterDate() }));
+        });
+
+        await writeAuditLog('MOVE_BREAKDOWN_ITEM', {
+            kpiId, from: fromQuarterKey, to: toQuarterKey,
+            name: item.name, value: item.value, bulan: item.bulan
+        });
+        showToastNotification('Rekod dipindahkan!', 'success');
+        return true;
+    } catch (e) {
+        if (e && e.code === NOT_FOUND) {
+            showToastNotification("Rekod asal tidak dijumpai. Sila muat semula dan cuba lagi.", "danger");
+            return false;
+        }
+        console.error(e);
+        showToastNotification("Ralat memindahkan rekod. Tiada perubahan dibuat.", "danger");
+        return false;
     } finally {
         hideLoading();
     }
@@ -889,7 +987,7 @@ export async function updateKpiProgressListItem(quarterKey, kpiId, itemName, sub
                 }
             }
         });
-        touchLastUpdated();
+        await writeAuditLog('UPDATE_PROGRESS_ITEM', { kpiId, quarterKey, itemName, subItemName, newValue });
         showToastNotification('Progres dikemaskini!', 'success');
         const btn = document.querySelector(`.show-details-btn[data-kpi-id="${kpiId}"]`);
         closeModal(document.getElementById('details-modal'));
