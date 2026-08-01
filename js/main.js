@@ -17,6 +17,8 @@ import {
     getPhosphorIcon,
     escapeHtml,
     isAnyModalOpen,
+    showLoading,
+    hideLoading,
 } from './ui.js';
 
 import {
@@ -310,7 +312,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
                 new Notification('KPI Dikemaskini', {
                     body: `Data ${selectedYear} ${currentData.title || quarterKey.toUpperCase()} telah dikemaskini.`,
-                    icon: 'https://cdn-icons-png.flaticon.com/512/8921/8921024.png'
+                    icon: './images/app-icon.png'
                 });
             }
 
@@ -1268,10 +1270,46 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- EXPORT PDF (BRANDED) ---
+    // jsPDF + AutoTable are ~430KB and were loaded as render-blocking scripts on
+    // every single visit, for a button most visitors never press. They are now
+    // fetched on first use instead. Loaded once, then reused.
+    let pdfLibPromise = null;
+    function loadScript(src) {
+        return new Promise((resolve, reject) => {
+            const el = document.createElement('script');
+            el.src = src;
+            el.onload = resolve;
+            el.onerror = () => reject(new Error(`Gagal memuatkan ${src}`));
+            document.head.appendChild(el);
+        });
+    }
+    function ensurePdfLib() {
+        if (window.jspdf && window.jspdf.jsPDF) return Promise.resolve();
+        if (!pdfLibPromise) {
+            // AutoTable patches jsPDF, so it must load after it.
+            pdfLibPromise = loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js')
+                .then(() => loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.6.0/jspdf.plugin.autotable.min.js'))
+                .catch((err) => { pdfLibPromise = null; throw err; });   // allow a retry
+        }
+        return pdfLibPromise;
+    }
+
     if (exportPdfBtn) {
-        exportPdfBtn.addEventListener('click', () => {
+        exportPdfBtn.addEventListener('click', async () => {
             const data = kpiDataCache[currentQuarter];
             if (!data || !data.processedKpis) { showToastNotification('Tiada data untuk dieksport.', 'danger'); return; }
+
+            showLoading('Menyediakan PDF...');
+            try {
+                await ensurePdfLib();
+            } catch (e) {
+                console.error(e);
+                hideLoading();
+                showToastNotification('Gagal memuatkan pustaka PDF. Semak sambungan internet.', 'danger');
+                return;
+            }
+            hideLoading();
+
             const jsPDFLib = window.jspdf && window.jspdf.jsPDF;
             if (!jsPDFLib) { showToastNotification('PDF library tidak tersedia.', 'danger'); return; }
 

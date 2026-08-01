@@ -114,7 +114,15 @@ export function subscribeToQuarterData(quarterKey, onUpdateCallback) {
 
     // Fetch previous quarter once (for trend). A failure here must NOT block the
     // main listener — fall back to "no previous data" so trends are simply absent.
-    const prevQuarterPromise = previousQuarterKey
+    //
+    // Serve it from the cache when we already have it: this used to re-read the
+    // document from the server on EVERY quarter switch, including switching back
+    // to a quarter just visited, so a q1→q4→q1 walk billed several reads for
+    // documents already sitting in memory. It only feeds the trend arrows, which
+    // are historical — the live listener below still keeps the visible quarter
+    // fresh. `null` means "cached", handled after the await.
+    const cachedPrev = previousQuarterKey ? kpiDataCache[previousQuarterKey] : null;
+    const prevQuarterPromise = (previousQuarterKey && !cachedPrev)
         ? db.collection(basePath).doc(previousQuarterKey).get().catch(() => null)
         : Promise.resolve(null);
 
@@ -122,7 +130,9 @@ export function subscribeToQuarterData(quarterKey, onUpdateCallback) {
         // Abaikan jika subscription baru sudah dilancarkan
         if (generation !== listenerGeneration) return;
 
-        const previousData = (prevSnap && prevSnap.exists) ? prevSnap.data() : null;
+        const previousData = cachedPrev
+            ? cachedPrev
+            : ((prevSnap && prevSnap.exists) ? prevSnap.data() : null);
 
         // 2. Start Real-time Listener
         const docRef = db.collection(basePath).doc(quarterKey);
