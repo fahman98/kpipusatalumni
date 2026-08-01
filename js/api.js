@@ -239,6 +239,19 @@ async function runQuarterTransaction(quarterNums, mutate) {
     });
 }
 
+// Tolerant numeric compare — stored values are sometimes strings.
+const sameNumber = (a, b) => {
+    const na = Number(a), nb = Number(b);
+    if (Number.isNaN(na) || Number.isNaN(nb)) return a === b;
+    return na === nb;
+};
+
+// Stable id for new breakdown items. Existing items keep whatever they have
+// (usually nothing) — `sameItem` still falls back to name+value+bulan for them,
+// so nothing already stored needs to change.
+const genItemId = () =>
+    `it-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+
 const quartersFrom = (startQuarterNum) => {
     const out = [];
     for (let i = startQuarterNum; i <= 4; i++) out.push(i);
@@ -491,17 +504,55 @@ export async function updateKpiValueInFirestore(quarterKey, kpiId, newValue, bul
     const startQuarterNum = parseInt(quarterKey.replace('q', ''), 10);
     const stamp = new Date().toISOString();   // hoisted: the tx callback may re-run
 
+    const basePath = `artifacts/${getAppId()}/public/data/kpi-${selectedYear}`;
+    const quarterNums = quartersFrom(startQuarterNum);
+
     showLoading("Menyimpan...");
     try {
-        await runQuarterTransaction(quartersFrom(startQuarterNum), (data, qNum) => {
-            const kpiIndex = data.kpis.findIndex(k => k.id === kpiId);
-            if (kpiIndex === -1) return false;
-            data.kpis[kpiIndex].value = newValue;
-            data.kpis[kpiIndex].updatedAt = stamp;
-            // bulan hanya disimpan untuk suku yang diedit, bukan propagate
-            if (qNum === startQuarterNum && bulan !== null) {
-                data.kpis[kpiIndex].bulan = bulan;
+        await db.runTransaction(async (t) => {
+            const refs = quarterNums.map(n => db.collection(basePath).doc(`q${n}`));
+            const snaps = await Promise.all(refs.map(ref => t.get(ref)));   // ALL reads first
+
+            // The value a later quarter INHERITED from this one, i.e. the figure it
+            // would still be showing if nobody had set it deliberately.
+            const startSnap = snaps[0];
+            if (!startSnap.exists) return;
+            const sIdx = startSnap.data().kpis.findIndex(k => k.id === kpiId);
+            if (sIdx === -1) return;
+            const inheritedValue = startSnap.data().kpis[sIdx].value;
+
+            const pending = [];
+            for (let n = 0; n < snaps.length; n++) {
+                const snap = snaps[n];
+                if (!snap.exists) continue;
+                const data = snap.data();
+                const kpiIndex = data.kpis.findIndex(k => k.id === kpiId);
+                if (kpiIndex === -1) continue;
+
+                if (n > 0) {
+                    // Carry the new figure forward ONLY while the later quarter is
+                    // still showing what it inherited. A quarter holding a DIFFERENT
+                    // figure was set deliberately — so stop, and leave it and every
+                    // quarter after it alone.
+                    //
+                    // Before this, correcting Q2 silently wiped a Q4 figure the admin
+                    // had already entered. When the quarters are in sync (the normal
+                    // case) the outcome is exactly as before.
+                    if (!sameNumber(data.kpis[kpiIndex].value, inheritedValue)) break;
+                }
+
+                data.kpis[kpiIndex].value = newValue;
+                data.kpis[kpiIndex].updatedAt = stamp;
+                // bulan hanya disimpan untuk suku yang diedit, bukan propagate
+                // (bulan Jan-Mac tiada makna dalam Suku 2).
+                if (n === 0 && bulan !== null) {
+                    data.kpis[kpiIndex].bulan = bulan;
+                }
+                pending.push([refs[n], data]);
             }
+
+            pending.forEach(([ref, data]) =>
+                t.update(ref, { kpis: data.kpis, footerDate: nowFooterDate() }));
         });
         await writeAuditLog('UPDATE_VALUE', { kpiId, quarterKey, newValue, bulan });
         showToastNotification('Nilai dikemaskini!', 'success');
@@ -629,6 +680,7 @@ export async function updateKpiBreakdownList(quarterKey, kpiId, payload, action)
     const basePath = `artifacts/${getAppId()}/public/data/kpi-${selectedYear}`;
     const startQuarterNum = parseInt(quarterKey.replace('q', ''), 10);
     const NOT_FOUND = 'kpi/item-not-found';
+    const DUPLICATE_ITEM = 'kpi/duplicate-item';
     if (!assertOnline()) return;
     showLoading("Menyimpan...");
     try {
@@ -650,29 +702,90 @@ export async function updateKpiBreakdownList(quarterKey, kpiId, payload, action)
                 String(a.bulan ?? '') === String(b.bulan ?? '');
         };
 
-        // Everything below runs inside ONE transaction: the identity lookup on the
-        // start quarter and the propagated writes now share a single consistent
-        // snapshot, so the item can't shift underneath us between read and write.
-        const quarterNums = quartersFrom(startQuarterNum);
+        // EDIT touches every quarter, ADD/DELETE only Qn..Q4.
+        //
+        // An item's IDENTITY (name / bulan / id) is one fact about one record, so a
+        // rename or a month correction must reach the copies in EARLIER quarters
+        // too — otherwise Q1 keeps the old name for the same row, which is both
+        // what you reported and what later breaks identity matching. Its VALUE is
+        // per-quarter and cumulative, so that still only ever moves forward.
+        const quarterNums = action === 'edit' ? ALL_QUARTERS : quartersFrom(startQuarterNum);
+        const startPos = quarterNums.indexOf(startQuarterNum);
+
+        // Mint the id ONCE, out here: the transaction callback can re-run on
+        // contention, and every quarter must receive the same id.
+        const addPayload = action === 'add'
+            ? { ...payload, id: payload.id || genItemId() }
+            : null;
+
         await db.runTransaction(async (t) => {
             const refs = quarterNums.map(n => db.collection(basePath).doc(`q${n}`));
             const snaps = await Promise.all(refs.map(ref => t.get(ref)));   // ALL reads first
 
+            // Locating the same record in an EARLIER quarter, where the two copies
+            // may legitimately have drifted apart — a previous edit started at Q2
+            // rewrote Q2..Q4 but left Q1 behind, so the values no longer match and
+            // strict identity would find nothing.
+            //
+            // Strict match first. Only if the item carries no id do we fall back to
+            // the name, and then only when exactly one row matches: with two
+            // look-alikes we skip rather than guess and touch the wrong record.
+            const findEarlierCopy = (items, identity) => {
+                const strict = items.findIndex(it => sameItem(it, identity));
+                if (strict !== -1) return strict;
+                if (identity.id != null && identity.id !== '') return -1;
+                const matches = [];
+                items.forEach((it, i) => { if (it.name === identity.name) matches.push(i); });
+                return matches.length === 1 ? matches[0] : -1;
+            };
+
+            const itemsOf = (snap) => {
+                if (!snap || !snap.exists) return null;
+                const ki = snap.data().kpis.findIndex(k => k.id === kpiId);
+                if (ki === -1) return null;
+                return snap.data().kpis[ki].details.items || [];
+            };
+
             let targetIdentity = null;
             if (action === 'delete' || action === 'edit') {
-                const startDoc = snaps[0];   // quarterNums[0] === startQuarterNum
-                if (startDoc.exists) {
-                    const ki = startDoc.data().kpis.findIndex(k => k.id === kpiId);
-                    if (ki !== -1) {
-                        const startItems = startDoc.data().kpis[ki].details.items || [];
-                        const targetIndex = action === 'delete' ? payload : payload.index;
-                        targetIdentity = startItems[targetIndex] || null;
+                const startItems = itemsOf(snaps[startPos]);
+                if (startItems) {
+                    const targetIndex = typeof payload === 'number' ? payload : payload.index;
+                    const expected = (payload && typeof payload === 'object') ? payload.expect : null;
+
+                    let candidate = startItems[targetIndex] || null;
+                    // The index came from the rendered modal. If the document moved
+                    // underneath it — another admin, another device, or the live
+                    // listener re-rendering — that index now points at a DIFFERENT
+                    // row, and the identity propagation below would delete/overwrite
+                    // that wrong row consistently across all four quarters. So when
+                    // the caller tells us what it displayed, verify before acting.
+                    if (expected && !sameItem(candidate, expected)) {
+                        candidate = startItems.find(it => sameItem(it, expected)) || null;
                     }
+                    targetIdentity = candidate;
                 }
                 if (!targetIdentity) {
                     const missing = new Error('Item not found');
                     missing.code = NOT_FOUND;
                     throw missing;   // aborts the transaction — nothing is written
+                }
+            }
+
+            if (action === 'add') {
+                // Decide "is this a duplicate?" ONCE, against the quarter the admin
+                // is actually looking at. The old code re-ran this check inside the
+                // loop, so a look-alike sitting in Q3 silently swallowed the add for
+                // Q3 and Q4 — the later totals stayed permanently short while the
+                // toast still said it saved.
+                const startItems = itemsOf(snaps[startPos]) || [];
+                const isDup = addPayload.bulan != null
+                    ? startItems.some(it => it.name === addPayload.name && String(it.bulan ?? '') === String(addPayload.bulan ?? ''))
+                    : startItems.some(it => it.name === addPayload.name);
+                if (isDup) {
+                    const dup = new Error('Duplicate item');
+                    dup.code = DUPLICATE_ITEM;
+                    throw dup;
                 }
             }
 
@@ -683,18 +796,28 @@ export async function updateKpiBreakdownList(quarterKey, kpiId, payload, action)
                 const kpiIndex = data.kpis.findIndex(k => k.id === kpiId);
                 if (kpiIndex === -1) return;
                 const items = data.kpis[kpiIndex].details.items || [];
+
                 if (action === 'add') {
-                    const isDup = payload.bulan != null
-                        ? items.some(it => it.name === payload.name && String(it.bulan ?? '') === String(payload.bulan ?? ''))
-                        : items.some(it => it.name === payload.name);
-                    if (!isDup) items.push(payload);
+                    items.push(addPayload);
                 } else if (action === 'delete') {
                     const idx = items.findIndex(it => sameItem(it, targetIdentity));
-                    if (idx !== -1) items.splice(idx, 1);
+                    if (idx === -1) return;
+                    items.splice(idx, 1);
                 } else if (action === 'edit') {
-                    const idx = items.findIndex(it => sameItem(it, targetIdentity));
-                    if (idx !== -1) items[idx] = payload.data;
+                    const isForward = quarterNums[n] >= startQuarterNum;
+                    const idx = isForward
+                        ? items.findIndex(it => sameItem(it, targetIdentity))
+                        : findEarlierCopy(items, targetIdentity);
+                    if (idx === -1) return;
+                    // Merge, never replace: a wholesale assignment dropped the item's
+                    // stable `id` (and its `bulan` whenever the month select was left
+                    // blank), which is what degraded matching to the fuzzy path.
+                    const { value, ...identity } = payload.data;
+                    items[idx] = isForward
+                        ? { ...items[idx], ...payload.data }   // Qn..Q4: identity + value
+                        : { ...items[idx], ...identity };      // earlier: identity only
                 }
+
                 data.kpis[kpiIndex].details.items = items;
                 pending.push([refs[n], data]);
             });
@@ -709,7 +832,11 @@ export async function updateKpiBreakdownList(quarterKey, kpiId, payload, action)
         showDetailsModal(kpiId, btn);
     } catch (e) {
         if (e && e.code === NOT_FOUND) {
-            showToastNotification("Item tidak dijumpai.", "danger");
+            showToastNotification("Item tidak dijumpai. Sila buka semula butiran dan cuba lagi.", "danger");
+            return;
+        }
+        if (e && e.code === DUPLICATE_ITEM) {
+            showToastNotification("Butiran dengan nama dan bulan yang sama sudah wujud.", "danger");
             return;
         }
         console.error(e);

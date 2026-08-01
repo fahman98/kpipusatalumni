@@ -785,7 +785,14 @@ export function showDetailsModal(kpiId, triggerElement) {
                 const editBtn = e.target.closest('.edit-breakdown-item-btn');
                 if (deleteBtn) {
                     const itemIndex = parseInt(deleteBtn.dataset.index, 10);
-                    await updateKpiBreakdownList(activeQuarter, kpi.id, itemIndex, 'delete');
+                    // `expect` = the row as it was rendered. api.js verifies the index
+                    // still points at it before deleting, so a document that changed
+                    // while this modal was open can't make us delete the wrong row.
+                    await updateKpiBreakdownList(
+                        activeQuarter, kpi.id,
+                        { index: itemIndex, expect: kpi.details.items[itemIndex] },
+                        'delete'
+                    );
                 }
                 if (editBtn) {
                     const itemIndex = parseInt(editBtn.dataset.index, 10);
@@ -885,7 +892,13 @@ function handleEditBreakdownItem(liElement, kpiId, itemIndex, item) {
             const data = { name: newName, value: newValue };
             if (bulan !== null) data.bulan = bulan;
             const activeQuarterKey = `q${paginationContainer.querySelector('.active').dataset.quarter}`;
-            await updateKpiBreakdownList(activeQuarterKey, kpiId, { index: itemIndex, data }, 'edit');
+            // `expect` = the row as it was when this editor opened; api.js checks the
+            // index still resolves to it before writing.
+            await updateKpiBreakdownList(
+                activeQuarterKey, kpiId,
+                { index: itemIndex, data, expect: item },
+                'edit'
+            );
         } else {
             showToastNotification('Nama dan nilai tidak sah.', 'danger');
             liElement.innerHTML = originalHTML;
