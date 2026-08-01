@@ -193,6 +193,59 @@ export async function getKpiDataFromFirestore(quarterKey) {
     }
 }
 
+// --- WRITE PLUMBING -------------------------------------------------------
+//
+// Every writer below rewrites the WHOLE `kpis` array of a quarter document.
+// With a plain WriteBatch the document was read, mutated in memory and written
+// back with no check that it hadn't changed in between — so two admins (or two
+// tabs, or a phone and a laptop) editing DIFFERENT KPIs in the same quarter
+// silently clobbered each other, and BOTH saw "Berjaya!". A transaction re-reads
+// under a snapshot and retries on contention, so the loser can never overwrite
+// the winner.
+
+// Firestore transactions need a live connection — unlike a queued batch write
+// they cannot settle from the offline cache. Fail fast with a clear message
+// rather than leaving the blocking overlay up until the network returns.
+function assertOnline() {
+    if (navigator.onLine) return true;
+    showToastNotification("Tiada sambungan internet. Perubahan tidak disimpan.", "danger");
+    return false;
+}
+
+// Read-modify-write across several quarter docs, atomically.
+//
+// `mutate(data, quarterNum)` receives the document data and should mutate
+// `data.kpis` in place; return false to leave that quarter untouched.
+//
+// Firestore requires every read to precede every write inside the callback, and
+// may re-run the callback on contention — so `mutate` must not touch anything
+// outside the `data` object it is handed (no toasts, no DOM, no shared state).
+async function runQuarterTransaction(quarterNums, mutate) {
+    const basePath = `artifacts/${getAppId()}/public/data/kpi-${selectedYear}`;
+    return db.runTransaction(async (t) => {
+        const refs = quarterNums.map(n => db.collection(basePath).doc(`q${n}`));
+        const snaps = await Promise.all(refs.map(ref => t.get(ref)));   // ALL reads first
+
+        const pending = [];
+        snaps.forEach((snap, i) => {
+            if (!snap.exists) return;
+            const data = snap.data();
+            if (mutate(data, quarterNums[i], snap) === false) return;
+            pending.push([refs[i], data]);
+        });
+
+        pending.forEach(([ref, data]) =>
+            t.update(ref, { kpis: data.kpis, footerDate: nowFooterDate() }));
+    });
+}
+
+const quartersFrom = (startQuarterNum) => {
+    const out = [];
+    for (let i = startQuarterNum; i <= 4; i++) out.push(i);
+    return out;
+};
+const ALL_QUARTERS = [1, 2, 3, 4];
+
 // --- CRUD FUNCTIONS (ADMIN) ---
 
 // 1. ADD NEW KPI (To all 4 quarters of selected year)
@@ -205,54 +258,63 @@ export async function addNewKpi(kpiData) {
     }
 
     showLoading("Menambah KPI...");
-    const batch = db.batch();
     const basePath = `artifacts/${getAppId()}/public/data/kpi-${selectedYear}`;
+    const DUPLICATE = 'kpi/duplicate-name';
 
     try {
-        for (let i = 1; i <= 4; i++) {
-            const qKey = `q${i}`;
-            const docRef = db.collection(basePath).doc(qKey);
-            const doc = await docRef.get();
+        await db.runTransaction(async (t) => {
+            const refs = ALL_QUARTERS.map(i => db.collection(basePath).doc(`q${i}`));
+            const snaps = await Promise.all(refs.map(ref => t.get(ref)));   // ALL reads first
+            const pending = [];
 
-            let currentKpis = [];
-            let title = "";
-            let subtitle = "";
+            for (let i = 1; i <= 4; i++) {
+                const doc = snaps[i - 1];
 
-            if (i === 1) { title = "Suku Pertama"; subtitle = `Januari - Mac ${selectedYear}`; }
-            if (i === 2) { title = "Suku Kedua"; subtitle = `April - Jun ${selectedYear}`; }
-            if (i === 3) { title = "Suku Ketiga"; subtitle = `Julai - September ${selectedYear}`; }
-            if (i === 4) { title = "Suku Keempat"; subtitle = `Oktober - Disember ${selectedYear}`; }
+                let currentKpis = [];
+                let title = "";
+                let subtitle = "";
 
-            if (doc.exists) {
-                const data = doc.data();
-                currentKpis = data.kpis || [];
-                if (data.title) title = data.title;
-                if (data.subtitle) subtitle = data.subtitle;
+                if (i === 1) { title = "Suku Pertama"; subtitle = `Januari - Mac ${selectedYear}`; }
+                if (i === 2) { title = "Suku Kedua"; subtitle = `April - Jun ${selectedYear}`; }
+                if (i === 3) { title = "Suku Ketiga"; subtitle = `Julai - September ${selectedYear}`; }
+                if (i === 4) { title = "Suku Keempat"; subtitle = `Oktober - Disember ${selectedYear}`; }
+
+                if (doc.exists) {
+                    const data = doc.data();
+                    currentKpis = data.kpis || [];
+                    if (data.title) title = data.title;
+                    if (data.subtitle) subtitle = data.subtitle;
+                }
+
+                // Semak duplikat pada suku pertama sahaja
+                if (i === 1 && currentKpis.some(k => k.name.toLowerCase() === kpiData.name.toLowerCase())) {
+                    const dup = new Error('Duplicate KPI name');
+                    dup.code = DUPLICATE;
+                    throw dup;   // aborts the transaction — nothing is written
+                }
+
+                // Push new KPI
+                currentKpis.push(kpiData);
+
+                pending.push([refs[i - 1], {
+                    title: title,
+                    subtitle: subtitle,
+                    kpis: currentKpis,
+                    footerDate: nowFooterDate()
+                }]);
             }
 
-            // Semak duplikat pada suku pertama sahaja
-            if (i === 1 && currentKpis.some(k => k.name.toLowerCase() === kpiData.name.toLowerCase())) {
-                hideLoading();
-                showToastNotification(`KPI "${kpiData.name}" sudah wujud.`, "danger");
-                return;
-            }
+            pending.forEach(([ref, payload]) => t.set(ref, payload, { merge: true }));
+        });
 
-            // Push new KPI
-            currentKpis.push(kpiData);
-
-            batch.set(docRef, {
-                title: title,
-                subtitle: subtitle,
-                kpis: currentKpis,
-                footerDate: nowFooterDate()
-            }, { merge: true });
-        }
-
-        await batch.commit();
         await writeAuditLog('ADD_KPI', { name: kpiData.name, id: kpiData.id });
         showToastNotification("KPI berjaya ditambah!", "success");
 
     } catch (e) {
+        if (e && e.code === DUPLICATE) {
+            showToastNotification(`KPI "${kpiData.name}" sudah wujud.`, "danger");
+            return;
+        }
         console.error("Error adding KPI:", e);
         if (e.code === 'permission-denied') {
             showToastNotification("GAGAL: Tiada kebenaran. Pastikan anda Login.", "danger");
@@ -267,18 +329,12 @@ export async function addNewKpi(kpiData) {
 // 2. EDIT KPI STRUCTURE (Name/Target)
 export async function updateKpiStructure(kpiId, newName, newTarget) {
     if (!isEditMode) return;
+    if (!assertOnline()) return;
     showLoading("Mengemaskini Struktur...");
-    const batch = db.batch();
-    const basePath = `artifacts/${getAppId()}/public/data/kpi-${selectedYear}`;
 
     try {
-        for (let i = 1; i <= 4; i++) {
-            const docRef = db.collection(basePath).doc(`q${i}`);
-            const doc = await docRef.get();
-            if (!doc.exists) continue;
-
-            const data = doc.data();
-            const kpis = data.kpis.map(k => {
+        await runQuarterTransaction(ALL_QUARTERS, (data) => {
+            data.kpis = data.kpis.map(k => {
                 if (k.id === kpiId) {
                     let finalTarget = parseFloat(newTarget);
                     // If KPI has a checklist, ignore manual target and use list length
@@ -289,10 +345,7 @@ export async function updateKpiStructure(kpiId, newName, newTarget) {
                 }
                 return k;
             });
-
-            batch.update(docRef, { kpis: kpis, footerDate: nowFooterDate() });
-        }
-        await batch.commit();
+        });
         await writeAuditLog('EDIT_KPI_STRUCTURE', { kpiId, newName, newTarget });
         showToastNotification("Struktur KPI dikemaskini!", "success");
     } catch (e) {
@@ -316,22 +369,13 @@ export function deleteKpi(kpiId) {
         "Padam KPI?",
         "Adakah anda pasti mahu memadam KPI ini dari SEMUA suku tahun? Tindakan ini tidak boleh diundur.",
         async () => {
+            if (!assertOnline()) return;
             showLoading("Memadam KPI...");
-            const batch = db.batch();
-            const basePath = `artifacts/${getAppId()}/public/data/kpi-${selectedYear}`;
 
             try {
-                for (let i = 1; i <= 4; i++) {
-                    const docRef = db.collection(basePath).doc(`q${i}`);
-                    const doc = await docRef.get();
-                    if (!doc.exists) continue;
-
-                    const data = doc.data();
-                    const filteredKpis = data.kpis.filter(k => k.id !== kpiId);
-
-                    batch.update(docRef, { kpis: filteredKpis, footerDate: nowFooterDate() });
-                }
-                await batch.commit();
+                await runQuarterTransaction(ALL_QUARTERS, (data) => {
+                    data.kpis = data.kpis.filter(k => k.id !== kpiId);
+                });
                 await writeAuditLog('DELETE_KPI', { kpiId });
                 showToastNotification("KPI berjaya dipadam.", "success");
             } catch (e) {
@@ -421,24 +465,16 @@ export async function cloneFromYear(sourceYear) {
 
 export async function saveBulkKpiValues(kpiId, valuesObj) {
     if (!isEditMode) return;
-    const basePath = `artifacts/${getAppId()}/public/data/kpi-${selectedYear}`;
-    const batch = db.batch();
+    if (!assertOnline()) return;
     showLoading("Menyimpan nilai semua suku...");
     try {
-        for (let i = 1; i <= 4; i++) {
-            const qKey = `q${i}`;
-            if (valuesObj[qKey] === undefined) continue;
-            const docRef = db.collection(basePath).doc(qKey);
-            const doc = await docRef.get();
-            if (!doc.exists) continue;
-            const data = doc.data();
+        await runQuarterTransaction(ALL_QUARTERS, (data, qNum) => {
+            const qKey = `q${qNum}`;
+            if (valuesObj[qKey] === undefined) return false;
             const kpiIndex = data.kpis.findIndex(k => k.id === kpiId);
-            if (kpiIndex > -1) {
-                data.kpis[kpiIndex].value = valuesObj[qKey];
-                batch.update(docRef, { kpis: data.kpis, footerDate: nowFooterDate() });
-            }
-        }
-        await batch.commit();
+            if (kpiIndex === -1) return false;
+            data.kpis[kpiIndex].value = valuesObj[qKey];
+        });
         await writeAuditLog('BULK_UPDATE_VALUES', { kpiId, values: valuesObj });
         showToastNotification('Nilai semua suku dikemaskini!', 'success');
     } catch (e) {
@@ -451,29 +487,22 @@ export async function saveBulkKpiValues(kpiId, valuesObj) {
 
 export async function updateKpiValueInFirestore(quarterKey, kpiId, newValue, bulan = null) {
     if (!isEditMode) return;
-    const basePath = `artifacts/${getAppId()}/public/data/kpi-${selectedYear}`;
+    if (!assertOnline()) return;
     const startQuarterNum = parseInt(quarterKey.replace('q', ''), 10);
-    const batch = db.batch();
+    const stamp = new Date().toISOString();   // hoisted: the tx callback may re-run
 
     showLoading("Menyimpan...");
     try {
-        for (let i = startQuarterNum; i <= 4; i++) {
-            const docRef = db.collection(basePath).doc(`q${i}`);
-            const doc = await docRef.get();
-            if (!doc.exists) continue;
-            const data = doc.data();
+        await runQuarterTransaction(quartersFrom(startQuarterNum), (data, qNum) => {
             const kpiIndex = data.kpis.findIndex(k => k.id === kpiId);
-            if (kpiIndex > -1) {
-                data.kpis[kpiIndex].value = newValue;
-                data.kpis[kpiIndex].updatedAt = new Date().toISOString();
-                // bulan hanya disimpan untuk suku yang diedit, bukan propagate
-                if (i === startQuarterNum && bulan !== null) {
-                    data.kpis[kpiIndex].bulan = bulan;
-                }
-                batch.update(docRef, { kpis: data.kpis, footerDate: nowFooterDate() });
+            if (kpiIndex === -1) return false;
+            data.kpis[kpiIndex].value = newValue;
+            data.kpis[kpiIndex].updatedAt = stamp;
+            // bulan hanya disimpan untuk suku yang diedit, bukan propagate
+            if (qNum === startQuarterNum && bulan !== null) {
+                data.kpis[kpiIndex].bulan = bulan;
             }
-        }
-        await batch.commit();
+        });
         await writeAuditLog('UPDATE_VALUE', { kpiId, quarterKey, newValue, bulan });
         showToastNotification('Nilai dikemaskini!', 'success');
     } catch (e) {
@@ -486,23 +515,14 @@ export async function updateKpiValueInFirestore(quarterKey, kpiId, newValue, bul
 
 export async function updateKpiDescriptionInFirestore(kpiId, text) {
     if (!isEditMode) return;
-    const basePath = `artifacts/${getAppId()}/public/data/kpi-${selectedYear}`;
-    const batch = db.batch();
+    if (!assertOnline()) return;
     showLoading("Menyimpan...");
     try {
-        for (let i = 1; i <= 4; i++) {
-            const ref = db.collection(basePath).doc(`q${i}`);
-            const doc = await ref.get();
-            if (doc.exists) {
-                const kpis = doc.data().kpis;
-                const idx = kpis.findIndex(k => k.id === kpiId);
-                if (idx > -1) {
-                    kpis[idx].description = text;
-                    batch.update(ref, { kpis, footerDate: nowFooterDate() });
-                }
-            }
-        }
-        await batch.commit();
+        await runQuarterTransaction(ALL_QUARTERS, (data) => {
+            const idx = data.kpis.findIndex(k => k.id === kpiId);
+            if (idx === -1) return false;
+            data.kpis[idx].description = text;
+        });
         touchLastUpdated();
         showToastNotification('Deskripsi disimpan!', 'success');
     } catch (e) {
@@ -515,18 +535,13 @@ export async function updateKpiDescriptionInFirestore(kpiId, text) {
 
 export async function updateKpiDetailsList(quarterKey, kpiId, itemName, isChecked) {
     if (!isEditMode) return;
-    const basePath = `artifacts/${getAppId()}/public/data/kpi-${selectedYear}`;
+    if (!assertOnline()) return;
     const startQuarterNum = parseInt(quarterKey.replace('q', ''), 10);
-    const batch = db.batch();
     showLoading("Menyimpan...");
     try {
-        for (let i = startQuarterNum; i <= 4; i++) {
-            const docRef = db.collection(basePath).doc(`q${i}`);
-            const doc = await docRef.get();
-            if (!doc.exists) continue;
-            const data = doc.data();
+        await runQuarterTransaction(quartersFrom(startQuarterNum), (data) => {
             const kpiIndex = data.kpis.findIndex(k => k.id === kpiId);
-            if (kpiIndex === -1) continue;
+            if (kpiIndex === -1) return false;
             const achieved = data.kpis[kpiIndex].details.achieved || [];
             const idx = achieved.indexOf(itemName);
             if (isChecked) { if (idx === -1) achieved.push(itemName); }
@@ -537,10 +552,7 @@ export async function updateKpiDetailsList(quarterKey, kpiId, itemName, isChecke
             if (data.kpis[kpiIndex].details.targetList) {
                 data.kpis[kpiIndex].value = achieved.length;
             }
-
-            batch.update(docRef, { kpis: data.kpis, footerDate: nowFooterDate() });
-        }
-        await batch.commit();
+        });
         touchLastUpdated();
         showToastNotification('Status dikemaskini!', 'success');
     } catch (e) {
@@ -553,76 +565,52 @@ export async function updateKpiDetailsList(quarterKey, kpiId, itemName, isChecke
 
 export async function updateKpiTargetListItem(quarterKey, kpiId, payload, action) {
     if (!isEditMode) return;
-    const basePath = `artifacts/${getAppId()}/public/data/kpi-${selectedYear}`;
+    if (!assertOnline()) return;
     const startQuarterNum = parseInt(quarterKey.replace('q', ''), 10);
-    const batch = db.batch();
     showLoading("Menyimpan...");
     try {
-        // 1. Get Source Doc (Start Quarter)
-        const sourceDocRef = db.collection(basePath).doc(`q${startQuarterNum}`);
-        const sourceDoc = await sourceDocRef.get();
-        if (!sourceDoc.exists) throw new Error("Source quarter not found");
-
-        const sourceData = sourceDoc.data();
-        const kpiIndex = sourceData.kpis.findIndex(k => k.id === kpiId);
-        if (kpiIndex === -1) throw new Error("KPI not found in source");
-
-        const sourceKpi = sourceData.kpis[kpiIndex];
-        const targetList = sourceKpi.details.targetList || [];
-        const achieved = sourceKpi.details.achieved || [];
-
-        // 2. Apply Action to Source First
-        if (action === 'add') { if (!targetList.includes(payload)) targetList.push(payload); }
-        else if (action === 'delete') {
-            const tIdx = targetList.indexOf(payload); if (tIdx > -1) targetList.splice(tIdx, 1);
-            const aIdx = achieved.indexOf(payload); if (aIdx > -1) achieved.splice(aIdx, 1);
-        }
-        else if (action === 'edit') {
-            const tIdx = targetList.indexOf(payload.oldName); if (tIdx > -1) targetList[tIdx] = payload.newName;
-            const aIdx = achieved.indexOf(payload.oldName); if (aIdx > -1) achieved[aIdx] = payload.newName;
-        }
-
-        sourceKpi.details.targetList = targetList;
-        sourceKpi.details.achieved = achieved;
-        if (Array.isArray(targetList)) sourceKpi.target = targetList.length;
-
-        batch.update(sourceDocRef, { kpis: sourceData.kpis, footerDate: nowFooterDate() });
-
-        // 3. Propagate to Future Quarters (Overwrite List)
-        for (let i = startQuarterNum + 1; i <= 4; i++) {
-            const docRef = db.collection(basePath).doc(`q${i}`);
-            const doc = await docRef.get();
-            if (!doc.exists) continue;
-
-            const data = doc.data();
+        await runQuarterTransaction(quartersFrom(startQuarterNum), (data) => {
             const idx = data.kpis.findIndex(k => k.id === kpiId);
-            if (idx === -1) continue;
+            if (idx === -1) return false;
 
-            // Overwrite targetList from Source
-            data.kpis[idx].details.targetList = [...targetList];
+            const kpi = data.kpis[idx];
+            if (!kpi.details) return false;
 
-            // Sync Value/Target
-            if (Array.isArray(targetList)) data.kpis[idx].target = targetList.length;
+            const targetList = kpi.details.targetList || [];
+            const achieved = kpi.details.achieved || [];
 
-            // Handle Achieved (Rename/Cleanup)
-            let qAchieved = data.kpis[idx].details.achieved || [];
-            if (action === 'edit') {
-                const aIdx = qAchieved.indexOf(payload.oldName);
-                if (aIdx > -1) qAchieved[aIdx] = payload.newName;
+            // Apply the SAME operation to THIS quarter's own lists.
+            //
+            // The old code copied the start quarter's targetList over every later
+            // quarter wholesale (`targetList = [...sourceList]`) and then filtered
+            // that quarter's `achieved` against it. Any checklist item that existed
+            // only in Q3/Q4 — added directly at that quarter — was therefore
+            // silently deleted, together with its achievement record, just because
+            // the admin edited an unrelated item back in Q1.
+            //
+            // Applying the operation per quarter keeps each quarter's own items
+            // intact. When the lists are already in sync (the normal case) the
+            // result is byte-identical to the old behaviour.
+            if (action === 'add') {
+                if (!targetList.includes(payload)) targetList.push(payload);
+            } else if (action === 'delete') {
+                const t = targetList.indexOf(payload); if (t > -1) targetList.splice(t, 1);
+                const a = achieved.indexOf(payload); if (a > -1) achieved.splice(a, 1);
+            } else if (action === 'edit') {
+                const t = targetList.indexOf(payload.oldName); if (t > -1) targetList[t] = payload.newName;
+                const a = achieved.indexOf(payload.oldName); if (a > -1) achieved[a] = payload.newName;
             }
-            // Filter achieved to ensure only valid items remain
-            qAchieved = qAchieved.filter(item => targetList.includes(item));
 
-            data.kpis[idx].details.achieved = qAchieved;
+            kpi.details.targetList = targetList;
+            kpi.details.achieved = achieved;
+            if (Array.isArray(targetList)) kpi.target = targetList.length;
 
-            // Sync Value Count
-            if (data.kpis[idx].details.targetList) {
-                data.kpis[idx].value = qAchieved.length;
-            }
-
-            batch.update(docRef, { kpis: data.kpis, footerDate: nowFooterDate() });
-        }
-        await batch.commit();
+            // Keep the displayed count in step with the checklist — the same
+            // formula updateKpiDetailsList already uses. Previously only the LATER
+            // quarters got this, so deleting an achieved item left the quarter you
+            // were actually editing showing a count one too high.
+            if (kpi.details.targetList) kpi.value = achieved.length;
+        });
         touchLastUpdated();
         showToastNotification('Senarai dikemaskini!', 'success');
         const btn = document.querySelector(`.show-details-btn[data-kpi-id="${kpiId}"]`);
@@ -640,7 +628,8 @@ export async function updateKpiBreakdownList(quarterKey, kpiId, payload, action)
     if (!isEditMode) return;
     const basePath = `artifacts/${getAppId()}/public/data/kpi-${selectedYear}`;
     const startQuarterNum = parseInt(quarterKey.replace('q', ''), 10);
-    const batch = db.batch();
+    const NOT_FOUND = 'kpi/item-not-found';
+    if (!assertOnline()) return;
     showLoading("Menyimpan...");
     try {
         // breakdownList items are cumulative (an item added at Qn propagates Qn..Q4),
@@ -661,55 +650,68 @@ export async function updateKpiBreakdownList(quarterKey, kpiId, payload, action)
                 String(a.bulan ?? '') === String(b.bulan ?? '');
         };
 
-        let targetIdentity = null;
-        if (action === 'delete' || action === 'edit') {
-            const startRef = db.collection(basePath).doc(`q${startQuarterNum}`);
-            const startDoc = await startRef.get();
-            if (startDoc.exists) {
-                const ki = startDoc.data().kpis.findIndex(k => k.id === kpiId);
-                if (ki !== -1) {
-                    const startItems = startDoc.data().kpis[ki].details.items || [];
-                    const targetIndex = action === 'delete' ? payload : payload.index;
-                    targetIdentity = startItems[targetIndex] || null;
+        // Everything below runs inside ONE transaction: the identity lookup on the
+        // start quarter and the propagated writes now share a single consistent
+        // snapshot, so the item can't shift underneath us between read and write.
+        const quarterNums = quartersFrom(startQuarterNum);
+        await db.runTransaction(async (t) => {
+            const refs = quarterNums.map(n => db.collection(basePath).doc(`q${n}`));
+            const snaps = await Promise.all(refs.map(ref => t.get(ref)));   // ALL reads first
+
+            let targetIdentity = null;
+            if (action === 'delete' || action === 'edit') {
+                const startDoc = snaps[0];   // quarterNums[0] === startQuarterNum
+                if (startDoc.exists) {
+                    const ki = startDoc.data().kpis.findIndex(k => k.id === kpiId);
+                    if (ki !== -1) {
+                        const startItems = startDoc.data().kpis[ki].details.items || [];
+                        const targetIndex = action === 'delete' ? payload : payload.index;
+                        targetIdentity = startItems[targetIndex] || null;
+                    }
+                }
+                if (!targetIdentity) {
+                    const missing = new Error('Item not found');
+                    missing.code = NOT_FOUND;
+                    throw missing;   // aborts the transaction — nothing is written
                 }
             }
-            if (!targetIdentity) {
-                hideLoading();
-                showToastNotification("Item tidak dijumpai.", "danger");
-                return;
-            }
-        }
 
-        for (let i = startQuarterNum; i <= 4; i++) {
-            const docRef = db.collection(basePath).doc(`q${i}`);
-            const doc = await docRef.get();
-            if (!doc.exists) continue;
-            const data = doc.data();
-            const kpiIndex = data.kpis.findIndex(k => k.id === kpiId);
-            if (kpiIndex === -1) continue;
-            const items = data.kpis[kpiIndex].details.items || [];
-            if (action === 'add') {
-                const isDup = payload.bulan != null
-                    ? items.some(it => it.name === payload.name && String(it.bulan ?? '') === String(payload.bulan ?? ''))
-                    : items.some(it => it.name === payload.name);
-                if (!isDup) items.push(payload);
-            } else if (action === 'delete') {
-                const idx = items.findIndex(it => sameItem(it, targetIdentity));
-                if (idx !== -1) items.splice(idx, 1);
-            } else if (action === 'edit') {
-                const idx = items.findIndex(it => sameItem(it, targetIdentity));
-                if (idx !== -1) items[idx] = payload.data;
-            }
-            data.kpis[kpiIndex].details.items = items;
-            batch.update(docRef, { kpis: data.kpis, footerDate: nowFooterDate() });
-        }
-        await batch.commit();
+            const pending = [];
+            snaps.forEach((doc, n) => {
+                if (!doc.exists) return;
+                const data = doc.data();
+                const kpiIndex = data.kpis.findIndex(k => k.id === kpiId);
+                if (kpiIndex === -1) return;
+                const items = data.kpis[kpiIndex].details.items || [];
+                if (action === 'add') {
+                    const isDup = payload.bulan != null
+                        ? items.some(it => it.name === payload.name && String(it.bulan ?? '') === String(payload.bulan ?? ''))
+                        : items.some(it => it.name === payload.name);
+                    if (!isDup) items.push(payload);
+                } else if (action === 'delete') {
+                    const idx = items.findIndex(it => sameItem(it, targetIdentity));
+                    if (idx !== -1) items.splice(idx, 1);
+                } else if (action === 'edit') {
+                    const idx = items.findIndex(it => sameItem(it, targetIdentity));
+                    if (idx !== -1) items[idx] = payload.data;
+                }
+                data.kpis[kpiIndex].details.items = items;
+                pending.push([refs[n], data]);
+            });
+
+            pending.forEach(([ref, data]) =>
+                t.update(ref, { kpis: data.kpis, footerDate: nowFooterDate() }));
+        });
         touchLastUpdated();
         showToastNotification('Butiran dikemaskini!', 'success');
         const btn = document.querySelector(`.show-details-btn[data-kpi-id="${kpiId}"]`);
         closeModal(document.getElementById('details-modal'));
         showDetailsModal(kpiId, btn);
     } catch (e) {
+        if (e && e.code === NOT_FOUND) {
+            showToastNotification("Item tidak dijumpai.", "danger");
+            return;
+        }
         console.error(e);
         showToastNotification("Ralat simpan.", "danger");
     } finally {
@@ -719,20 +721,15 @@ export async function updateKpiBreakdownList(quarterKey, kpiId, payload, action)
 
 export async function updateKpiProgressListItem(quarterKey, kpiId, itemName, subItemName, newValue) {
     if (!isEditMode) return;
-    const basePath = `artifacts/${getAppId()}/public/data/kpi-${selectedYear}`;
+    if (!assertOnline()) return;
     const startQuarterNum = parseInt(quarterKey.replace('q', ''), 10);
-    const batch = db.batch();
     showLoading("Menyimpan...");
     try {
-        for (let i = startQuarterNum; i <= 4; i++) {
-            const docRef = db.collection(basePath).doc(`q${i}`);
-            const doc = await docRef.get();
-            if (!doc.exists) continue;
-            const data = doc.data();
+        await runQuarterTransaction(quartersFrom(startQuarterNum), (data) => {
             const kpiIndex = data.kpis.findIndex(k => k.id === kpiId);
-            if (kpiIndex === -1) continue;
+            if (kpiIndex === -1) return false;
             const itemIndex = data.kpis[kpiIndex].details.items.findIndex(i => i.name === itemName);
-            if (itemIndex === -1) continue;
+            if (itemIndex === -1) return false;
             if (subItemName) {
                 const subItems = data.kpis[kpiIndex].details.items[itemIndex].subItems;
                 const subIdx = subItems ? subItems.findIndex(si => si.name === subItemName) : -1;
@@ -764,9 +761,7 @@ export async function updateKpiProgressListItem(quarterKey, kpiId, itemName, sub
                     kpi.value = totalScore / totalItems;
                 }
             }
-            batch.update(docRef, { kpis: data.kpis, footerDate: nowFooterDate() });
-        }
-        await batch.commit();
+        });
         touchLastUpdated();
         showToastNotification('Progres dikemaskini!', 'success');
         const btn = document.querySelector(`.show-details-btn[data-kpi-id="${kpiId}"]`);

@@ -1582,3 +1582,19 @@ body.dark-mode .detail-btn-edit        { background:#1e3a8a; color:#bfdbfe; bord
 body.dark-mode .detail-btn-edit:hover  { background:#1e40af; }
 body.dark-mode .detail-btn-delete      { background:#450a0a; color:#fca5a5; border-color:#7f1d1d; }
 body.dark-mode .detail-btn-delete:hover{ background:#5b1414; }
+
+/* ===== REDUCED MOTION =====
+   Honour the OS "reduce motion" setting. The dashboard runs several infinite
+   animations (gradient bar, live-pulse dot, status dots, shimmer, terminal
+   glitch) plus a value count-up on every render, which is a vestibular /
+   photosensitivity trigger. Colour and layout are untouched — only motion. */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}

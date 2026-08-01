@@ -994,55 +994,58 @@ export function filterDashboardCards(searchTerm, statusFilter) {
 
 // --- HELPER FUNCTIONS (Exported) ---
 
+// Tracks the in-flight rAF per element so a re-render can cancel the previous
+// run. Without this, two loops fight over the same node — the overall-gauge text
+// is a persistent element, so back-to-back snapshots used to leave whichever
+// animation finished last as the winner.
+const _animHandles = new WeakMap();
+
+// Counts UP to the real figure and never shows anything else.
+//
+// The previous version displayed `Math.random() * 100` — formatted exactly like
+// live data ("RM 47.23") — for the first 60% of the animation, then converged
+// with ±10 noise. Every render therefore put FALSE numbers on screen for ~1.5s,
+// on first load, on every quarter switch and on every real-time update, so a
+// glance or a screenshot could capture a figure that was never real.
 export function animateValue(element, start, end, duration, formatter) {
+    if (!element) return;
+
+    const prev = _animHandles.get(element);
+    if (prev) cancelAnimationFrame(prev);
+
+    const finish = () => {
+        _animHandles.delete(element);
+        element.textContent = formatter(end);
+        element.style.fontFamily = "";
+        element.style.color = "";
+    };
+
+    // Honour the OS "reduce motion" setting — land on the true value at once.
+    const reduceMotion = typeof window.matchMedia === 'function' &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduceMotion || !duration || duration <= 0 || !isFinite(end)) {
+        finish();
+        return;
+    }
+
+    element.style.fontFamily = "'Courier New', monospace"; // stop digits jittering
     let startTime = null;
-    // Add distinct style during animation
-    element.style.fontFamily = "'Courier New', monospace"; // Monospace for stability
 
     const step = (timestamp) => {
-        if (!startTime) startTime = timestamp;
+        if (startTime === null) startTime = timestamp;
         const progress = Math.min((timestamp - startTime) / duration, 1);
 
-        // DECODING EFFECT
-        // Instead of smooth scroll, we add random "noise" that decreases over time.
-        // Noise factor shrinks as progress approaches 1.
-
         if (progress < 1) {
-            // Factor: How much noise? 
-            // We want it to look like it's "searching". 
-            // Range: 0 to 99 roughly.
-
-            // Phase 1: High noise (0% - 60%)
-            // Phase 2: Converging (60% - 100%)
-
-            let displayVal;
-
-            if (progress < 0.6) {
-                // Pure random chaos
-                displayVal = Math.random() * 100;
-            } else {
-                // Converging to strict value
-                // Interpolate from a Random point towards End
-                const subProgress = (progress - 0.6) / 0.4; // 0 to 1
-                const noise = (Math.random() - 0.5) * 20 * (1 - subProgress); // +/- 10 noise fading to 0
-                displayVal = end + noise;
-            }
-
-            // Prevent negative layout shifts if possible, but random is random.
-            element.innerHTML = formatter(Math.abs(displayVal));
-
-            // Visual glitch color
-            element.style.color = (Math.random() > 0.8) ? '#22c55e' : ''; // Occasional green flash
-
-            window.requestAnimationFrame(step);
+            // Monotonic ease-out: every frame is a real value on the way to the
+            // final one, so nothing misleading is ever rendered.
+            const eased = 1 - Math.pow(1 - progress, 3);
+            element.textContent = formatter(start + (end - start) * eased);
+            _animHandles.set(element, requestAnimationFrame(step));
         } else {
-            // Final Frame
-            element.innerHTML = formatter(end);
-            element.style.fontFamily = ""; // Reset font
-            element.style.color = ""; // Reset color
+            finish();
         }
     };
-    window.requestAnimationFrame(step);
+    _animHandles.set(element, requestAnimationFrame(step));
 }
 
 export function getStatusColor(percentage) {
