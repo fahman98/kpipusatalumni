@@ -298,9 +298,12 @@ body.dark-mode .animate-pulse .border-gray-50 {
 }
 
 /* Styling untuk butang edit KPI */
+/* Reveal-on-hover, but ONLY on devices that actually have a pointer.
+   A touch screen never fires :hover, so on a phone these controls stayed
+   display:none forever and the per-item editors inside the Butiran modal were
+   simply unreachable for an admin working from their phone. */
 .edit-kpi-btn {
-    display: none;
-    /* Sembunyi secara default */
+    display: inline-block;
     margin-left: 8px;
     color: #9ca3af;
     /* gray-400 */
@@ -309,8 +312,9 @@ body.dark-mode .animate-pulse .border-gray-50 {
 }
 
 .kpi-card:hover .edit-kpi-btn,
-li:hover .edit-kpi-btn {
-    display: inline-block;
+@media (hover: hover) and (pointer: fine) {
+    .edit-kpi-btn { display: none; }
+    li:hover .edit-kpi-btn { display: inline-block; }
 }
 
 .edit-kpi-btn:hover {
@@ -320,12 +324,13 @@ li:hover .edit-kpi-btn {
 
 /* Styling untuk butang edit/delete dalam modal */
 .item-actions {
-    display: none;
+    display: flex;
     transition: opacity 0.2s;
 }
 
-li:hover .item-actions {
-    display: flex;
+@media (hover: hover) and (pointer: fine) {
+    .item-actions { display: none; }
+    li:hover .item-actions { display: flex; }
 }
 
 /* Scrollbar custom untuk modal details */
@@ -1137,9 +1142,17 @@ body.dark-mode .theme-toggle-btn:hover {
         border-top-color: #374151;
     }
 
-    /* Push content above the sticky nav */
-    main {
-        padding-bottom: 72px;
+    /* Keep the fixed quarter bar clear of the home indicator on notched phones. */
+    #pagination {
+        padding-bottom: calc(6px + env(safe-area-inset-bottom)) !important;
+    }
+
+    /* Push content above the fixed nav.
+       This used to target `main` — there is no <main> element in the document
+       (the page root is #dashboard-container), so nothing was ever offset and
+       the bar sat on top of the last cards, the admin actions and the footer. */
+    #dashboard-container {
+        padding-bottom: calc(72px + env(safe-area-inset-bottom));
     }
 
     /* Compact quarter buttons for 4-in-a-row */

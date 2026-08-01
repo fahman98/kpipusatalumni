@@ -211,17 +211,26 @@ export function showInputModal(title, message, currentValue, onConfirm, options 
 
     const getMonthVal = () => (options.showMonth && monthSelect) ? parseInt(monthSelect.value) : null;
 
-    newOk.addEventListener('click', () => {
-        onConfirm(inputEl.value, getMonthVal());
+    // A caller that rejects the value returns false — keep the dialog open so
+    // what was typed is still on screen to correct. Previously the sheet closed
+    // unconditionally and the entry was thrown away, leaving only a toast that
+    // was no longer attached to any field.
+    const submit = () => {
+        if (onConfirm(inputEl.value, getMonthVal()) === false) {
+            inputEl.focus();
+            inputEl.select();
+            return;
+        }
         closeModal();
-    });
+    };
 
+    newOk.addEventListener('click', submit);
     newCancel.addEventListener('click', closeModal);
 
     inputEl.onkeydown = (e) => {
         if (e.key === 'Enter') {
-            onConfirm(inputEl.value, getMonthVal());
-            closeModal();
+            e.preventDefault();
+            submit();
         }
     };
 
@@ -302,6 +311,11 @@ export function createKpiCard(kpi) {
     const kpiNameEl = cardElement.querySelector('.kpi-name');
     kpiNameEl.textContent = kpi.name;
     kpiNameEl.dataset.kpiId = kpi.id;
+    // The name opens Focus mode on click, but it is a plain heading — without
+    // these it is unreachable by keyboard and announced as static text.
+    kpiNameEl.setAttribute('role', 'button');
+    kpiNameEl.setAttribute('tabindex', '0');
+    kpiNameEl.setAttribute('aria-label', `Papar fokus untuk ${kpi.name}`);
 
     // #8: Coloured left status bar
     const statusBarEl = cardElement.querySelector('.kpi-status-bar');
@@ -670,7 +684,15 @@ export function showDetailsModal(kpiId, triggerElement) {
                 if (deleteBtn) {
                     const li = deleteBtn.closest('li');
                     const itemName = li.dataset.itemName;
-                    await updateKpiTargetListItem(activeQuarter, kpi.id, itemName, 'delete');
+                    // Confirm first — this writes to Firestore immediately and there
+                    // is no undo. Every other destructive action in the app asks;
+                    // a mistap on a 13px trash icon should not be the exception.
+                    showConfirmModal(
+                        'Padam Item?',
+                        `Padam "${itemName}" daripada senarai? Tindakan ini tidak boleh diundur.`,
+                        () => updateKpiTargetListItem(activeQuarter, kpi.id, itemName, 'delete')
+                    );
+                    return;
                 }
                 if (editBtn) {
                     const li = editBtn.closest('li');
@@ -809,14 +831,22 @@ export function showDetailsModal(kpiId, triggerElement) {
                 const editBtn = e.target.closest('.edit-breakdown-item-btn');
                 if (deleteBtn) {
                     const itemIndex = parseInt(deleteBtn.dataset.index, 10);
-                    // `expect` = the row as it was rendered. api.js verifies the index
-                    // still points at it before deleting, so a document that changed
-                    // while this modal was open can't make us delete the wrong row.
-                    await updateKpiBreakdownList(
-                        activeQuarter, kpi.id,
-                        { index: itemIndex, expect: kpi.details.items[itemIndex] },
-                        'delete'
+                    const target = kpi.details.items[itemIndex];
+                    // Confirm first — immediate Firestore write, no undo.
+                    showConfirmModal(
+                        'Padam Butiran?',
+                        `Padam "${target ? target.name : 'item ini'}"? Tindakan ini tidak boleh diundur.`,
+                        // `expect` = the row as it was rendered. api.js verifies the
+                        // index still points at it before deleting, so a document
+                        // that changed while this modal was open can't make us
+                        // delete the wrong row.
+                        () => updateKpiBreakdownList(
+                            activeQuarter, kpi.id,
+                            { index: itemIndex, expect: target },
+                            'delete'
+                        )
                     );
+                    return;
                 }
                 if (editBtn) {
                     const itemIndex = parseInt(editBtn.dataset.index, 10);
@@ -1106,6 +1136,12 @@ export function showToastNotification(message, type = 'info') {
 
     toast.className = `fixed right-4 top-4 bg-white rounded-lg shadow-xl border-l-4 overflow-hidden z-50 ${config.border}`;
     toastIcon.className = `fas ${config.icon} text-xl ${config.class}`;
+    // The toast is the app's only feedback channel — every save confirmation and
+    // every permission/validation error lands here. Errors interrupt; the rest
+    // waits for a pause. (Set here because className above is reassigned wholesale,
+    // which would drop anything expressed as a class.)
+    toast.setAttribute('role', type === 'danger' ? 'alert' : 'status');
+    toast.setAttribute('aria-live', type === 'danger' ? 'assertive' : 'polite');
     toastMessage.textContent = message;
 
     requestAnimationFrame(() => {
@@ -1166,13 +1202,22 @@ function getFocusableEls(container) {
 
 function topOpenModal() {
     // Overlay dialogs (toggled via .hidden) sit above the .is-open modals.
-    const overlayIds = ['confirm-modal', 'ios-install-modal', 'bulk-edit-modal'];
+    // `input-modal` belongs here too — it is the dialog used for every KPI value
+    // edit, and while it was missing from this list Escape did not close it and
+    // Tab walked straight out of it into the page behind.
+    const overlayIds = ['confirm-modal', 'input-modal', 'ios-install-modal', 'bulk-edit-modal'];
     for (const id of overlayIds) {
         const m = document.getElementById(id);
         if (m && !m.classList.contains('hidden')) return m;
     }
     const open = document.querySelectorAll('.is-open');
     return open.length ? open[open.length - 1] : null;
+}
+
+// True while any dialog is on screen. Used to stop the global number/slash
+// shortcuts from acting on the dashboard behind an open modal.
+export function isAnyModalOpen() {
+    return topOpenModal() !== null;
 }
 
 function dismissTopModal(modal) {

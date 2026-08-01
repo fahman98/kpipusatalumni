@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Dashboard KPI Pusat Alumni UPSI | Sistem Pemantauan Prestasi</title>
     <meta name="description" content="Pantau prestasi KPI Pusat Alumni UPSI secara masa nyata — data suku tahunan, analitik, dan laporan komprehensif.">
     <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/8921/8921024.png">
@@ -56,7 +56,7 @@
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/8921/8921024.png">
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="style.css?v=3.9">
+    <link rel="stylesheet" href="style.css?v=4.0">
 </head>
 
 <body class="bg-gray-100 relative overflow-x-hidden">
@@ -117,7 +117,7 @@
     </div>
 
     <!-- Toast Structure -->
-    <div id="toast-notification" class="bg-white rounded-lg shadow-xl border-l-4 overflow-hidden">
+    <div id="toast-notification" role="status" aria-live="polite" aria-atomic="true" class="bg-white rounded-lg shadow-xl border-l-4 overflow-hidden">
         <div class="flex items-center p-4">
             <div id="toast-icon-container" class="flex-shrink-0">
                 <i id="toast-icon" class="fas fa-info-circle text-xl"></i>
@@ -126,9 +126,9 @@
                 <p id="toast-message" class="text-sm font-medium text-gray-900 leading-5"></p>
             </div>
             <div class="ml-4 flex-shrink-0 flex">
-                <button id="toast-close-btn"
+                <button id="toast-close-btn" aria-label="Tutup notifikasi"
                     class="inline-flex text-gray-400 focus:outline-none focus:text-gray-500 transition ease-in-out duration-150">
-                    <i class="fas fa-times"></i>
+                    <i class="fas fa-times" aria-hidden="true"></i>
                 </button>
             </div>
         </div>
@@ -309,7 +309,7 @@
         <!-- STATS SUMMARY BAR — clickable to filter grid -->
         <div id="stats-bar" class="hidden grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
             <!-- Jumlah KPI — stacked proportion bar -->
-            <div class="stat-card bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-gray-100 cursor-pointer select-none transition-all hover:shadow-md"
+            <div role="button" tabindex="0" aria-pressed="false" class="stat-card bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-gray-100 cursor-pointer select-none transition-all hover:shadow-md"
                 data-filter="all" title="Tunjuk semua KPI">
                 <div class="flex items-center gap-3">
                     <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
@@ -327,7 +327,7 @@
                 </div>
             </div>
             <!-- Cemerlang -->
-            <div class="stat-card bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-gray-100 cursor-pointer select-none transition-all hover:shadow-md"
+            <div role="button" tabindex="0" aria-pressed="false" class="stat-card bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-gray-100 cursor-pointer select-none transition-all hover:shadow-md"
                 data-filter="good" title="Tapis: Cemerlang sahaja">
                 <div class="flex items-center gap-3">
                     <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-green-50 flex items-center justify-center flex-shrink-0">
@@ -343,7 +343,7 @@
                 </div>
             </div>
             <!-- Sederhana -->
-            <div class="stat-card bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-gray-100 cursor-pointer select-none transition-all hover:shadow-md"
+            <div role="button" tabindex="0" aria-pressed="false" class="stat-card bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-gray-100 cursor-pointer select-none transition-all hover:shadow-md"
                 data-filter="ok" title="Tapis: Sederhana sahaja">
                 <div class="flex items-center gap-3">
                     <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0">
@@ -359,7 +359,7 @@
                 </div>
             </div>
             <!-- Perlu Perhatian -->
-            <div class="stat-card bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-gray-100 cursor-pointer select-none transition-all hover:shadow-md"
+            <div role="button" tabindex="0" aria-pressed="false" class="stat-card bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-gray-100 cursor-pointer select-none transition-all hover:shadow-md"
                 data-filter="bad" title="Tapis: Perlu Perhatian sahaja">
                 <div class="flex items-center gap-3">
                     <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0">
@@ -1052,7 +1052,7 @@
         </div>
 
         <!-- Load Main Script as Module -->
-        <script type="module" src="js/main.js?v=3.9"></script>
+        <script type="module" src="js/main.js?v=4.0"></script>
 </body>
 
 </html>

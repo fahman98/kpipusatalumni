@@ -16,6 +16,7 @@ import {
     showInputModal,
     getPhosphorIcon,
     escapeHtml,
+    isAnyModalOpen,
 } from './ui.js';
 
 import {
@@ -355,19 +356,24 @@ document.addEventListener('DOMContentLoaded', () => {
                             `Kemaskini Nilai: ${kpi.name}`,
                             "Masukkan nilai pencapaian terkini:",
                             currentVal,
+                            // Return false to reject the value — showInputModal then
+                            // keeps the dialog open with the entry intact instead of
+                            // closing it and discarding what was typed.
                             (newVal, bulan) => {
-                                if (newVal !== null && String(newVal).trim() !== "") {
-                                    const parsed = parseFloat(newVal);
-                                    if (isNaN(parsed) || parsed < 0) {
-                                        showToastNotification("Nilai tidak sah. Sila masukkan angka positif.", "danger");
-                                        return;
-                                    }
-                                    if (kpi.isPercentage && parsed > 100) {
-                                        showToastNotification("Nilai peratusan tidak boleh melebihi 100%.", "danger");
-                                        return;
-                                    }
-                                    updateKpiValueInFirestore(quarterKey, kpi.id, parsed, showMonth ? bulan : null);
+                                if (newVal === null || String(newVal).trim() === "") {
+                                    showToastNotification("Sila masukkan nilai.", "danger");
+                                    return false;
                                 }
+                                const parsed = parseFloat(newVal);
+                                if (isNaN(parsed) || parsed < 0) {
+                                    showToastNotification("Nilai tidak sah. Sila masukkan angka positif.", "danger");
+                                    return false;
+                                }
+                                if (kpi.isPercentage && parsed > 100) {
+                                    showToastNotification("Nilai peratusan tidak boleh melebihi 100%.", "danger");
+                                    return false;
+                                }
+                                updateKpiValueInFirestore(quarterKey, kpi.id, parsed, showMonth ? bulan : null);
                             },
                             showMonth ? { showMonth: true, defaultMonth, monthRange: [monthStart, monthEnd] } : {}
                         );
@@ -816,6 +822,11 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('keydown', (e) => {
         if (['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) return;
         if (e.metaKey || e.ctrlKey || e.altKey) return;
+        // Inside a dialog the focus usually sits on a <button>, so the tagName
+        // check above doesn't catch it: pressing 1-4 switched the quarter behind
+        // the open modal (tearing down the very data that modal was reading),
+        // and '/' moved focus to the search box outside the focus trap.
+        if (isAnyModalOpen()) return;
         if (e.key >= '1' && e.key <= '4') {
             const qBtn = document.querySelector(`.quarter-btn[data-quarter="${e.key}"]`);
             if (qBtn) { qBtn.click(); showKbHint(`Suku ${e.key}`); }
@@ -855,14 +866,40 @@ document.addEventListener('DOMContentLoaded', () => {
             if (kpiNameEl && kpiNameEl.dataset.kpiId) openFocusMode(kpiNameEl.dataset.kpiId);
         });
 
+        // Enter/Space on the KPI name — it is exposed as role="button", so it has
+        // to behave like one for keyboard and switch users.
+        kpiGridContainer.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            const nameEl = e.target.closest('.kpi-name');
+            if (!nameEl || !nameEl.dataset.kpiId) return;
+            e.preventDefault();
+            openFocusMode(nameEl.dataset.kpiId);
+        });
+
         // #5: Swipe gesture — tukar suku dengan swipe kiri/kanan pada grid (mobile)
+        //
+        // Horizontal INTENT, not just horizontal distance. Only clientX used to be
+        // tracked, so an ordinary one-handed scroll down the grid that drifted 60px
+        // sideways silently switched quarter — re-subscribing Firestore and yanking
+        // the page back to the top. A swipe now has to be clearly sideways, a
+        // single finger, and quick enough to be a flick rather than a drag.
         let swipeTouchStartX = 0;
+        let swipeTouchStartY = 0;
+        let swipeTouchStartT = 0;
+        let swipeValid = false;
         kpiGridContainer.addEventListener('touchstart', (e) => {
+            swipeValid = e.touches.length === 1;   // ignore pinch/multi-touch
             swipeTouchStartX = e.changedTouches[0].clientX;
+            swipeTouchStartY = e.changedTouches[0].clientY;
+            swipeTouchStartT = e.timeStamp;
         }, { passive: true });
         kpiGridContainer.addEventListener('touchend', (e) => {
+            if (!swipeValid) return;
             const dx = e.changedTouches[0].clientX - swipeTouchStartX;
-            if (Math.abs(dx) < 60) return; // abaikan swipe terlalu kecil
+            const dy = e.changedTouches[0].clientY - swipeTouchStartY;
+            if (Math.abs(dx) < 60) return;                    // terlalu kecil
+            if (Math.abs(dx) < Math.abs(dy) * 2) return;      // lebih menegak → scroll
+            if (e.timeStamp - swipeTouchStartT > 600) return; // seretan perlahan, bukan flick
             const activeBtn = document.querySelector('.quarter-btn.active');
             if (!activeBtn) return;
             const currentQ = parseInt(activeBtn.dataset.quarter);
@@ -884,14 +921,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Toggle: klik semula kad yang sama → reset ke all
             const isActive = card.classList.contains('stat-card-active');
-            document.querySelectorAll('.stat-card').forEach(c => c.classList.remove('stat-card-active'));
+            document.querySelectorAll('.stat-card').forEach(c => {
+                c.classList.remove('stat-card-active');
+                c.setAttribute('aria-pressed', 'false');
+            });
             if (isActive) {
                 statusFilterEl.value = 'all';
             } else {
                 card.classList.add('stat-card-active');
+                card.setAttribute('aria-pressed', 'true');
                 statusFilterEl.value = filter;
             }
             statusFilterEl.dispatchEvent(new Event('change')); // trigger filter logic
+        });
+
+        // The stat tiles are role="button" — make Enter/Space work like a click.
+        statsBar.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            const card = e.target.closest('.stat-card');
+            if (!card) return;
+            e.preventDefault();
+            card.click();
         });
     }
 
