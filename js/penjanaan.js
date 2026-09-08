@@ -14,9 +14,8 @@ import {
 import {
     updateKpiBreakdownList,
     moveKpiBreakdownItem,
-    getAllPendanaanItems,
     getPendanaanItemsForQuarter,
-    getPendanaanKpiTarget
+    getPendanaanSnapshot
 } from './api.js';
 
 import { statusBarClass } from './status.js';
@@ -602,10 +601,7 @@ function render() {
 async function refresh() {
     if (!currentContainer) return;
     if (parseInt(currentYear, 10) < 2026) { render(); return; }
-    [cachedItems, cachedTarget] = await Promise.all([
-        getAllPendanaanItems(currentYear),
-        getPendanaanKpiTarget(currentYear)
-    ]);
+    ({ items: cachedItems, target: cachedTarget } = await getPendanaanSnapshot(currentYear));
     render();
 }
 

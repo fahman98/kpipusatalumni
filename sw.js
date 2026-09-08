@@ -10,7 +10,7 @@
 //   • Firestore / Auth traffic → bypass entirely (always network). The Firebase
 //     SDK bundles themselves ARE cached — the app cannot boot without them.
 
-const CACHE_VERSION = 'v15';
+const CACHE_VERSION = 'v16';
 const CACHE_NAME = `kpi-dashboard-${CACHE_VERSION}`;
 
 // Same-origin app shell — kept complete & in sync with the real file list.
@@ -19,8 +19,12 @@ const PRECACHE_ASSETS = [
     './index.html',
     './style.css',
     './config.js',
-    './data-seed.js',
     './manifest.json',
+    './images/logo-1.png',
+    './images/logo-2.png',
+    './images/icon-192.png',
+    './images/icon-512.png',
+    './images/favicon-64.png',
     './js/main.js',
     './js/api.js',
     './js/ui.js',

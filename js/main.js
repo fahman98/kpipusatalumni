@@ -147,11 +147,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- INITIALIZE YEAR (DYNAMIC) ---
+    // FIRST_DATA_YEAR is the earliest year with KPI documents in Firestore.
+    // The selector used to start at `currentYear - 1`, so each new January
+    // silently dropped the oldest year out of the dropdown: the data stayed in
+    // Firestore but there was no longer any way to reach it from the UI.
+    // Listing from the first data year keeps every past year reachable.
+    const FIRST_DATA_YEAR = 2025;
     const currentYear = new Date().getFullYear();
     const prevYear = currentYear - 1;
 
     if (yearSelector) {
-        for (let y = prevYear; y <= currentYear + 1; y++) {
+        const firstYear = Math.min(FIRST_DATA_YEAR, currentYear);
+        for (let y = firstYear; y <= currentYear + 1; y++) {
             const opt = document.createElement('option');
             opt.value = String(y);
             opt.textContent = String(y);
@@ -312,7 +319,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
                 new Notification('KPI Dikemaskini', {
                     body: `Data ${selectedYear} ${currentData.title || quarterKey.toUpperCase()} telah dikemaskini.`,
-                    icon: './images/app-icon.png'
+                    icon: './images/icon-192.png'
                 });
             }
 
@@ -1242,6 +1249,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- EXPORT CSV ---
+    // Encode one CSV field.
+    //
+    // Two things the old `"${c}"` wrapper got wrong:
+    //   1. A value containing a double quote (a KPI named 5" say) closed the
+    //      field early and shifted every following column by one.
+    //   2. Excel and Google Sheets treat a cell starting with = + - or @ as a
+    //      FORMULA. An admin-entered KPI name is free text that lands in a file
+    //      other people open, so `=HYPERLINK(...)` in a name would run on their
+    //      machine, not ours. Prefixing with an apostrophe forces it back to
+    //      text, the standard CSV-injection mitigation.
+    const csvCell = (value) => {
+        let cell = String(value == null ? '' : value);
+        if (/^[=+\-@\t\r]/.test(cell)) cell = "'" + cell;
+        return '"' + cell.replace(/"/g, '""') + '"';
+    };
+
     const exportCsvBtn = getEl('export-csv-btn');
     if (exportCsvBtn) {
         exportCsvBtn.addEventListener('click', () => {
@@ -1256,14 +1279,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 const pct = getKpiPercentage(kpi);
                 rows.push([kpi.name, value.toFixed(2), kpi.target, pct.toFixed(2) + '%']);
             });
-            const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const csv = rows.map(r => r.map(csvCell).join(',')).join('\r\n');
+            // Leading BOM: without it Excel on Windows reads the file as ANSI and
+            // mangles every non-ASCII character in a KPI name.
+            const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
             a.download = `KPI_${selectedYear}_${currentQuarter.toUpperCase()}.csv`;
+            // Firefox only follows the click for a link that is in the document,
+            // and revoking the URL synchronously after click() can cancel the
+            // download before the browser has read the blob.
+            document.body.appendChild(a);
             a.click();
-            URL.revokeObjectURL(url);
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
         });
     }
 
@@ -1339,16 +1369,36 @@ document.addEventListener('DOMContentLoaded', () => {
             doc.setFillColor(21, 101, 192);
             doc.rect(0, 34, pageW, 4, 'F');
 
-            // Try to embed logo from page
+            // Embed the university logo, lifted from the header image already
+            // decoded on the page.
+            //
+            // This used to select `img[alt="Logo Utama"]`, an alt text that does
+            // not exist anywhere in the document. The query returned null, the
+            // whole block sat inside a silent try/catch, and so every report ever
+            // generated came out with no logo at all.
+            //
+            // It also drew the logo into a 28x28mm square. The logo is 2.12:1, so
+            // even had the selector matched, it would have been squashed. The box
+            // is now derived from the image's own aspect ratio, and sits on a
+            // white tile because the artwork is dark navy on transparent and would
+            // otherwise disappear into the navy header band.
             try {
-                const logoEl = document.querySelector('img[alt="Logo Utama"]');
+                const logoEl = document.querySelector('img[src*="logo-1"]');
                 if (logoEl && logoEl.complete && logoEl.naturalWidth > 0) {
                     const c = document.createElement('canvas');
-                    c.width = logoEl.naturalWidth; c.height = logoEl.naturalHeight;
+                    c.width = logoEl.naturalWidth;
+                    c.height = logoEl.naturalHeight;
                     c.getContext('2d').drawImage(logoEl, 0, 0);
-                    doc.addImage(c.toDataURL('image/png'), 'PNG', pageW - 42, 4, 28, 28);
+
+                    const logoH = 15;                                        // mm
+                    const logoW = logoH * (logoEl.naturalWidth / logoEl.naturalHeight);
+                    const pad = 2.5;
+                    const tileX = pageW - 14 - logoW - pad * 2;
+                    doc.setFillColor(255, 255, 255);
+                    doc.roundedRect(tileX, 6, logoW + pad * 2, logoH + pad * 2, 1.5, 1.5, 'F');
+                    doc.addImage(c.toDataURL('image/png'), 'PNG', tileX + pad, 6 + pad, logoW, logoH);
                 }
-            } catch(e) {}
+            } catch (e) { /* report is still perfectly usable without the logo */ }
 
             doc.setTextColor(255, 255, 255);
             doc.setFont('helvetica', 'bold'); doc.setFontSize(16);

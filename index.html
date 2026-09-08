@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Dashboard KPI Pusat Alumni UPSI | Sistem Pemantauan Prestasi</title>
     <meta name="description" content="Pantau prestasi KPI Pusat Alumni UPSI secara masa nyata — data suku tahunan, analitik, dan laporan komprehensif.">
-    <link rel="icon" type="image/png" href="./images/app-icon.png">
+    <link rel="icon" type="image/png" href="./images/favicon-64.png">
 
     <!-- Open Graph / WhatsApp / Telegram Preview -->
     <meta property="og:type" content="website">
@@ -51,10 +51,10 @@
     <meta name="theme-color" content="#0d47a1">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="apple-touch-icon" href="./images/app-icon.png">
+    <link rel="apple-touch-icon" href="./images/apple-touch-icon.png">
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="style.css?v=4.3">
+    <link rel="stylesheet" href="style.css?v=4.4">
 </head>
 
 <body class="bg-gray-100 relative overflow-x-hidden">
@@ -142,13 +142,13 @@
                      640–767px (sm tab): logo-1 only, full h-10 (not too wide alone)
                      768px+  (md+)     : both logos at h-14 -->
                 <div class="flex items-center gap-2 md:gap-3 flex-shrink-0">
-                    <img src="./images/logo-1.png" alt="Logo Pusat Alumni UPSI"
+                    <img src="./images/logo-1.png" alt="Logo Universiti Pendidikan Sultan Idris"
                         decoding="async"
                         class="h-10 md:h-14 max-w-[56px] md:max-w-none object-contain transition-transform hover:scale-105 duration-300">
                     <div class="hidden md:block w-px h-10 bg-gray-200 flex-shrink-0" aria-hidden="true"></div>
                     <!-- Hidden below md. loading="lazy" keeps phones from downloading
                          it at all, since a display:none image is never in viewport. -->
-                    <img src="./images/logo-2.png" alt="Logo Universiti Pendidikan Sultan Idris"
+                    <img src="./images/logo-2.png" alt="Logo Pusat Alumni UPSI"
                         decoding="async" loading="lazy"
                         class="hidden md:block h-14 object-contain transition-transform hover:scale-105 duration-300">
                 </div>
@@ -613,8 +613,8 @@
             class="fixed bottom-0 left-0 w-full bg-white dark:bg-gray-800 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-40 transform translate-y-full transition-transform duration-500 ease-in-out px-6 py-4 flex flex-col sm:flex-row justify-between items-center border-t border-gray-200 dark:border-gray-700 hidden">
             <div class="flex items-center mb-3 sm:mb-0">
                 <div class="p-3 bg-white rounded-xl mr-4 shadow-sm border border-gray-100">
-                    <img src="./images/app-icon.png" alt="App Icon"
-                        class="w-8 h-8 object-contain">
+                    <img src="./images/icon-192.png" alt="" aria-hidden="true"
+                        class="w-8 h-8 object-contain rounded-lg">
                 </div>
                 <div>
                     <h4 class="font-bold text-gray-800 dark:text-gray-100 text-sm sm:text-base">Install App KPI
@@ -915,9 +915,8 @@
             </div>
         </template>
 
-        <!-- SCRIPT LOADING ORDER: CONFIG -> DATA -> MODULES (Via Main) -->
+        <!-- SCRIPT LOADING ORDER: CONFIG -> MODULES (Via Main) -->
         <script defer src="config.js"></script>
-        <script defer src="data-seed.js"></script>
 
 
 
@@ -1054,7 +1053,7 @@
         </div>
 
         <!-- Load Main Script as Module -->
-        <script type="module" src="js/main.js?v=4.3"></script>
+        <script type="module" src="js/main.js?v=4.4"></script>
 </body>
 
 </html>

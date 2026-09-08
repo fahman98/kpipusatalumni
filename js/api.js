@@ -1161,19 +1161,29 @@ export async function getPendanaanItemsForQuarter(year, quarterKey) {
     }
 }
 
-export async function getAllPendanaanItems(year) {
-    return getPendanaanItemsForQuarter(year, 'q4');
-}
-
-export async function getPendanaanKpiTarget(year) {
+// The cumulative record list AND the KPI target, from ONE read.
+//
+// These used to be two exported helpers, and the Penjanaan tab called both in a
+// Promise.all, so every visit to the tab fetched the SAME q4 document twice and
+// billed two Firestore reads to answer one question. Reading it once and
+// returning both fields halves that, and guarantees the list and the target come
+// from the same snapshot rather than two reads that could straddle a write.
+export async function getPendanaanSnapshot(year) {
+    const empty = { items: [], target: 0 };
     try {
-        const docRef = db.collection(`artifacts/${getAppId()}/public/data/kpi-${year}`).doc('q4');
-        const docSnap = await docRef.get();
-        if (!docSnap.exists) return 0;
+        const docSnap = await db
+            .collection(`artifacts/${getAppId()}/public/data/kpi-${year}`)
+            .doc('q4')
+            .get();
+        if (!docSnap.exists) return empty;
         const kpi = (docSnap.data().kpis || []).find(k => k.id === 'pendanaan');
-        return (kpi && typeof kpi.target === 'number') ? kpi.target : 0;
+        if (!kpi) return empty;
+        return {
+            items: Array.isArray(kpi.details && kpi.details.items) ? kpi.details.items : [],
+            target: typeof kpi.target === 'number' ? kpi.target : 0
+        };
     } catch (e) {
-        console.error("getPendanaanKpiTarget error:", e);
-        return 0;
+        console.error("getPendanaanSnapshot error:", e);
+        return empty;
     }
 }
