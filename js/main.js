@@ -1542,12 +1542,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- OFFLINE PERSISTENCE & INDICATOR ---
-    if (typeof db !== 'undefined') {
+    try {
         db.enablePersistence({ synchronizeTabs: false }).catch(err => {
             if (err.code !== 'failed-precondition' && err.code !== 'unimplemented') {
                 console.error('Persistence error:', err);
             }
         });
+    } catch (err) {
+        console.error('Persistence unavailable:', err);
     }
 
     window.addEventListener('online', () => {
@@ -1697,5 +1699,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Start App
-    initializeApp();
+    try {
+        initializeApp();
+    } catch (err) {
+        console.error('Firebase init failed:', err);
+        showToastNotification('Gagal memulakan sambungan. Sila muat semula halaman.', 'danger');
+    }
 });
