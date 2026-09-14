@@ -29,12 +29,34 @@ service cloud.firestore {
         && request.auth.token.email == 'alumni@upsi.edu.my';
     }
 
+    // Shape guard for the collections the dashboard renders: the list field the
+    // client reads must exist and be a list. Every current writer already sends
+    // it; meta / any other collection is exempt.
+    function validShape(collection) {
+      return kpiShape(collection) && takwimShape(collection);
+    }
+
+    function kpiShape(collection) {
+      return !collection.matches('kpi-[0-9]{4}')
+        || (request.resource.data.keys().hasAll(['kpis'])
+            && request.resource.data.kpis is list);
+    }
+
+    function takwimShape(collection) {
+      return !collection.matches('takwim-[0-9]{4}')
+        || (request.resource.data.keys().hasAll(['events'])
+            && request.resource.data.events is list);
+    }
+
     match /artifacts/{appId}/public/data {
 
       // ----- Audit trail: admin-only, append-only ------------------------
       match /audit-logs/{logId} {
         allow read:   if isAdmin();
-        allow create: if isAdmin();
+        allow create: if isAdmin()
+                      && request.resource.data.action is string
+                      && request.resource.data.user == request.auth.token.email
+                      && request.resource.data.timestamp == request.time;
         allow update, delete: if false;   // immutable once written
       }
 
@@ -43,7 +65,8 @@ service cloud.firestore {
       // (audit-logs is excluded here — it is governed solely by the rule above.)
       match /{collection}/{docId} {
         allow read:  if collection != 'audit-logs';
-        allow write: if isAdmin() && collection != 'audit-logs';
+        allow write: if isAdmin() && collection != 'audit-logs'
+                     && validShape(collection);
 
         // Defensive: same policy for any nested subcollections.
         match /{sub=**} {

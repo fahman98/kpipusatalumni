@@ -47,10 +47,9 @@ const lastUpdatedDocRef = (year) =>
 
 async function touchLastUpdated(year = selectedYear) {
     try {
-        const user = firebase.auth().currentUser;
         await lastUpdatedDocRef(year).set({
             label: nowFooterDate(),
-            by: user ? user.email : 'unknown',
+            by: firebase.firestore.FieldValue.delete(),
             ts: firebase.firestore.FieldValue.serverTimestamp()
         }, { merge: true });
     } catch (e) {
@@ -1057,8 +1056,6 @@ export async function addTakwimEvent(year, eventData) {
     showLoading("Menambah aktiviti...");
     try {
         const ref = takwimDocRef(year);
-        const doc = await ref.get();
-        const events = (doc.exists && Array.isArray(doc.data().events)) ? doc.data().events : [];
         const newEvent = {
             id: 'evt_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
             title: eventData.title || '',
@@ -1068,8 +1065,12 @@ export async function addTakwimEvent(year, eventData) {
             notes: eventData.notes || '',
             createdAt: new Date().toISOString()
         };
-        events.push(newEvent);
-        await ref.set({ events }, { merge: true });
+        await db.runTransaction(async (t) => {
+            const doc = await t.get(ref);
+            const events = (doc.exists && Array.isArray(doc.data().events)) ? doc.data().events : [];
+            events.push(newEvent);
+            t.set(ref, { events }, { merge: true });
+        });
         await writeAuditLog('ADD_TAKWIM', { year, title: newEvent.title });
         showToastNotification("Aktiviti berjaya ditambah!", "success");
     } catch (e) {
@@ -1093,20 +1094,22 @@ export async function updateTakwimEvent(year, eventId, updatedData) {
     showLoading("Mengemaskini aktiviti...");
     try {
         const ref = takwimDocRef(year);
-        const doc = await ref.get();
-        if (!doc.exists) throw new Error("Takwim tidak dijumpai");
-        const events = Array.isArray(doc.data().events) ? doc.data().events : [];
-        const idx = events.findIndex(ev => ev.id === eventId);
-        if (idx === -1) throw new Error("Aktiviti tidak dijumpai");
-        events[idx] = {
-            ...events[idx],
-            title: updatedData.title !== undefined ? updatedData.title : events[idx].title,
-            date: updatedData.date !== undefined ? updatedData.date : events[idx].date,
-            dateTo: updatedData.dateTo !== undefined ? updatedData.dateTo : (events[idx].dateTo || ''),
-            location: updatedData.location !== undefined ? updatedData.location : events[idx].location,
-            notes: updatedData.notes !== undefined ? updatedData.notes : events[idx].notes
-        };
-        await ref.update({ events });
+        await db.runTransaction(async (t) => {
+            const doc = await t.get(ref);
+            if (!doc.exists) throw new Error("Takwim tidak dijumpai");
+            const events = Array.isArray(doc.data().events) ? doc.data().events : [];
+            const idx = events.findIndex(ev => ev.id === eventId);
+            if (idx === -1) throw new Error("Aktiviti tidak dijumpai");
+            events[idx] = {
+                ...events[idx],
+                title: updatedData.title !== undefined ? updatedData.title : events[idx].title,
+                date: updatedData.date !== undefined ? updatedData.date : events[idx].date,
+                dateTo: updatedData.dateTo !== undefined ? updatedData.dateTo : (events[idx].dateTo || ''),
+                location: updatedData.location !== undefined ? updatedData.location : events[idx].location,
+                notes: updatedData.notes !== undefined ? updatedData.notes : events[idx].notes
+            };
+            t.set(ref, { events }, { merge: true });
+        });
         await writeAuditLog('EDIT_TAKWIM', { year, eventId });
         showToastNotification("Aktiviti dikemaskini!", "success");
     } catch (e) {
@@ -1130,11 +1133,13 @@ export async function deleteTakwimEvent(year, eventId) {
     showLoading("Memadam aktiviti...");
     try {
         const ref = takwimDocRef(year);
-        const doc = await ref.get();
-        if (!doc.exists) throw new Error("Takwim tidak dijumpai");
-        const events = (Array.isArray(doc.data().events) ? doc.data().events : [])
-            .filter(ev => ev.id !== eventId);
-        await ref.update({ events });
+        await db.runTransaction(async (t) => {
+            const doc = await t.get(ref);
+            if (!doc.exists) throw new Error("Takwim tidak dijumpai");
+            const events = (Array.isArray(doc.data().events) ? doc.data().events : [])
+                .filter(ev => ev.id !== eventId);
+            t.set(ref, { events }, { merge: true });
+        });
         await writeAuditLog('DELETE_TAKWIM', { year, eventId });
         showToastNotification("Aktiviti dipadam.", "success");
     } catch (e) {
