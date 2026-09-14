@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Syntax check JavaScript
+        run: |
+          fail=0
+          for f in config.js sw.js tailwind.config.js js/*.js; do
+            tmp="$(mktemp --suffix=.mjs)"
+            cp "$f" "$tmp"
+            if node --check "$tmp"; then
+              echo "OK   $f"
+            else
+              echo "FAIL $f"
+              fail=1
+            fi
+            rm -f "$tmp"
+          done
+          exit $fail
+
+      - name: Validate JSON
+        run: |
+          for f in vercel.json manifest.json firebase.json .firebaserc; do
+            node -e "JSON.parse(require('node:fs').readFileSync('$f','utf8'))" && echo "OK   $f"
+          done
+
+      - name: Check local references exist
+        run: node .github/scripts/check-refs.mjs
+
+      - name: Check firestore.rules structure
+        run: node .github/scripts/check-rules.mjs
+
+      - name: Verify tailwind.css is in sync
+        run: |
+          npx --yes tailwindcss@3.4.17 -c tailwind.config.js -i tailwind.src.css -o /tmp/tailwind.check.css --minify
+          if cmp -s tailwind.css /tmp/tailwind.check.css; then
+            echo "tailwind.css is in sync"
+          else
+            echo "::error::tailwind.css is out of date — regenerate it and bump the ?v= query in index.html"
+            exit 1
+          fi
