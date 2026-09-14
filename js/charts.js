@@ -14,7 +14,9 @@ export function destroyKpiChart() {
 
 
 export function renderGaugeChart(value) {
-    const overallGaugeCtx = document.getElementById('overall-gauge-chart').getContext('2d');
+    const canvas = document.getElementById('overall-gauge-chart');
+    if (!canvas) return;
+    const overallGaugeCtx = canvas.getContext('2d');
     const gaugeText = document.getElementById('gauge-value-text');
     animateValue(gaugeText, 0, value, 1500, val => `${val.toFixed(2)}%`);
 

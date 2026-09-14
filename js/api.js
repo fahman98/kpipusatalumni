@@ -371,23 +371,31 @@ export async function addNewKpi(kpiData) {
 export async function updateKpiStructure(kpiId, newName, newTarget) {
     if (!isEditMode) return;
     if (!assertOnline()) return;
+
+    const cleanName = String(newName || '').trim();
+    const parsedTarget = parseFloat(newTarget);
+    if (!cleanName || !Number.isFinite(parsedTarget) || parsedTarget < 0) {
+        showToastNotification("Nama dan sasaran mesti sah (sasaran 0 atau lebih).", "danger");
+        return;
+    }
+
     showLoading("Mengemaskini Struktur...");
 
     try {
         await runQuarterTransaction(ALL_QUARTERS, (data) => {
             data.kpis = data.kpis.map(k => {
                 if (k.id === kpiId) {
-                    let finalTarget = parseFloat(newTarget);
+                    let finalTarget = parsedTarget;
                     // If KPI has a checklist, ignore manual target and use list length
                     if (k.details && Array.isArray(k.details.targetList) && k.details.targetList.length > 0) {
                         finalTarget = k.details.targetList.length;
                     }
-                    return { ...k, name: newName, target: finalTarget };
+                    return { ...k, name: cleanName, target: finalTarget };
                 }
                 return k;
             });
         });
-        await writeAuditLog('EDIT_KPI_STRUCTURE', { kpiId, newName, newTarget });
+        await writeAuditLog('EDIT_KPI_STRUCTURE', { kpiId, newName: cleanName, newTarget: parsedTarget });
         showToastNotification("Struktur KPI dikemaskini!", "success");
     } catch (e) {
         console.error(e);

@@ -1,6 +1,5 @@
 // --- JS/UI.JS ---
 import {
-    updateKpiValueInFirestore,
     updateKpiDetailsList,
     updateKpiTargetListItem,
     updateKpiBreakdownList,
@@ -488,59 +487,6 @@ export function animateCardElements(card, kpi) {
             setTimeout(() => { card.style.boxShadow = ''; }, 1100);
         }, 1700);
     }
-}
-
-function handleEditKpi(cardElement, kpi) {
-    if (!isEditMode) return;
-    const valueWrapper = cardElement.querySelector('.value-wrapper');
-    const originalValue = calculateKpiValue(kpi);
-    const editBtn = cardElement.querySelector('.edit-kpi-btn');
-    const paginationContainer = getEl('pagination');
-
-    if (editBtn) editBtn.style.display = 'none';
-
-    const input = document.createElement('input');
-    input.type = 'number';
-    input.className = 'w-32 bg-gray-100 border-2 border-brand-primary rounded-lg text-center font-bold text-brand-primary text-2xl sm:text-3xl md:text-4xl p-1';
-    input.value = originalValue;
-
-    valueWrapper.innerHTML = '';
-    valueWrapper.appendChild(input);
-    input.focus();
-    input.select();
-
-    const saveChanges = async () => {
-        const newValue = parseFloat(input.value);
-
-        input.removeEventListener('blur', saveChanges);
-        input.removeEventListener('keydown', handleKeydown);
-
-        if (isNaN(newValue) || newValue === originalValue) {
-            valueWrapper.innerHTML = `<span class="animated-value">${originalValue.toLocaleString()}</span>`;
-            if (editBtn) editBtn.style.display = 'inline-block';
-            return;
-        }
-
-        valueWrapper.innerHTML = `<i class="fas fa-spinner fa-spin text-brand-primary"></i>`;
-
-        const activeQuarterKey = `q${paginationContainer.querySelector('.active').dataset.quarter}`;
-        await updateKpiValueInFirestore(activeQuarterKey, kpi.id, newValue);
-    };
-
-    const handleKeydown = (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            input.blur();
-        } else if (e.key === 'Escape') {
-            input.removeEventListener('blur', saveChanges);
-            input.removeEventListener('keydown', handleKeydown);
-            valueWrapper.innerHTML = `<span class="animated-value">${originalValue.toLocaleString()}</span>`;
-            if (editBtn) editBtn.style.display = 'inline-block';
-        }
-    };
-
-    input.addEventListener('blur', saveChanges);
-    input.addEventListener('keydown', handleKeydown);
 }
 
 export function showDetailsModal(kpiId, triggerElement) {

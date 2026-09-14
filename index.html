@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Dashboard KPI Pusat Alumni UPSI | Sistem Pemantauan Prestasi</title>
     <meta name="description" content="Pantau prestasi KPI Pusat Alumni UPSI secara masa nyata — data suku tahunan, analitik, dan laporan komprehensif.">
-    <link rel="icon" type="image/png" href="./images/app-icon.png">
+    <link rel="icon" type="image/png" href="./images/app-icon-192.png">
 
     <!-- Open Graph / WhatsApp / Telegram Preview -->
     <meta property="og:type" content="website">
@@ -31,27 +31,33 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+        integrity="sha384-PPIZEGYM1v8zp5Py7UjFb79S58UeqCL9pYVnVPURKEqvioPROaVAJKKLzvH2rDnI" crossorigin="anonymous">
 
     <!-- Phosphor Icons (Duotone) — KPI card icons -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/duotone/style.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/duotone/style.css"
+        integrity="sha384-UVFvhZP7fWAENUPOoq61rJg5ef6QZW0k5vpAn71041/QS4STvUcJQCGNhStZLGx9" crossorigin="anonymous">
 
     <!-- Chart.js -->
-    <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"
+        integrity="sha384-9nhczxUqK87bcKHh20fSQcTGD4qq5GhayNYSYWqwBkINBhOfQLg/P5HG5lF1urn4" crossorigin="anonymous"></script>
 
     <!-- jsPDF + AutoTable dimuat atas permintaan (lihat ensurePdfLib di js/main.js) -->
 
     <!-- Firebase SDK -->
-    <script defer src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script defer src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script defer src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"
+        integrity="sha384-v3Z/Xdw1sCeo6M/geW7sn1Lt9obIm7MhAk8laVV+rvYFmzuWDELOiygx7dVte2dX" crossorigin="anonymous"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"
+        integrity="sha384-p62xBRve8PdqGDGASZtZMuHgPsyPcT5VsFwgmz2p4zaFdEtt5ZzNqxK+CLzQS7xP" crossorigin="anonymous"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"
+        integrity="sha384-3LctmFHtNDZwkVOSZ0fvJZJD9XR5Og5ol/MVEfNt36gUUnSYBRJN0iFjIMbFecOg" crossorigin="anonymous"></script>
 
     <!-- PWA Manifest & Meta -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0d47a1">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="apple-touch-icon" href="./images/app-icon.png">
+    <link rel="apple-touch-icon" href="./images/app-icon-192.png">
 
     <!-- Custom CSS -->
     <link rel="stylesheet" href="style.css?v=4.3">
@@ -803,7 +809,7 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Sasaran (Target)</label>
-                        <input type="number" id="edit-structure-target"
+                        <input type="number" id="edit-structure-target" min="0"
                             class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-brand-primary focus:border-brand-primary">
                     </div>
                     <div class="bg-yellow-50 p-3 rounded-lg text-sm text-yellow-800 border border-yellow-200">
@@ -915,9 +921,8 @@
             </div>
         </template>
 
-        <!-- SCRIPT LOADING ORDER: CONFIG -> DATA -> MODULES (Via Main) -->
+        <!-- SCRIPT LOADING ORDER: CONFIG -> MODULES (Via Main) -->
         <script defer src="config.js"></script>
-        <script defer src="data-seed.js"></script>
 
 
 
@@ -1054,7 +1059,7 @@
         </div>
 
         <!-- Load Main Script as Module -->
-        <script type="module" src="js/main.js?v=4.3"></script>
+        <script type="module" src="js/main.js?v=4.4"></script>
 </body>
 
 </html>

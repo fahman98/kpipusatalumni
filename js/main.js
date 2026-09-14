@@ -312,7 +312,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
                 new Notification('KPI Dikemaskini', {
                     body: `Data ${selectedYear} ${currentData.title || quarterKey.toUpperCase()} telah dikemaskini.`,
-                    icon: './images/app-icon.png'
+                    icon: './images/app-icon-192.png'
                 });
             }
 
@@ -1256,7 +1256,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 const pct = getKpiPercentage(kpi);
                 rows.push([kpi.name, value.toFixed(2), kpi.target, pct.toFixed(2) + '%']);
             });
-            const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+            const csvCell = (cell) => {
+                let text = String(cell == null ? '' : cell);
+                if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`;
+                return `"${text.replace(/"/g, '""')}"`;
+            };
+            const csv = rows.map(r => r.map(csvCell).join(',')).join('\r\n');
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
