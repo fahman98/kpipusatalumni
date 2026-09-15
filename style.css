@@ -1781,6 +1781,10 @@ body.dark-mode .quarter-btn:not(.active):hover {
         font-size: 0.9rem;
         margin-right: 0 !important;
     }
+
+    #theme-toggle {
+        display: none !important;
+    }
 }
 
 /* ===== BOTTOM TAB BAR ===== */
