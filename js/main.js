@@ -100,7 +100,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const bulkEditModal = getEl('bulk-edit-modal');
     const exportPdfBtn = getEl('export-pdf-btn');
-    const notifyBtn = getEl('notify-btn');
     const offlineBanner = getEl('offline-banner');
     const adminRibbon = getEl('admin-mode-ribbon');
     const achieverPanel = getEl('achiever-panel');
@@ -192,15 +191,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const reCloneBtnLabel = document.getElementById('reclone-btn-label');
     if (reCloneBtnLabel) reCloneBtnLabel.textContent = `Fix/Reset ${prevYear}`;
 
-    const initiallyLoadedQuarters = new Set();
-
     // --- MAIN FUNCTION: UPDATE DASHBOARD ---
     window.updateDashboard = function (quarterKey) {
         currentQuarter = quarterKey;
         // Remember the active quarter so a refresh or SW update restores the
         // user's place instead of snapping back to Suku 1.
         try { sessionStorage.setItem('kpi_active_quarter', quarterKey); } catch (e) {}
-        initiallyLoadedQuarters.delete(quarterKey);
 
         // Quarter transition: fade out existing grid
         if (kpiGridContainer && kpiGridContainer.children.length > 0) {
@@ -305,16 +301,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             kpiDataCache[quarterKey].processedKpis = processedKpis;
-
-            // Push notification on real-time updates (not on first load)
-            if (!initiallyLoadedQuarters.has(quarterKey)) {
-                initiallyLoadedQuarters.add(quarterKey);
-            } else if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-                new Notification('KPI Dikemaskini', {
-                    body: `Data ${selectedYear} ${currentData.title || quarterKey.toUpperCase()} telah dikemaskini.`,
-                    icon: './images/app-icon-192.png'
-                });
-            }
 
             let totalPct = 0;
             let count = 0;
@@ -691,7 +677,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 setTimeout(() => {
                     setApiYear(year);
                     subscribeFooter(year);
-                    initiallyLoadedQuarters.clear();
                     updateDashboard(currentQuarter);
                     renderCurrentView();
                     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -700,7 +685,6 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 setApiYear(year);
                 subscribeFooter(year);
-                initiallyLoadedQuarters.clear();
                 updateDashboard(currentQuarter);
                 renderCurrentView();
                 window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1459,29 +1443,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const filename = `Laporan_KPI_${selectedYear}_${currentQuarter.toUpperCase()}_${new Date().toISOString().slice(0,10)}.pdf`;
             doc.save(filename);
             showToastNotification('PDF berjaya dijana!', 'success');
-        });
-    }
-
-    // --- PUSH NOTIFICATIONS ---
-    if (notifyBtn) {
-        notifyBtn.addEventListener('click', async () => {
-            if (!('Notification' in window)) {
-                showToastNotification('Browser anda tidak menyokong notifikasi.', 'danger');
-                return;
-            }
-            if (Notification.permission === 'granted') {
-                showToastNotification('Notifikasi sudah diaktifkan.', 'success');
-            } else if (Notification.permission === 'denied') {
-                showToastNotification('Notifikasi disekat. Sila benarkan dalam tetapan browser.', 'danger');
-            } else {
-                const permission = await Notification.requestPermission();
-                if (permission === 'granted') {
-                    showToastNotification('Notifikasi diaktifkan!', 'success');
-                    notifyBtn.innerHTML = '<i class="fas fa-bell mr-2"></i>Notifikasi Aktif';
-                } else {
-                    showToastNotification('Kebenaran notifikasi ditolak.', 'danger');
-                }
-            }
         });
     }
 
