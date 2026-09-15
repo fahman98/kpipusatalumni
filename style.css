@@ -1137,40 +1137,13 @@ body.dark-mode .theme-toggle-btn:hover {
     header .flex > div:last-child { display: none !important; }
 }
 
-/* ===== MOBILE STICKY BOTTOM QUARTER NAV ===== */
+/* ===== MOBILE QUARTER SEGMENTED CONTROL ===== */
 @media (max-width: 639px) {
     #pagination {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        z-index: 30;
-        border-radius: 0 !important;
-        border-top: 1px solid #e5e7eb;
         grid-template-columns: repeat(4, 1fr);
-        box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.08);
-        padding: 6px;
+        padding: 4px;
     }
 
-    body.dark-mode #pagination {
-        background-color: #1f2937;
-        border-top-color: #374151;
-    }
-
-    /* Keep the fixed quarter bar clear of the home indicator on notched phones. */
-    #pagination {
-        padding-bottom: calc(6px + env(safe-area-inset-bottom)) !important;
-    }
-
-    /* Push content above the fixed nav.
-       This used to target `main` — there is no <main> element in the document
-       (the page root is #dashboard-container), so nothing was ever offset and
-       the bar sat on top of the last cards, the admin actions and the footer. */
-    #dashboard-container {
-        padding-bottom: calc(72px + env(safe-area-inset-bottom));
-    }
-
-    /* Compact quarter buttons for 4-in-a-row */
     #pagination .quarter-btn {
         font-size: 0.7rem;
         padding: 0.5rem 0.25rem;
@@ -1740,5 +1713,62 @@ body.dark-mode .quarter-btn:not(.active):hover {
     .theme-toggle-btn:hover,
     body.dark-mode .theme-toggle-btn:hover {
         background: rgba(255, 255, 255, 0.28) !important;
+    }
+
+    #dashboard-container {
+        padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+    }
+
+    #install-prompt {
+        bottom: calc(3.5rem + env(safe-area-inset-bottom, 0px)) !important;
+        transform: translateY(200%);
+    }
+
+    #install-prompt.slide-up-show {
+        transform: translateY(0);
+    }
+}
+
+/* ===== BOTTOM TAB BAR ===== */
+#bottom-nav {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    box-shadow: 0 -4px 16px -8px rgba(0, 0, 0, 0.25);
+}
+
+.bottom-nav-tab {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: #6b7280;
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    transition: color 0.18s, background 0.18s;
+}
+
+.bottom-nav-tab i {
+    font-size: 1.3rem;
+    line-height: 1;
+}
+
+.bottom-nav-tab.active {
+    color: var(--color-brand);
+}
+
+body.dark-mode #bottom-nav {
+    background: #1f2937;
+    border-color: #374151;
+}
+
+body.dark-mode .bottom-nav-tab {
+    color: #9ca3af;
+}
+
+body.dark-mode .bottom-nav-tab.active {
+    color: #60a5fa;
+}
+
+@media print {
+    #bottom-nav {
+        display: none !important;
     }
 }

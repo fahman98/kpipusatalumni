@@ -646,6 +646,12 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
+        document.querySelectorAll('.bottom-nav-tab').forEach(tab => {
+            const active = tab.dataset.view === view;
+            tab.classList.toggle('active', active);
+            tab.setAttribute('aria-selected', active ? 'true' : 'false');
+        });
+
         if (view === 'takwim' && viewTakwim) {
             initTakwim(viewTakwim, isEditMode, selectedYear);
         } else if (view === 'penjanaan' && viewPenjanaan) {
@@ -659,6 +665,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (mainNav) {
         mainNav.addEventListener('click', (e) => {
             const tab = e.target.closest('.main-nav-tab');
+            if (tab && tab.dataset.view) switchView(tab.dataset.view);
+        });
+    }
+
+    const bottomNav = getEl('bottom-nav');
+    if (bottomNav) {
+        bottomNav.addEventListener('click', (e) => {
+            const tab = e.target.closest('.bottom-nav-tab');
             if (tab && tab.dataset.view) switchView(tab.dataset.view);
         });
     }

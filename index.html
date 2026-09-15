@@ -59,7 +59,7 @@
 
     <!-- Custom CSS -->
     <link rel="stylesheet" href="style.css?v=4.3">
-    <link rel="stylesheet" href="tailwind.css?v=3">
+    <link rel="stylesheet" href="tailwind.css?v=4">
 </head>
 
 <body class="bg-gray-100 relative overflow-x-hidden">
@@ -207,7 +207,7 @@
 
         <!-- MAIN NAVIGATION TABS (Dashboard / Takwim / Penjanaan) -->
         <div id="main-nav"
-            class="bg-white rounded-xl shadow-sm border border-gray-100 p-1 flex gap-1 mb-4"
+            class="bg-white rounded-xl shadow-sm border border-gray-100 p-1 hidden md:flex gap-1 mb-4"
             role="tablist" aria-label="Navigasi utama">
             <button class="main-nav-tab active" data-view="dashboard" role="tab" aria-selected="true">
                 <i class="ph-duotone ph-gauge mr-1.5 align-middle"></i>Dashboard
@@ -1051,6 +1051,28 @@
             </div>
         </div>
 
+        <!-- Mobile bottom tab bar -->
+        <nav id="bottom-nav" class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200"
+            aria-label="Navigasi utama bawah">
+            <div class="flex items-stretch">
+                <button class="bottom-nav-tab active flex-1 flex flex-col items-center justify-center gap-0.5 py-2"
+                    data-view="dashboard" aria-selected="true">
+                    <i class="ph-duotone ph-gauge" aria-hidden="true"></i>
+                    <span>Dashboard</span>
+                </button>
+                <button class="bottom-nav-tab flex-1 flex flex-col items-center justify-center gap-0.5 py-2"
+                    data-view="takwim" aria-selected="false">
+                    <i class="ph-duotone ph-calendar-dots" aria-hidden="true"></i>
+                    <span>Takwim</span>
+                </button>
+                <button class="bottom-nav-tab flex-1 flex flex-col items-center justify-center gap-0.5 py-2"
+                    data-view="penjanaan" aria-selected="false">
+                    <i class="ph-duotone ph-currency-circle-dollar" aria-hidden="true"></i>
+                    <span>Penjanaan</span>
+                </button>
+            </div>
+        </nav>
+
         <!-- Year transition veil -->
         <div id="year-veil">
             <div class="year-veil-content">
@@ -1060,7 +1082,7 @@
         </div>
 
         <!-- Load Main Script as Module -->
-        <script type="module" src="js/main.js?v=4.5"></script>
+        <script type="module" src="js/main.js?v=4.6"></script>
 </body>
 
 </html>
