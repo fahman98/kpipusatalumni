@@ -1762,6 +1762,25 @@ body.dark-mode .quarter-btn:not(.active):hover {
         font-size: 1.1rem;
         line-height: 1;
     }
+
+    #search-filter-container {
+        padding: 0.5rem;
+    }
+
+    #search-filter-container .relative,
+    #dashboard-status-filter {
+        display: none !important;
+    }
+
+    #search-filter-container .footer-action-btn {
+        font-size: 0;
+        padding: 0.55rem 0.7rem;
+    }
+
+    #search-filter-container .footer-action-btn i {
+        font-size: 0.9rem;
+        margin-right: 0 !important;
+    }
 }
 
 /* ===== BOTTOM TAB BAR ===== */
