@@ -1727,6 +1727,41 @@ body.dark-mode .quarter-btn:not(.active):hover {
     #install-prompt.slide-up-show {
         transform: translateY(0);
     }
+
+    #legend-container,
+    #achiever-panel {
+        display: none !important;
+    }
+
+    #stats-bar {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0.375rem;
+    }
+
+    #stats-bar .stat-card {
+        padding: 0.5rem 0.25rem;
+        text-align: center;
+    }
+
+    #stats-bar .stat-card > div:first-child {
+        flex-direction: column;
+        gap: 0.125rem;
+    }
+
+    #stats-bar .stat-card > div:first-child > div:first-child,
+    #stats-bar .stat-card > div:last-child {
+        display: none;
+    }
+
+    #stats-bar .stat-card > div:first-child p:first-child {
+        font-size: 0.625rem;
+        line-height: 1.1;
+    }
+
+    #stats-bar .stat-card > div:first-child p:last-child {
+        font-size: 1.1rem;
+        line-height: 1;
+    }
 }
 
 /* ===== BOTTOM TAB BAR ===== */
