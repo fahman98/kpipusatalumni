@@ -322,6 +322,9 @@ function openDetailModal(ev) {
 
 function eventCardHtml(ev) {
     const badge = dateBadgeParts(ev.date, ev.dateTo);
+    // A same-month range ("26–27") wrapped inside the 56px badge at text-base;
+    // one notch smaller keeps it on a single line so every badge stays 3 rows.
+    const isDayRange = String(badge.day).includes('–');
     const st = statusStyle(ev.notes);
     const isClosed = st && (st.label === 'Dibatalkan' || st.label === 'Ditangguhkan');
     const when = isClosed ? null : countdownLabel(ev);
@@ -365,7 +368,7 @@ function eventCardHtml(ev) {
     return `
     <div class="takwim-card${isToday ? ' takwim-card-today' : ''} bg-white rounded-xl shadow-sm border border-gray-100 p-3 flex gap-3 items-start cursor-pointer hover:shadow-md hover:border-blue-100 transition-all" data-id="${escapeHtml(ev.id)}" role="button" tabindex="0" title="Lihat butiran">
         <div class="takwim-date-badge flex-shrink-0 flex flex-col items-center justify-center rounded-lg bg-blue-50 text-brand-primary w-14 py-2 px-1">
-            <span class="text-base font-extrabold leading-none text-center">${escapeHtml(badge.day)}</span>
+            <span class="${isDayRange ? 'text-sm' : 'text-base'} font-extrabold leading-none text-center whitespace-nowrap">${escapeHtml(badge.day)}</span>
             <span class="text-[10px] font-bold tracking-wide leading-none mt-0.5">${escapeHtml(badge.mon)}</span>
             <span class="text-[10px] text-gray-400 leading-none mt-0.5">${escapeHtml(badge.year)}</span>
         </div>
