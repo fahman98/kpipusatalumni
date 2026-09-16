@@ -5,7 +5,6 @@ import {
     updateKpiBreakdownList,
     updateKpiProgressListItem,
     kpiDataCache,
-    getKpiDataFromFirestore,
     selectedYear
 } from './api.js';
 
@@ -490,11 +489,6 @@ export function animateCardElements(card, kpi) {
     }
 }
 
-// Guards the asynchronous sparkline render: opening another KPI while the
-// previous one's quarter fetches are still in flight must not let the older
-// response draw over the newer chart.
-let sparklineRequestId = 0;
-
 export function showDetailsModal(kpiId, triggerElement) {
     const paginationContainer = getEl('pagination');
     const detailsModal = getEl('details-modal');
@@ -527,68 +521,6 @@ export function showDetailsModal(kpiId, triggerElement) {
     detailsModalDescription.textContent = description;
     detailsList.innerHTML = '';
     detailsAddNewWrapper.innerHTML = '';
-
-    // --- Sparkline: cross-quarter trend ---
-    //
-    // The in-memory cache only holds the quarters THIS session has opened, so
-    // reading it directly left every unvisited quarter without a bar even when
-    // Firestore had figures for it. Fetch the missing quarters the same way the
-    // history chart does, preferring the processed copy when one is cached.
-    const sparklineWrapper = getEl('details-sparkline-wrapper');
-    const sparklineCanvas = getEl('details-sparkline');
-    if (sparklineWrapper && sparklineCanvas && typeof Chart !== 'undefined') {
-        sparklineWrapper.classList.add('hidden');
-        const requestId = ++sparklineRequestId;
-        (async () => {
-            const quarters = ['q1', 'q2', 'q3', 'q4'];
-            const values = [];
-            for (const q of quarters) {
-                let data = kpiDataCache[q];
-                if (!data || (!data.processedKpis && !data.kpis)) {
-                    data = await getKpiDataFromFirestore(q);
-                }
-                const list = data ? (data.processedKpis || data.kpis) : null;
-                const k = list ? list.find(p => p.id === kpiId) : null;
-                values.push(k ? Math.min(getKpiPercentage(k), 100) : null);
-            }
-
-            // A newer modal opened while we were fetching — that chart wins.
-            if (requestId !== sparklineRequestId) return;
-            if (!values.some(v => v !== null)) return;
-
-            sparklineWrapper.classList.remove('hidden');
-            if (window._detailsSparklineChart) window._detailsSparklineChart.destroy();
-            const isDark = document.body.classList.contains('dark-mode');
-            const tickColor = isDark ? '#9ca3af' : '#6b7280';
-            const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
-            window._detailsSparklineChart = new Chart(sparklineCanvas, {
-                type: 'bar',
-                data: {
-                    labels: ['Suku 1', 'Suku 2', 'Suku 3', 'Suku 4'],
-                    datasets: [{
-                        data: values,
-                        backgroundColor: values.map(v =>
-                            v === null ? 'transparent' :
-                            v >= 75 ? 'rgba(67,160,71,0.8)' :
-                            v >= 30 ? 'rgba(245,158,11,0.8)' : 'rgba(229,57,53,0.8)'
-                        ),
-                        borderRadius: 5,
-                        borderSkipped: false,
-                    }]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { display: false }, tooltip: {
-                        callbacks: { label: ctx => `${ctx.parsed.y !== null ? ctx.parsed.y.toFixed(1) + '%' : 'Tiada data'}` }
-                    }},
-                    scales: {
-                        y: { min: 0, max: 100, ticks: { callback: v => v + '%', color: tickColor, font: { size: 10 } }, grid: { color: gridColor } },
-                        x: { ticks: { color: tickColor, font: { size: 10 } }, grid: { display: false } }
-                    }
-                }
-            });
-        })();
-    }
 
     if (type === 'list') {
         const allItems = [...new Set([...(targetList || [])])];
