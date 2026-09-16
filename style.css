@@ -1790,6 +1790,10 @@ body.dark-mode .quarter-btn:not(.active):hover {
 
     #search-filter-container {
         padding: 0.5rem;
+        /* Phones hide the search box and filter, so the card was a full-width
+           white strip with the icon buttons bunched at the left and dead space
+           after them. Hug the buttons instead. */
+        width: fit-content;
     }
 
     #search-filter-container .relative,
