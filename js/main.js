@@ -17,6 +17,7 @@ import {
     getPhosphorIcon,
     escapeHtml,
     isAnyModalOpen,
+    syncBodyScrollLock,
     showLoading,
     hideLoading,
 } from './ui.js';
@@ -1203,6 +1204,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 else if (isIOS()) {
                     if (iosModal) {
                         iosModal.classList.remove('hidden');
+                        syncBodyScrollLock();
                         hideInstallBanner(); // Hide banner to clear view
                     }
                 }
@@ -1224,13 +1226,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (closeIosBtn) {
             closeIosBtn.addEventListener('click', () => {
                 iosModal.classList.add('hidden');
+                syncBodyScrollLock();
             });
         }
 
         // Close iOS Modal on BG click
         if (iosModal) {
             iosModal.addEventListener('click', (e) => {
-                if (e.target === iosModal) iosModal.classList.add('hidden');
+                if (e.target === iosModal) { iosModal.classList.add('hidden'); syncBodyScrollLock(); }
             });
         }
     }
@@ -1474,7 +1477,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             closeModal(editStructureModal);
-            if (bulkEditModal) bulkEditModal.classList.remove('hidden');
+            if (bulkEditModal) { bulkEditModal.classList.remove('hidden'); syncBodyScrollLock(); }
         });
     }
 
@@ -1498,17 +1501,17 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             if (hasError) return;
             await saveBulkKpiValues(kpiId, valuesObj);
-            if (bulkEditModal) bulkEditModal.classList.add('hidden');
+            if (bulkEditModal) { bulkEditModal.classList.add('hidden'); syncBodyScrollLock(); }
         });
     }
 
     const bulkEditCancelBtn = getEl('bulk-edit-cancel-btn');
     const bulkEditCloseBtn = getEl('bulk-edit-modal-close');
-    if (bulkEditCancelBtn) bulkEditCancelBtn.addEventListener('click', () => { if (bulkEditModal) bulkEditModal.classList.add('hidden'); });
-    if (bulkEditCloseBtn) bulkEditCloseBtn.addEventListener('click', () => { if (bulkEditModal) bulkEditModal.classList.add('hidden'); });
+    if (bulkEditCancelBtn) bulkEditCancelBtn.addEventListener('click', () => { if (bulkEditModal) { bulkEditModal.classList.add('hidden'); syncBodyScrollLock(); } });
+    if (bulkEditCloseBtn) bulkEditCloseBtn.addEventListener('click', () => { if (bulkEditModal) { bulkEditModal.classList.add('hidden'); syncBodyScrollLock(); } });
     if (bulkEditModal) {
         bulkEditModal.addEventListener('click', (e) => {
-            if (e.target === bulkEditModal) bulkEditModal.classList.add('hidden');
+            if (e.target === bulkEditModal) { bulkEditModal.classList.add('hidden'); syncBodyScrollLock(); }
         });
     }
 

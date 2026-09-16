@@ -153,13 +153,16 @@ export function showConfirmModal(title, message, onConfirm) {
     newOk.addEventListener('click', () => {
         onConfirm();
         modal.classList.add('hidden');
+        syncBodyScrollLock();
     });
 
     newCancel.addEventListener('click', () => {
         modal.classList.add('hidden');
+        syncBodyScrollLock();
     });
 
     modal.classList.remove('hidden');
+    syncBodyScrollLock();
 }
 
 // --- INPUT MODAL ---
@@ -206,7 +209,7 @@ export function showInputModal(title, message, currentValue, onConfirm, options 
     const newCancel = cancelBtn.cloneNode(true);
     cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
 
-    const closeModal = () => modal.classList.add('hidden');
+    const closeModal = () => { modal.classList.add('hidden'); syncBodyScrollLock(); };
 
     const getMonthVal = () => (options.showMonth && monthSelect) ? parseInt(monthSelect.value) : null;
 
@@ -234,6 +237,7 @@ export function showInputModal(title, message, currentValue, onConfirm, options 
     };
 
     modal.classList.remove('hidden');
+    syncBodyScrollLock();
     setTimeout(() => inputEl.focus(), 100);
 }
 
@@ -1054,6 +1058,7 @@ export function openModal(modalElement, triggerElement) {
     if (!modalElement) return;
     lastFocusedElement = triggerElement || document.activeElement;
     modalElement.classList.add('is-open');
+    syncBodyScrollLock();
     const firstFocusableElement = modalElement.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
     if (firstFocusableElement) firstFocusableElement.focus();
 
@@ -1069,6 +1074,7 @@ export function openModal(modalElement, triggerElement) {
 export function closeModal(modalElement) {
     if (!modalElement) return;
     modalElement.classList.remove('is-open');
+    syncBodyScrollLock();
     // Defer focus restore to the next frame. The trigger that opened the modal
     // (e.g. a card's "butiran" button) sits behind the modal; focusing it
     // synchronously while the close gesture's touch/click events are still in
@@ -1111,6 +1117,13 @@ function topOpenModal() {
     return open.length ? open[open.length - 1] : null;
 }
 
+// Keep the page behind a dialog from scrolling, and its scrollbar from sitting
+// next to the dialog. Re-checked on every open/close instead of counting,
+// because dialogs stack (a confirm on top of the details modal, for example).
+export function syncBodyScrollLock() {
+    document.body.classList.toggle('modal-open', topOpenModal() !== null);
+}
+
 // True while any dialog is on screen. Used to stop the global number/slash
 // shortcuts from acting on the dashboard behind an open modal.
 export function isAnyModalOpen() {
@@ -1127,6 +1140,7 @@ function dismissTopModal(modal) {
     } else {
         // .hidden overlays: Esc simply dismisses/cancels them.
         modal.classList.add('hidden');
+        syncBodyScrollLock();
     }
 }
 
