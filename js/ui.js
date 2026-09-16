@@ -5,6 +5,7 @@ import {
     updateKpiBreakdownList,
     updateKpiProgressListItem,
     kpiDataCache,
+    getKpiDataFromFirestore,
     selectedYear
 } from './api.js';
 
@@ -489,6 +490,11 @@ export function animateCardElements(card, kpi) {
     }
 }
 
+// Guards the asynchronous sparkline render: opening another KPI while the
+// previous one's quarter fetches are still in flight must not let the older
+// response draw over the newer chart.
+let sparklineRequestId = 0;
+
 export function showDetailsModal(kpiId, triggerElement) {
     const paginationContainer = getEl('pagination');
     const detailsModal = getEl('details-modal');
@@ -523,18 +529,33 @@ export function showDetailsModal(kpiId, triggerElement) {
     detailsAddNewWrapper.innerHTML = '';
 
     // --- Sparkline: cross-quarter trend ---
+    //
+    // The in-memory cache only holds the quarters THIS session has opened, so
+    // reading it directly left every unvisited quarter without a bar even when
+    // Firestore had figures for it. Fetch the missing quarters the same way the
+    // history chart does, preferring the processed copy when one is cached.
     const sparklineWrapper = getEl('details-sparkline-wrapper');
     const sparklineCanvas = getEl('details-sparkline');
     if (sparklineWrapper && sparklineCanvas && typeof Chart !== 'undefined') {
-        const quarters = ['q1', 'q2', 'q3', 'q4'];
-        const labels = ['Suku 1', 'Suku 2', 'Suku 3', 'Suku 4'];
-        const values = quarters.map(q => {
-            if (!kpiDataCache[q] || !kpiDataCache[q].processedKpis) return null;
-            const k = kpiDataCache[q].processedKpis.find(p => p.id === kpiId);
-            return k ? Math.min(getKpiPercentage(k), 100) : null;
-        });
-        const hasData = values.filter(v => v !== null).length >= 1;
-        if (hasData) {
+        sparklineWrapper.classList.add('hidden');
+        const requestId = ++sparklineRequestId;
+        (async () => {
+            const quarters = ['q1', 'q2', 'q3', 'q4'];
+            const values = [];
+            for (const q of quarters) {
+                let data = kpiDataCache[q];
+                if (!data || (!data.processedKpis && !data.kpis)) {
+                    data = await getKpiDataFromFirestore(q);
+                }
+                const list = data ? (data.processedKpis || data.kpis) : null;
+                const k = list ? list.find(p => p.id === kpiId) : null;
+                values.push(k ? Math.min(getKpiPercentage(k), 100) : null);
+            }
+
+            // A newer modal opened while we were fetching — that chart wins.
+            if (requestId !== sparklineRequestId) return;
+            if (!values.some(v => v !== null)) return;
+
             sparklineWrapper.classList.remove('hidden');
             if (window._detailsSparklineChart) window._detailsSparklineChart.destroy();
             const isDark = document.body.classList.contains('dark-mode');
@@ -543,7 +564,7 @@ export function showDetailsModal(kpiId, triggerElement) {
             window._detailsSparklineChart = new Chart(sparklineCanvas, {
                 type: 'bar',
                 data: {
-                    labels,
+                    labels: ['Suku 1', 'Suku 2', 'Suku 3', 'Suku 4'],
                     datasets: [{
                         data: values,
                         backgroundColor: values.map(v =>
@@ -566,9 +587,7 @@ export function showDetailsModal(kpiId, triggerElement) {
                     }
                 }
             });
-        } else {
-            sparklineWrapper.classList.add('hidden');
-        }
+        })();
     }
 
     if (type === 'list') {
