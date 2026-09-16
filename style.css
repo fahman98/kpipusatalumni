@@ -221,6 +221,19 @@ body.modal-open {
     overflow: hidden;
 }
 
+/* The details modal content scrolls without a visible scrollbar: the long
+   grey strip next to the dialog was this element's own bar. Scrolling,
+   wheel, touch and keyboard all still work — only the bar is hidden. */
+#details-modal-content-area {
+    scrollbar-width: none;      /* Firefox */
+    -ms-overflow-style: none;   /* legacy Edge */
+}
+
+#details-modal-content-area::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+}
+
 .modal.is-open {
     transition: opacity 0.3s ease-in-out, visibility 0s linear 0s;
     opacity: 1;
