@@ -867,6 +867,15 @@ body.dark-mode textarea {
     border-color: #4b5563;
 }
 
+/* The year selector lives on the blue mobile app bar and inherits text-white;
+   Chrome also paints the native option rows with it, so 2025 and 2027 showed
+   as white text on the white popup. Force explicit option colours. */
+#year-selector option {
+    background-color: #ffffff;
+    color: #1f2937;
+}
+
+body.dark-mode #year-selector option,
 body.dark-mode select option {
     background-color: #1f2937;
     color: #fff;
