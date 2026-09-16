@@ -33,11 +33,11 @@ let cachedEvents = [];
 function formatDate(dateStr) {
     if (!dateStr) return '';
     const parts = String(dateStr).split('-');
-    if (parts.length !== 3) return escapeHtml(dateStr);
+    if (parts.length !== 3) return String(dateStr);
     const [y, m, d] = parts;
     const monthIdx = parseInt(m, 10);
     const day = parseInt(d, 10);
-    if (isNaN(monthIdx) || isNaN(day)) return escapeHtml(dateStr);
+    if (isNaN(monthIdx) || isNaN(day)) return String(dateStr);
     return `${day} ${BULAN_MY[monthIdx] || m} ${y}`;
 }
 
@@ -75,6 +75,35 @@ function todayKey() {
     return `${t.getFullYear()}-${mm}-${dd}`;
 }
 
+// Last day of an event: dateTo when it is a valid range, else its start date.
+function endDateKey(ev) {
+    const start = String(ev.date || '');
+    return (ev.dateTo && String(ev.dateTo) >= start) ? String(ev.dateTo) : start;
+}
+
+// Days between today and an event's start date. Null for unparseable dates.
+function startDayDiff(ev) {
+    const start = new Date(`${ev.date}T00:00:00`);
+    if (isNaN(start.getTime())) return null;
+    const today = new Date(`${todayKey()}T00:00:00`);
+    return Math.round((start - today) / 86400000);
+}
+
+// Label for an event that is happening now or still to come: events running
+// today say so, everything else counts down to its start. Null once past.
+function countdownLabel(ev) {
+    const tKey = todayKey();
+    const start = String(ev.date || '');
+    const end = endDateKey(ev);
+    if (tKey >= start && tKey <= end) {
+        return start === tKey ? 'Hari ini' : 'Sedang berlangsung';
+    }
+    const diff = startDayDiff(ev);
+    if (diff === null || diff < 1) return null;
+    if (diff === 1) return 'Esok';
+    return `Dalam ${diff} hari`;
+}
+
 // Known status values get a coloured pill; any other note is free text.
 // Colours live in CSS (.status-pill-*) so they adapt to dark mode cleanly.
 const STATUS_STYLES = {
@@ -82,8 +111,18 @@ const STATUS_STYLES = {
     'Ditangguhkan':      { pill: 'status-pill status-pill-amber', icon: 'ph-pause-circle' },
     'Dibatalkan':        { pill: 'status-pill status-pill-red',   icon: 'ph-x-circle' }
 };
+
+// Status matching is case- and whitespace-insensitive, so "dibatalkan" typed
+// in a hurry still keeps its pill and lands in the right section.
+function normalizedStatus(notes) {
+    const n = String(notes == null ? '' : notes).trim().toLowerCase();
+    if (!n) return null;
+    return Object.keys(STATUS_STYLES).find(k => k.toLowerCase() === n) || null;
+}
+
 function statusStyle(notes) {
-    return STATUS_STYLES[notes] || null;
+    const key = normalizedStatus(notes);
+    return key ? { ...STATUS_STYLES[key], label: key } : null;
 }
 
 // ---- Modal (dynamically created, reuses .modal / .is-open CSS) ---------
@@ -229,7 +268,7 @@ function openDetailModal(ev) {
         : formatDate(ev.date);
     const statusHtml = ev.notes
         ? (st
-            ? `<span class="inline-flex items-center gap-1.5 text-sm font-bold ${st.pill} border rounded-full px-3 py-1"><i class="ph-duotone ${st.icon}"></i>${escapeHtml(ev.notes)}</span>`
+            ? `<span class="inline-flex items-center gap-1.5 text-sm font-bold ${st.pill} border rounded-full px-3 py-1"><i class="ph-duotone ${st.icon}"></i>${escapeHtml(st.label)}</span>`
             : `<p class="text-sm font-semibold text-gray-700 break-words">${escapeHtml(ev.notes)}</p>`)
         : `<p class="text-sm text-gray-400 italic">Tiada catatan</p>`;
 
@@ -283,6 +322,16 @@ function openDetailModal(ev) {
 
 function eventCardHtml(ev) {
     const badge = dateBadgeParts(ev.date, ev.dateTo);
+    const st = statusStyle(ev.notes);
+    const isClosed = st && (st.label === 'Dibatalkan' || st.label === 'Ditangguhkan');
+    const when = isClosed ? null : countdownLabel(ev);
+    const isToday = when === 'Hari ini' || when === 'Sedang berlangsung';
+    const whenHtml = when
+        ? `<div class="mt-1.5">
+               <span class="takwim-when${isToday ? ' takwim-when-today' : ''}">
+                   <i class="ph-duotone ${isToday ? 'ph-calendar-check' : 'ph-clock-countdown'}"></i>${escapeHtml(when)}
+               </span>
+           </div>` : '';
     const rangeHtml = badge.range
         ? `<p class="flex items-center gap-1.5 text-sm text-gray-500 mt-1">
                <i class="ph-duotone ph-calendar-dots text-brand-primary"></i>
@@ -293,11 +342,10 @@ function eventCardHtml(ev) {
                <i class="ph-duotone ph-map-pin text-brand-primary"></i>
                <span>${escapeHtml(ev.location)}</span>
            </p>` : '';
-    const st = statusStyle(ev.notes);
     const notesHtml = ev.notes
         ? (st
             ? `<span class="inline-flex items-center gap-1 text-xs font-bold ${st.pill} border rounded-full px-2 py-0.5 mt-1.5">
-                   <i class="ph-duotone ${st.icon}"></i>${escapeHtml(ev.notes)}
+                   <i class="ph-duotone ${st.icon}"></i>${escapeHtml(st.label)}
                </span>`
             : `<p class="flex items-start gap-1.5 text-sm text-gray-500 mt-1">
                    <i class="ph-duotone ph-note text-brand-primary mt-0.5"></i>
@@ -306,16 +354,16 @@ function eventCardHtml(ev) {
         : '';
     const adminHtml = isAdminMode
         ? `<div class="flex items-center gap-1 flex-shrink-0">
-               <button class="takwim-edit-btn footer-action-btn bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200" data-id="${escapeHtml(ev.id)}" title="Edit">
+               <button class="takwim-edit-btn footer-action-btn bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200" data-id="${escapeHtml(ev.id)}" title="Edit" aria-label="Edit aktiviti">
                    <i class="fas fa-pencil-alt"></i>
                </button>
-               <button class="takwim-delete-btn footer-action-btn bg-red-50 text-red-600 hover:bg-red-100 border-red-200" data-id="${escapeHtml(ev.id)}" title="Padam">
+               <button class="takwim-delete-btn footer-action-btn bg-red-50 text-red-600 hover:bg-red-100 border-red-200" data-id="${escapeHtml(ev.id)}" title="Padam" aria-label="Padam aktiviti">
                    <i class="fas fa-trash-alt"></i>
                </button>
            </div>` : '';
 
     return `
-    <div class="takwim-card bg-white rounded-xl shadow-sm border border-gray-100 p-3 flex gap-3 items-start cursor-pointer hover:shadow-md hover:border-blue-100 transition-all" data-id="${escapeHtml(ev.id)}" role="button" tabindex="0" title="Lihat butiran">
+    <div class="takwim-card${isToday ? ' takwim-card-today' : ''} bg-white rounded-xl shadow-sm border border-gray-100 p-3 flex gap-3 items-start cursor-pointer hover:shadow-md hover:border-blue-100 transition-all" data-id="${escapeHtml(ev.id)}" role="button" tabindex="0" title="Lihat butiran">
         <div class="takwim-date-badge flex-shrink-0 flex flex-col items-center justify-center rounded-lg bg-blue-50 text-brand-primary w-14 py-2 px-1">
             <span class="text-base font-extrabold leading-none text-center">${escapeHtml(badge.day)}</span>
             <span class="text-[10px] font-bold tracking-wide leading-none mt-0.5">${escapeHtml(badge.mon)}</span>
@@ -323,6 +371,7 @@ function eventCardHtml(ev) {
         </div>
         <div class="flex-1 min-w-0">
             <h4 class="font-bold text-gray-800 text-sm sm:text-base leading-snug break-words">${escapeHtml(ev.title)}</h4>
+            ${whenHtml}
             ${rangeHtml}
             ${locationHtml}
             ${notesHtml}
@@ -350,17 +399,17 @@ function render() {
     const tKey = todayKey();
     const sorted = [...cachedEvents].sort((a, b) => String(a.date).localeCompare(String(b.date)));
 
+    // Cancelled / postponed go to their own sections regardless of date
+    const cancelled  = sorted.filter(ev => normalizedStatus(ev.notes) === 'Dibatalkan');
+    const postponed  = sorted.filter(ev => normalizedStatus(ev.notes) === 'Ditangguhkan');
+    const active     = sorted.filter(ev => {
+        const s = normalizedStatus(ev.notes);
+        return s !== 'Dibatalkan' && s !== 'Ditangguhkan';
+    });
     // An event counts as "past" only once its LAST day is over, so multi-day
     // programmes still in progress stay under "Akan Datang".
-    const endKey = (ev) => (ev.dateTo && String(ev.dateTo) >= String(ev.date))
-        ? String(ev.dateTo) : String(ev.date);
-
-    // Cancelled / postponed go to their own sections regardless of date
-    const cancelled  = sorted.filter(ev => ev.notes === 'Dibatalkan');
-    const postponed  = sorted.filter(ev => ev.notes === 'Ditangguhkan');
-    const active     = sorted.filter(ev => ev.notes !== 'Dibatalkan' && ev.notes !== 'Ditangguhkan');
-    const upcoming   = active.filter(ev => endKey(ev) >= tKey);
-    const past       = active.filter(ev => endKey(ev) < tKey).reverse(); // most recent first
+    const upcoming   = active.filter(ev => endDateKey(ev) >= tKey);
+    const past       = active.filter(ev => endDateKey(ev) < tKey).reverse(); // most recent first
 
     const addBtnHtml = isAdminMode
         ? `<button id="takwim-add-btn" class="bg-brand-primary text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-800 shadow-md transition-all text-sm flex items-center gap-2 flex-shrink-0">
