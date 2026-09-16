@@ -459,10 +459,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 filterDashboardCards(searchInput.value, statusFilter.value);
             }
 
-            // Show live indicator on first successful data load
-            const liveIndicator = getEl('live-indicator');
-            if (liveIndicator) liveIndicator.classList.replace('hidden', 'flex');
-
             // Quarter transition: fade in new grid
             if (kpiGridContainer) {
                 kpiGridContainer.classList.add('grid-enter');
