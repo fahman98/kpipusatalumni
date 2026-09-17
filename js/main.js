@@ -1676,6 +1676,50 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // --- MOBILE QUICK ACTIONS (app-bar kebab → bottom sheet) ---
+    // PDF + the view toggle live in the quarter toolbar on tablet/desktop. On
+    // phones that row either crowds the tab bar or leaves stray icon buttons,
+    // so they move into a bottom sheet behind a single app-bar button instead.
+    const actionsMenuBtn = getEl('actions-menu-btn');
+    const actionsSheet = getEl('actions-sheet');
+
+    function updateSheetViewLabel() {
+        const label = getEl('sheet-view-label');
+        const icon = getEl('sheet-view-icon');
+        if (label) label.textContent = isTableView ? 'Papar sebagai Grid' : 'Papar sebagai Jadual';
+        if (icon) icon.className = isTableView ? 'fas fa-th-large' : 'fas fa-list';
+    }
+
+    if (actionsMenuBtn && actionsSheet) {
+        actionsMenuBtn.addEventListener('click', () => {
+            updateSheetViewLabel();
+            openModal(actionsSheet, actionsMenuBtn);
+        });
+
+        actionsSheet.addEventListener('click', (e) => {
+            if (e.target === actionsSheet) closeModal(actionsSheet);
+        });
+
+        const sheetPdfBtn = getEl('sheet-pdf-btn');
+        if (sheetPdfBtn) {
+            sheetPdfBtn.addEventListener('click', () => {
+                closeModal(actionsSheet);
+                // Reuse the toolbar button's handler so PDF generation keeps a
+                // single implementation; that button is hidden on phones.
+                exportPdfBtn.click();
+            });
+        }
+
+        const sheetViewBtn = getEl('sheet-view-toggle-btn');
+        if (sheetViewBtn) {
+            sheetViewBtn.addEventListener('click', () => {
+                viewToggleBtn.click();
+                updateSheetViewLabel();
+                closeModal(actionsSheet);
+            });
+        }
+    }
+
     // ===== ANIMATED FAVICON =====
     function updateFavicon(pct) {
         try {
