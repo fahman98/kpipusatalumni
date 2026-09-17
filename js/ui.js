@@ -922,12 +922,10 @@ function handleModalEdit(editBtn, kpiId, itemName, subItemName = null) {
 }
 
 // --- NEW FILTER FUNCTION ---
-export function filterDashboardCards(searchTerm, statusFilter) {
+export function filterDashboardCards(statusFilter) {
     const cards = document.querySelectorAll('.kpi-card');
-    const term = searchTerm.toLowerCase();
 
     cards.forEach(card => {
-        const name = card.querySelector('.kpi-name').textContent.toLowerCase();
         const progressBar = card.querySelector('.progress-bar');
 
         let status = 'all';
@@ -935,10 +933,7 @@ export function filterDashboardCards(searchTerm, statusFilter) {
         else if (progressBar.classList.contains('bg-status-ok')) status = 'ok';
         else if (progressBar.classList.contains('bg-status-bad')) status = 'bad';
 
-        const matchesSearch = name.includes(term);
-        const matchesStatus = statusFilter === 'all' || status === statusFilter;
-
-        if (matchesSearch && matchesStatus) {
+        if (statusFilter === 'all' || status === statusFilter) {
             card.classList.remove('hidden');
             card.classList.add('flex'); // Restore flex
         } else {

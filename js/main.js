@@ -55,7 +55,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const subTitle = getEl('sub-title');
     const footerNote = getEl('footer-note');
     const mainContentWrapper = getEl('main-content-wrapper');
-    const topAchiever = getEl('top-achiever');
     const mainFocus = getEl('main-focus');
     const modeIndicator = getEl('mode-indicator');
 
@@ -88,9 +87,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const inputModal = getEl('input-modal');
     const confirmModal = getEl('confirm-modal');
 
-    const searchInput = getEl('dashboard-search-input');
-    const statusFilter = getEl('dashboard-status-filter');
-
     const statsBar = getEl('stats-bar');
 
     const mainNav = getEl('main-nav');
@@ -98,12 +94,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const viewTakwim = getEl('view-takwim');
     const viewPenjanaan = getEl('view-penjanaan');
     let currentView = 'dashboard';
+    let activeStatusFilter = 'all';
 
     const bulkEditModal = getEl('bulk-edit-modal');
     const exportPdfBtn = getEl('export-pdf-btn');
     const offlineBanner = getEl('offline-banner');
     const adminRibbon = getEl('admin-mode-ribbon');
-    const achieverPanel = getEl('achiever-panel');
 
     // CRUD Forms
     const addKpiForm = getEl('add-kpi-form');
@@ -244,7 +240,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (mainContentWrapper) mainContentWrapper.classList.remove('hidden');
                 if (emptyStateContainer) emptyStateContainer.classList.add('hidden');
                 if (statsBar) statsBar.classList.add('hidden');
-                if (achieverPanel) achieverPanel.classList.add('hidden');
                 if (adminSetupActions) adminSetupActions.classList.add('hidden');
                 if (mainTitle) mainTitle.innerHTML = `Dashboard KPI ${selectedYear} <br> Ralat Sambungan`;
                 return;
@@ -255,7 +250,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (kpiGridContainer) kpiGridContainer.innerHTML = '';
                 if (emptyStateContainer) emptyStateContainer.classList.remove('hidden');
                 if (statsBar) statsBar.classList.add('hidden');
-                if (achieverPanel) achieverPanel.classList.add('hidden');
 
                 if (isEditMode) {
                     if (adminSetupActions) adminSetupActions.classList.remove('hidden');
@@ -305,10 +299,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             let totalPct = 0;
             let count = 0;
-            let topKpi = null;
-            let bottomKpi = null;
-            let maxPercentage = -1;
-            let minPercentage = 999999;
             let goodCount = 0, okCount = 0, badCount = 0;
 
             if (kpiGridContainer) {
@@ -403,36 +393,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (tier === 'good') goodCount++;
                 else if (tier === 'ok') okCount++;
                 else badCount++;
-
-                if (pct > maxPercentage) {
-                    maxPercentage = pct;
-                    topKpi = kpi;
-                }
-                if (pct < minPercentage) {
-                    minPercentage = pct;
-                    bottomKpi = kpi;
-                }
             });
 
             const overall = count > 0 ? totalPct / count : 0;
             renderGaugeChart(overall);
             updateFavicon(overall);
             document.title = `KPI ${overall.toFixed(0)}% · Pusat Alumni UPSI`;
-
-            // Achiever Panel (#7)
-            if (achieverPanel && count > 1 && topKpi && bottomKpi && topKpi.id !== bottomKpi.id) {
-                achieverPanel.classList.remove('hidden');
-                const topName = getEl('top-kpi-name');
-                const topPct = getEl('top-kpi-pct');
-                const bottomName = getEl('bottom-kpi-name');
-                const bottomPct = getEl('bottom-kpi-pct');
-                if (topName) topName.textContent = topKpi.name;
-                if (topPct) topPct.textContent = `${getKpiPercentage(topKpi).toFixed(1)}%`;
-                if (bottomName) bottomName.textContent = bottomKpi.name;
-                if (bottomPct) bottomPct.textContent = `${getKpiPercentage(bottomKpi).toFixed(1)}%`;
-            } else if (achieverPanel) {
-                achieverPanel.classList.add('hidden');
-            }
 
             // Update stats bar
             if (statsBar) {
@@ -456,9 +422,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             setEditMode(isEditMode);
 
-            if (searchInput && statusFilter) {
-                filterDashboardCards(searchInput.value, statusFilter.value);
-            }
+            filterDashboardCards(activeStatusFilter);
 
             // Quarter transition: fade in new grid
             if (kpiGridContainer) {
@@ -821,17 +785,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.metaKey || e.ctrlKey || e.altKey) return;
         // Inside a dialog the focus usually sits on a <button>, so the tagName
         // check above doesn't catch it: pressing 1-4 switched the quarter behind
-        // the open modal (tearing down the very data that modal was reading),
-        // and '/' moved focus to the search box outside the focus trap.
+        // the open modal (tearing down the very data that modal was reading).
         if (isAnyModalOpen()) return;
         if (e.key >= '1' && e.key <= '4') {
             const qBtn = document.querySelector(`.quarter-btn[data-quarter="${e.key}"]`);
             if (qBtn) { qBtn.click(); showKbHint(`Suku ${e.key}`); }
-        }
-        if (e.key === '/') {
-            e.preventDefault();
-            const si = getEl('dashboard-search-input');
-            if (si) { si.focus(); si.select(); showKbHint('/ Cari KPI...'); }
         }
         // Escape-to-close is handled centrally in ui.js (covers all modals).
     });
@@ -912,9 +870,6 @@ document.addEventListener('DOMContentLoaded', () => {
         statsBar.addEventListener('click', (e) => {
             const card = e.target.closest('.stat-card');
             if (!card) return;
-            const filter = card.dataset.filter; // 'all' | 'good' | 'ok' | 'bad'
-            const statusFilterEl = getEl('dashboard-status-filter');
-            if (!statusFilterEl) return;
 
             // Toggle: klik semula kad yang sama → reset ke all
             const isActive = card.classList.contains('stat-card-active');
@@ -923,13 +878,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 c.setAttribute('aria-pressed', 'false');
             });
             if (isActive) {
-                statusFilterEl.value = 'all';
+                activeStatusFilter = 'all';
             } else {
                 card.classList.add('stat-card-active');
                 card.setAttribute('aria-pressed', 'true');
-                statusFilterEl.value = filter;
+                activeStatusFilter = card.dataset.filter; // 'good' | 'ok' | 'bad'
             }
-            statusFilterEl.dispatchEvent(new Event('change')); // trigger filter logic
+            filterDashboardCards(activeStatusFilter);
+            if (isTableView) renderTableView();
         });
 
         // The stat tiles are role="button" — make Enter/Space work like a click.
@@ -1089,22 +1045,6 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem('theme', 'light');
         }
     });
-
-    // Filters
-    if (searchInput) searchInput.addEventListener('input', (e) => {
-        filterDashboardCards(e.target.value, statusFilter.value);
-        if (isTableView) renderTableView();   // the table needs re-filtering too
-    });
-    if (statusFilter) statusFilter.addEventListener('change', (e) => {
-        // Reset stat card active state bila dropdown digunakan secara manual
-        document.querySelectorAll('.stat-card').forEach(c => c.classList.remove('stat-card-active'));
-        const matchingCard = document.querySelector(`.stat-card[data-filter="${e.target.value}"]`);
-        if (matchingCard && e.target.value !== 'all') matchingCard.classList.add('stat-card-active');
-        filterDashboardCards(searchInput.value, e.target.value);
-        if (isTableView) renderTableView();
-    });
-
-
 
     // PWA & Install Prompt
     let deferredPrompt;
@@ -1555,17 +1495,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = kpiDataCache[currentQuarter];
         if (!data || !data.processedKpis) return;
 
-        // Honour the search box and status filter. This used to render every KPI
+        // Honour the status filter. This used to render every KPI
         // unconditionally, so switching to Jadual with a filter set brought all
         // the rows back — and "Tiada KPI sepadan" could sit above a full table,
         // because that message is driven by hidden *cards* which aren't shown here.
-        const term = (searchInput ? searchInput.value : '').trim().toLowerCase();
-        const wantStatus = statusFilter ? statusFilter.value : 'all';
-        const visibleKpis = data.processedKpis.filter(kpi => {
-            const matchesSearch = !term || String(kpi.name || '').toLowerCase().includes(term);
-            const matchesStatus = wantStatus === 'all' || statusTier(getKpiPercentage(kpi)) === wantStatus;
-            return matchesSearch && matchesStatus;
-        });
+        const wantStatus = activeStatusFilter;
+        const visibleKpis = data.processedKpis.filter(kpi =>
+            wantStatus === 'all' || statusTier(getKpiPercentage(kpi)) === wantStatus
+        );
 
         const emptyState = getEl('empty-search-state');
         if (emptyState) emptyState.classList.toggle('hidden', visibleKpis.length > 0);

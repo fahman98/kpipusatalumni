@@ -261,25 +261,6 @@
                     </button>
                 </div>
             </div>
-
-            <div id="legend-container"
-                class="flex flex-wrap justify-center items-center gap-4 sm:gap-6 mb-4 text-sm text-gray-700">
-                <div class="flex items-center gap-1">
-                    <span class="w-4 h-4 rounded-full bg-status-good border border-gray-300 flex-shrink-0" aria-hidden="true"></span>
-                    <i class="fas fa-check-circle text-green-600 text-xs" aria-hidden="true"></i>
-                    <span>Cemerlang (&ge;75%)</span>
-                </div>
-                <div class="flex items-center gap-1">
-                    <span class="w-4 h-4 rounded-full bg-status-ok border border-gray-300 flex-shrink-0" aria-hidden="true"></span>
-                    <i class="fas fa-minus-circle text-yellow-500 text-xs" aria-hidden="true"></i>
-                    <span>Sederhana (30%–74%)</span>
-                </div>
-                <div class="flex items-center gap-1">
-                    <span class="w-4 h-4 rounded-full bg-status-bad border border-gray-300 flex-shrink-0" aria-hidden="true"></span>
-                    <i class="fas fa-exclamation-circle text-red-500 text-xs" aria-hidden="true"></i>
-                    <span>Perlu Perhatian (&lt;30%)</span>
-                </div>
-            </div>
         </div>
 
         <!-- QUARTER TABS: 2×2 grid on mobile, single row on sm+ -->
@@ -376,50 +357,10 @@
             </div>
         </div>
 
-        <!-- TOP / BOTTOM KPI PANEL (#7) -->
-        <div id="achiever-panel" class="hidden grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-            <!-- Top KPI -->
-            <div class="achiever-card bg-white rounded-xl px-4 py-3 shadow-sm border border-gray-100 flex items-center gap-3">
-                <div class="w-9 h-9 rounded-lg bg-green-50 flex items-center justify-center flex-shrink-0">
-                    <i class="fas fa-trophy text-green-600 text-sm"></i>
-                </div>
-                <div class="min-w-0 flex-1">
-                    <p class="achiever-label text-xs text-gray-400 font-medium leading-none mb-0.5">KPI Terbaik</p>
-                    <p id="top-kpi-name" class="achiever-name font-bold text-gray-800 text-sm truncate"></p>
-                </div>
-                <p id="top-kpi-pct" class="text-green-600 font-bold text-sm flex-shrink-0"></p>
-            </div>
-            <!-- Bottom KPI -->
-            <div class="achiever-card bg-white rounded-xl px-4 py-3 shadow-sm border border-gray-100 flex items-center gap-3">
-                <div class="w-9 h-9 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0">
-                    <i class="fas fa-exclamation-circle text-red-500 text-sm"></i>
-                </div>
-                <div class="min-w-0 flex-1">
-                    <p class="achiever-label text-xs text-gray-400 font-medium leading-none mb-0.5">Perlu Perhatian</p>
-                    <p id="bottom-kpi-name" class="achiever-name font-bold text-gray-800 text-sm truncate"></p>
-                </div>
-                <p id="bottom-kpi-pct" class="text-red-500 font-bold text-sm flex-shrink-0"></p>
-            </div>
-        </div>
-
-        <!-- SEARCH, FILTER & EXPORT -->
+        <!-- EXPORT ACTIONS -->
         <div id="search-filter-container"
             class="mb-4 bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-gray-100">
             <div class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
-                <!-- Search Input -->
-                <div class="relative flex-1">
-                    <input type="text" id="dashboard-search-input" placeholder="Cari nama KPI..."
-                        class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent transition-all">
-                    <i class="fas fa-search absolute left-3 top-2.5 text-gray-400"></i>
-                </div>
-                <!-- Filter Dropdown -->
-                <select id="dashboard-status-filter"
-                    class="w-full sm:w-44 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary bg-white text-gray-700 cursor-pointer text-sm">
-                    <option value="all">Semua Status</option>
-                    <option value="good">🟢 Cemerlang (≥ 75%)</option>
-                    <option value="ok">🟡 Sederhana (30–74%)</option>
-                    <option value="bad">🔴 Perlu Perhatian (&lt; 30%)</option>
-                </select>
                 <!-- Export Actions — moved from footer -->
                 <div class="flex items-center gap-1.5 sm:ml-1">
                     <button id="export-csv-btn" class="footer-action-btn bg-green-50 text-green-700 hover:bg-green-100 border-green-200">
@@ -465,10 +406,10 @@
         <!-- Empty search state -->
         <div id="empty-search-state" class="hidden text-center py-14">
             <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i class="fas fa-search text-gray-300 text-2xl"></i>
+                <i class="fas fa-filter text-gray-300 text-2xl"></i>
             </div>
             <p class="font-semibold text-gray-500">Tiada KPI sepadan</p>
-            <p class="text-sm text-gray-400 mt-1">Cuba kata kunci atau penapis lain</p>
+            <p class="text-sm text-gray-400 mt-1">Cuba penapis status lain</p>
         </div>
 
         <!-- Add KPI Button (Admin Only) -->

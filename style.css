@@ -801,16 +801,6 @@ body.dark-mode #admin-mode-ribbon {
 body.dark-mode #admin-mode-ribbon .ribbon-title { color: #fde68a; }
 body.dark-mode #admin-mode-ribbon .ribbon-sub   { color: #fcd34d; }
 
-/* --- ACHIEVER PANEL (#7) --- */
-#achiever-panel .achiever-card {
-    background-color: var(--bg-card);
-    border-color: var(--border-color);
-}
-
-body.dark-mode #achiever-panel .achiever-card { background-color: var(--bg-card); }
-body.dark-mode #achiever-panel .achiever-label { color: var(--text-muted); }
-body.dark-mode #achiever-panel .achiever-name  { color: var(--text-primary); }
-
 /* --- DARK MODE STYLES (Existing) --- */
 body.dark-mode {
     background-color: #111827;
@@ -1139,7 +1129,6 @@ body.dark-mode .theme-toggle-btn:hover {
 
     /* Hide interactive / layout-only elements */
     #stats-bar,
-    #achiever-panel,
     #admin-mode-ribbon,
     #search-filter-container,
     #pagination,
@@ -1178,10 +1167,6 @@ body.dark-mode .theme-toggle-btn:hover {
 body.dark-mode #search-filter-container {
     background-color: #1f2937;
     border-color: #374151;
-}
-
-body.dark-mode #search-filter-container input::placeholder {
-    color: #6b7280;
 }
 
 body.dark-mode .stat-card {
@@ -1749,11 +1734,6 @@ body.dark-mode .quarter-btn:not(.active):hover {
         transform: translateY(0);
     }
 
-    #legend-container,
-    #achiever-panel {
-        display: none !important;
-    }
-
     #stats-bar {
         grid-template-columns: repeat(4, 1fr);
         gap: 0.375rem;
@@ -1786,15 +1766,8 @@ body.dark-mode .quarter-btn:not(.active):hover {
 
     #search-filter-container {
         padding: 0.5rem;
-        /* Phones hide the search box and filter, so the card was a full-width
-           white strip with the icon buttons bunched at the left and dead space
-           after them. Hug the buttons instead. */
+        /* Hug the icon buttons instead of stretching into a full-width white strip. */
         width: fit-content;
-    }
-
-    #search-filter-container .relative,
-    #dashboard-status-filter {
-        display: none !important;
     }
 
     #search-filter-container .footer-action-btn {
