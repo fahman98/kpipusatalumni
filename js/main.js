@@ -1178,37 +1178,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- EXPORT CSV ---
-    const exportCsvBtn = getEl('export-csv-btn');
-    if (exportCsvBtn) {
-        exportCsvBtn.addEventListener('click', () => {
-            const data = kpiDataCache[currentQuarter];
-            if (!data || !data.processedKpis) {
-                showToastNotification('Tiada data untuk dieksport.', 'danger');
-                return;
-            }
-            const rows = [['Nama KPI', 'Nilai', 'Sasaran', 'Peratus (%)']];
-            data.processedKpis.forEach(kpi => {
-                const value = calculateKpiValue(kpi);
-                const pct = getKpiPercentage(kpi);
-                rows.push([kpi.name, value.toFixed(2), kpi.target, pct.toFixed(2) + '%']);
-            });
-            const csvCell = (cell) => {
-                let text = String(cell == null ? '' : cell);
-                if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`;
-                return `"${text.replace(/"/g, '""')}"`;
-            };
-            const csv = rows.map(r => r.map(csvCell).join(',')).join('\r\n');
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `KPI_${selectedYear}_${currentQuarter.toUpperCase()}.csv`;
-            a.click();
-            URL.revokeObjectURL(url);
-        });
-    }
-
     // --- PRINT (Ctrl+P) ---
     // There is no print button any more — the branded PDF export is the
     // supported way to produce a report. These hooks only make the browser's

@@ -1321,6 +1321,14 @@ body.dark-mode #search-filter-container {
     border-color: #374151;
 }
 
+/* ===== EXPORT TOOLBAR =====
+   Once the CSV button went, only PDF + the view toggle remain — so the bar
+   hugs its buttons instead of stretching into a full-width white strip with
+   dead space on the right. */
+#search-filter-container {
+    width: fit-content;
+}
+
 body.dark-mode .stat-card {
     background-color: #1f2937;
     border-color: #374151;
@@ -1947,8 +1955,6 @@ body.dark-mode .quarter-btn:not(.active):hover {
 
     #search-filter-container {
         padding: 0.5rem;
-        /* Hug the icon buttons instead of stretching into a full-width white strip. */
-        width: fit-content;
     }
 
     #search-filter-container .footer-action-btn {
