@@ -1109,8 +1109,7 @@ body.dark-mode .theme-toggle-btn:hover {
     #add-kpi-container,
     #stats-bar,
     #admin-mode-ribbon,
-    #search-filter-container,
-    #pagination,
+    #quarter-toolbar,
     #empty-search-state,
     #view-toggle-btn,
     #kpi-tooltip,
@@ -1316,19 +1315,6 @@ body.dark-mode .theme-toggle-btn:hover {
 }
 
 /* ===== DARK MODE: NEWER ELEMENTS ===== */
-body.dark-mode #search-filter-container {
-    background-color: #1f2937;
-    border-color: #374151;
-}
-
-/* ===== EXPORT TOOLBAR =====
-   Once the CSV button went, only PDF + the view toggle remain — so the bar
-   hugs its buttons instead of stretching into a full-width white strip with
-   dead space on the right. */
-#search-filter-container {
-    width: fit-content;
-}
-
 body.dark-mode .stat-card {
     background-color: #1f2937;
     border-color: #374151;
@@ -1378,9 +1364,9 @@ body.dark-mode .kpi-card {
     border: 1px solid rgba(75, 85, 99, 0.45) !important;
 }
 
-/* Glassmorphism: stats bar + search bar */
+/* Glassmorphism: stats bar + quarter toolbar */
 body:not(.dark-mode) #stats-bar .stat-card,
-body:not(.dark-mode) #search-filter-container {
+body:not(.dark-mode) #quarter-toolbar {
     background: rgba(255, 255, 255, 0.72);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
@@ -1953,16 +1939,12 @@ body.dark-mode .quarter-btn:not(.active):hover {
         line-height: 1;
     }
 
-    #search-filter-container {
-        padding: 0.5rem;
-    }
-
-    #search-filter-container .footer-action-btn {
+    #export-actions .footer-action-btn {
         font-size: 0;
         padding: 0.55rem 0.7rem;
     }
 
-    #search-filter-container .footer-action-btn i {
+    #export-actions .footer-action-btn i {
         font-size: 0.9rem;
         margin-right: 0 !important;
     }

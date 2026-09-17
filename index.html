@@ -59,7 +59,7 @@
 
     <!-- Custom CSS -->
     <link rel="stylesheet" href="style.css?v=5.1">
-    <link rel="stylesheet" href="tailwind.css?v=6">
+    <link rel="stylesheet" href="tailwind.css?v=7">
 </head>
 
 <body class="bg-gray-100 relative overflow-x-hidden">
@@ -266,10 +266,10 @@
             </div>
         </div>
 
-        <!-- QUARTER TABS: 2×2 grid on mobile, single row on sm+ -->
-        <div class="mb-4">
-            <div id="pagination"
-                class="bg-white rounded-xl shadow-sm border border-gray-100 p-1 grid grid-cols-2 sm:flex gap-1"
+        <!-- QUARTER TABS + EXPORT ACTIONS: 2×2 tabs on mobile, single row on sm+ -->
+        <div id="quarter-toolbar"
+            class="mb-4 bg-white rounded-xl shadow-sm border border-gray-100 p-1 flex flex-col sm:flex-row sm:items-center gap-1">
+            <div id="pagination" class="grid grid-cols-2 sm:flex gap-1 sm:flex-1 min-w-0"
                 role="tablist" aria-label="Navigasi suku tahunan">
                 <button class="quarter-btn active sm:flex-1 py-2.5 px-3 sm:px-4 rounded-lg text-xs sm:text-sm font-semibold transition-all"
                     data-quarter="1" role="tab" aria-selected="true">
@@ -286,6 +286,15 @@
                 <button class="quarter-btn sm:flex-1 py-2.5 px-3 sm:px-4 rounded-lg text-xs sm:text-sm font-semibold transition-all"
                     data-quarter="4" role="tab" aria-selected="false">
                     <i class="fas fa-calendar-alt mr-1.5"></i>Suku 4
+                </button>
+            </div>
+            <div class="hidden sm:block w-px h-6 bg-gray-200 mx-1 flex-shrink-0" aria-hidden="true"></div>
+            <div id="export-actions" class="flex items-center justify-center gap-1.5 sm:pr-1">
+                <button id="export-pdf-btn" class="footer-action-btn bg-purple-50 text-purple-700 hover:bg-purple-100 border-purple-200">
+                    <i class="fas fa-file-pdf mr-1.5"></i>PDF
+                </button>
+                <button id="view-toggle-btn" class="footer-action-btn bg-gray-50 text-gray-600 hover:bg-gray-100 border-gray-200">
+                    <i class="fas fa-list mr-1.5"></i>Jadual
                 </button>
             </div>
         </div>
@@ -356,23 +365,6 @@
                 </div>
                 <div class="w-full h-1.5 bg-gray-100 rounded-full mt-2.5 overflow-hidden">
                     <div id="stat-bad-bar" class="h-full bg-status-bad rounded-full transition-all duration-700" style="width:0%"></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- EXPORT ACTIONS -->
-        <div id="search-filter-container"
-            class="mb-4 bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-gray-100">
-            <div class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
-                <!-- Export Actions — moved from footer -->
-                <div class="flex items-center gap-1.5 sm:ml-1">
-                    <button id="export-pdf-btn" class="footer-action-btn bg-purple-50 text-purple-700 hover:bg-purple-100 border-purple-200">
-                        <i class="fas fa-file-pdf mr-1.5"></i>PDF
-                    </button>
-                    <div class="w-px h-5 bg-gray-200 mx-0.5"></div>
-                    <button id="view-toggle-btn" class="footer-action-btn bg-gray-50 text-gray-600 hover:bg-gray-100 border-gray-200">
-                        <i class="fas fa-list mr-1.5"></i>Jadual
-                    </button>
                 </div>
             </div>
         </div>
