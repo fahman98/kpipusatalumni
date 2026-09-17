@@ -1209,7 +1209,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- PRINT ---
+    // --- PRINT (Ctrl+P) ---
+    // There is no print button any more — the branded PDF export is the
+    // supported way to produce a report. These hooks only make the browser's
+    // own Ctrl+P output presentable for anyone who reaches for it.
     const PRINT_QUARTER_LABELS = { q1: 'Suku Pertama', q2: 'Suku Kedua', q3: 'Suku Ketiga', q4: 'Suku Keempat' };
 
     function updatePrintMeta() {
@@ -1236,11 +1239,6 @@ document.addEventListener('DOMContentLoaded', () => {
         wasDarkModeBeforePrint = false;
     });
 
-    const printBtn = getEl('print-btn');
-    if (printBtn) {
-        printBtn.addEventListener('click', () => window.print());
-    }
-
     // --- EXPORT PDF (BRANDED) ---
     // jsPDF + AutoTable are ~430KB and were loaded as render-blocking scripts on
     // every single visit, for a button most visitors never press. They are now
@@ -1266,14 +1264,40 @@ document.addEventListener('DOMContentLoaded', () => {
         return pdfLibPromise;
     }
 
+    // Letterhead logos are fetched as data URLs rather than re-used from the
+    // <img> tags: the second logo is lazy-loaded and both are hidden on phones,
+    // so the DOM copies may never have decoded. Failures are tolerated — the
+    // report simply prints without that logo.
+    async function imageToDataUrl(src) {
+        const res = await fetch(src);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const blob = await res.blob();
+        return await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = () => reject(reader.error);
+            reader.readAsDataURL(blob);
+        });
+    }
+
+    async function loadReportLogos() {
+        const results = await Promise.allSettled([
+            imageToDataUrl('./images/logo-1.png'),
+            imageToDataUrl('./images/logo-2.png'),
+        ]);
+        return results.map((r) => (r.status === 'fulfilled' ? r.value : null));
+    }
+
     if (exportPdfBtn) {
         exportPdfBtn.addEventListener('click', async () => {
             const data = kpiDataCache[currentQuarter];
             if (!data || !data.processedKpis) { showToastNotification('Tiada data untuk dieksport.', 'danger'); return; }
 
             showLoading('Menyediakan PDF...');
+            let logos = [null, null];
             try {
                 await ensurePdfLib();
+                logos = await loadReportLogos();
             } catch (e) {
                 console.error(e);
                 hideLoading();
@@ -1287,125 +1311,217 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const doc = new jsPDFLib({ orientation: 'portrait', unit: 'mm', format: 'a4' });
             const pageW = 210;
+            const pageH = 297;
+            const margin = 14;
+            const contentW = pageW - margin * 2;
+            const now = new Date();
+            const genDate = now.toLocaleDateString('ms-MY', { day: 'numeric', month: 'long', year: 'numeric' });
+            const genTime = now.toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' });
             const quarterTitle = data.title || currentQuarter.toUpperCase();
-            const genDate = new Date().toLocaleDateString('ms-MY', { day: 'numeric', month: 'long', year: 'numeric' });
+            const period = (data.subtitle || '').replace(/[()]/g, '').trim();
 
-            // Compute summary stats
-            let totalPctPdf = 0, goodCnt = 0, okCnt = 0, badCnt = 0;
-            data.processedKpis.forEach(kpi => {
-                const p = getKpiPercentage(kpi);
-                totalPctPdf += Math.min(p, 100);
-                const t = statusTier(p);
-                if (t === 'good') goodCnt++; else if (t === 'ok') okCnt++; else badCnt++;
+            // ── SUMMARY STATS ──
+            const STATUS_LABEL = { good: 'Cemerlang', ok: 'Sederhana', bad: 'Perlu Perhatian' };
+            let totalPct = 0, goodCount = 0, okCount = 0, badCount = 0;
+            data.processedKpis.forEach((kpi) => {
+                const pct = getKpiPercentage(kpi);
+                totalPct += Math.min(pct, 100);
+                const tier = statusTier(pct);
+                if (tier === 'good') goodCount++;
+                else if (tier === 'ok') okCount++;
+                else badCount++;
             });
-            const kpiCnt = data.processedKpis.length;
-            const overallPdf = kpiCnt > 0 ? totalPctPdf / kpiCnt : 0;
+            const kpiCount = data.processedKpis.length;
+            const overall = kpiCount > 0 ? totalPct / kpiCount : 0;
 
-            // ── HEADER BAND ──
+            // ── MASTHEAD ──
+            const bandH = 34;
             doc.setFillColor(13, 71, 161);
-            doc.rect(0, 0, pageW, 38, 'F');
-            doc.setFillColor(21, 101, 192);
-            doc.rect(0, 34, pageW, 4, 'F');
+            doc.rect(0, 0, pageW, bandH, 'F');
+            doc.setFillColor(66, 165, 245);
+            doc.rect(0, bandH, pageW, 1.2, 'F');
 
-            // Try to embed logo from page
-            try {
-                const logoEl = document.querySelector('img[alt="Logo Utama"]');
-                if (logoEl && logoEl.complete && logoEl.naturalWidth > 0) {
-                    const c = document.createElement('canvas');
-                    c.width = logoEl.naturalWidth; c.height = logoEl.naturalHeight;
-                    c.getContext('2d').drawImage(logoEl, 0, 0);
-                    doc.addImage(c.toDataURL('image/png'), 'PNG', pageW - 42, 4, 28, 28);
+            // White letterhead chip holding both logos — the dark artwork is
+            // unreadable directly on the blue band.
+            const chipX = margin, chipY = 6, chipW = 66, chipH = 22;
+            doc.setFillColor(255, 255, 255);
+            doc.roundedRect(chipX, chipY, chipW, chipH, 2.5, 2.5, 'F');
+
+            const drawLogo = (dataUrl, h, alignRight) => {
+                if (!dataUrl) return;
+                try {
+                    const props = doc.getImageProperties(dataUrl);
+                    const w = h * (props.width / props.height);
+                    const x = alignRight ? chipX + chipW - 3.5 - w : chipX + 3.5;
+                    doc.addImage(dataUrl, 'PNG', x, chipY + (chipH - h) / 2, w, h, undefined, 'FAST');
+                } catch (e) {
+                    console.warn('Logo gagal dimuatkan ke dalam PDF:', e);
                 }
-            } catch(e) {}
+            };
+            drawLogo(logos[0], 12.4, false);
+            drawLogo(logos[1], 8.2, true);
 
+            // Title block, right of the chip
+            const titleX = chipX + chipW + 7;
             doc.setTextColor(255, 255, 255);
-            doc.setFont('helvetica', 'bold'); doc.setFontSize(16);
-            doc.text('PUSAT ALUMNI UPSI', 14, 13);
-            doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5);
-            doc.text('Laporan Prestasi Petunjuk Utama Prestasi (KPI) Suku Tahunan', 14, 20);
-            doc.setFont('helvetica', 'bold'); doc.setFontSize(11);
-            doc.text(`${selectedYear}  ·  ${quarterTitle}`, 14, 29);
-            doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5);
-            doc.setTextColor(180, 210, 255);
-            doc.text(`Dijana: ${genDate}`, pageW - 14, 29, { align: 'right' });
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(14.5);
+            doc.text('LAPORAN PRESTASI KPI', titleX, 12.6);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8);
+            doc.setTextColor(187, 214, 255);
+            doc.text('Pusat Alumni  ·  Universiti Pendidikan Sultan Idris', titleX, 18.2);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(10.5);
+            doc.setTextColor(255, 255, 255);
+            doc.text(`${quarterTitle} ${selectedYear}`, titleX, 26.2);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(7.3);
+            doc.setTextColor(187, 214, 255);
+            doc.text(`Dijana pada ${genDate}, ${genTime}${period ? `  ·  Tempoh: ${period}` : ''}`, titleX, 31.3);
 
-            // ── SUMMARY BOX ──
-            const sumY = 42;
-            doc.setFillColor(247, 250, 255); doc.setDrawColor(220, 230, 255);
-            doc.roundedRect(14, sumY, pageW - 28, 22, 2, 2, 'FD');
+            // ── RINGKASAN ──
+            let y = bandH + 9;
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(7.5);
+            doc.setTextColor(100, 116, 139);
+            doc.text('RINGKASAN PRESTASI', margin, y);
+            y += 3.4;
 
-            const summaryStats = [
-                { label: 'Jumlah KPI',      value: String(kpiCnt),            rgb: [13, 71, 161] },
-                { label: 'Cemerlang',        value: String(goodCnt),           rgb: [22, 163, 74] },
-                { label: 'Sederhana',        value: String(okCnt),             rgb: [161, 98, 7] },
-                { label: 'Perlu Perhatian',  value: String(badCnt),            rgb: [185, 28, 28] },
-                { label: 'Pencapaian',       value: `${overallPdf.toFixed(1)}%`, rgb: [13, 71, 161] },
+            const stats = [
+                { label: 'Jumlah KPI', value: String(kpiCount), rgb: [13, 71, 161] },
+                { label: 'Cemerlang', value: String(goodCount), rgb: [22, 163, 74] },
+                { label: 'Sederhana', value: String(okCount), rgb: [161, 98, 7] },
+                { label: 'Perlu Perhatian', value: String(badCount), rgb: [185, 28, 28] },
+                { label: 'Pencapaian', value: `${overall.toFixed(1)}%`, rgb: [13, 71, 161] },
             ];
-            const sColW = (pageW - 28) / summaryStats.length;
-            summaryStats.forEach((s, i) => {
-                const sx = 14 + sColW * i + sColW / 2;
-                doc.setFont('helvetica', 'bold'); doc.setFontSize(14);
+            const statGap = 3;
+            const statW = (contentW - statGap * (stats.length - 1)) / stats.length;
+            const statH = 19;
+            stats.forEach((s, i) => {
+                const x = margin + (statW + statGap) * i;
+                doc.setFillColor(247, 250, 255);
+                doc.setDrawColor(219, 231, 255);
+                doc.roundedRect(x, y, statW, statH, 1.8, 1.8, 'FD');
+                doc.setFillColor(...s.rgb);
+                doc.roundedRect(x, y, statW, 1.5, 0.75, 0.75, 'F');
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(13);
                 doc.setTextColor(...s.rgb);
-                doc.text(s.value, sx, sumY + 10, { align: 'center' });
-                doc.setFont('helvetica', 'normal'); doc.setFontSize(6.5);
-                doc.setTextColor(100, 100, 100);
-                doc.text(s.label, sx, sumY + 17, { align: 'center' });
+                doc.text(s.value, x + statW / 2, y + 10.6, { align: 'center' });
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(6.5);
+                doc.setTextColor(107, 114, 128);
+                doc.text(s.label, x + statW / 2, y + 15.9, { align: 'center' });
             });
+            y += statH + 6;
+
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(7.5);
+            doc.setTextColor(100, 116, 139);
+            doc.text('SENARAI KPI', margin, y);
 
             // ── DATA TABLE ──
             doc.autoTable({
-                startY: sumY + 26,
+                startY: y + 2.6,
                 head: [['#', 'Nama KPI', 'Nilai', 'Sasaran', 'Peratus', 'Trend', 'Status']],
                 body: data.processedKpis.map((kpi, idx) => {
                     const val = calculateKpiValue(kpi);
                     const pct = getKpiPercentage(kpi);
-                    const valStr = kpi.isCurrency ? `RM ${Math.floor(val).toLocaleString()}`
-                                 : kpi.isPercentage ? `${val.toFixed(1)}%`
-                                 : Math.floor(val).toLocaleString();
-                    const status = pct >= 75 ? 'Cemerlang' : pct >= 30 ? 'Sederhana' : 'Perlu Perhatian';
-                    return [idx + 1, kpi.name, valStr, kpi.target, `${pct.toFixed(1)}%`, kpi.trend || '—', status];
+                    const valStr = kpi.isCurrency
+                        ? `RM ${val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                        : kpi.isPercentage
+                            ? `${val.toFixed(2)}%`
+                            : Math.floor(val).toLocaleString();
+                    const targetStr = typeof kpi.target === 'number'
+                        ? kpi.target.toLocaleString('en-US')
+                        : (kpi.target || '—');
+                    return [
+                        idx + 1,
+                        kpi.name,
+                        valStr,
+                        targetStr,
+                        `${pct.toFixed(2)}%`,
+                        kpi.trend || '—',
+                        STATUS_LABEL[statusTier(pct)],
+                    ];
                 }),
-                styles: { fontSize: 8.5, cellPadding: 2.8, font: 'helvetica' },
-                headStyles: { fillColor: [13, 71, 161], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8.5 },
-                columnStyles: {
-                    0: { cellWidth: 8,  halign: 'center' },
-                    1: { cellWidth: 58 },
-                    2: { cellWidth: 26, halign: 'right' },
-                    3: { cellWidth: 22, halign: 'right' },
-                    4: { cellWidth: 20, halign: 'center' },
-                    5: { cellWidth: 24, halign: 'center' },
-                    6: { cellWidth: 28, halign: 'center' },
+                theme: 'grid',
+                styles: {
+                    fontSize: 8,
+                    font: 'helvetica',
+                    textColor: [31, 41, 55],
+                    lineColor: [226, 232, 240],
+                    lineWidth: 0.15,
+                    cellPadding: { top: 3.2, bottom: 3.2, left: 2.5, right: 2.5 },
                 },
-                didParseCell: function(hookData) {
+                headStyles: {
+                    fillColor: [13, 71, 161],
+                    textColor: [255, 255, 255],
+                    fontStyle: 'bold',
+                    fontSize: 8,
+                    cellPadding: { top: 3.4, bottom: 3.4, left: 2.5, right: 2.5 },
+                },
+                alternateRowStyles: { fillColor: [248, 250, 252] },
+                columnStyles: {
+                    0: { cellWidth: 8, halign: 'center' },
+                    1: { cellWidth: 60, fontStyle: 'bold' },
+                    2: { cellWidth: 28, halign: 'right' },
+                    3: { cellWidth: 20, halign: 'right' },
+                    4: { cellWidth: 18, halign: 'center', fontStyle: 'bold' },
+                    5: { cellWidth: 18, halign: 'center' },
+                    6: { cellWidth: 30, halign: 'center', fontStyle: 'bold' },
+                },
+                didParseCell: (hookData) => {
                     if (hookData.section !== 'body') return;
-                    const pctVal = parseFloat(hookData.row.raw[4]);
-                    const isStatus = hookData.column.index === 6;
-                    if (pctVal >= 75) {
-                        hookData.cell.styles.fillColor = [220, 252, 231];
-                        if (isStatus) { hookData.cell.styles.textColor = [22, 163, 74]; hookData.cell.styles.fontStyle = 'bold'; }
-                    } else if (pctVal >= 30) {
-                        hookData.cell.styles.fillColor = [254, 249, 195];
-                        if (isStatus) { hookData.cell.styles.textColor = [161, 98, 7]; hookData.cell.styles.fontStyle = 'bold'; }
-                    } else {
-                        hookData.cell.styles.fillColor = [254, 226, 226];
-                        if (isStatus) { hookData.cell.styles.textColor = [185, 28, 28]; hookData.cell.styles.fontStyle = 'bold'; }
+                    const kpi = data.processedKpis[hookData.row.index];
+                    if (!kpi) return;
+                    const pct = getKpiPercentage(kpi);
+                    const tier = statusTier(pct);
+                    if (hookData.column.index === 4) {
+                        hookData.cell.styles.textColor = statusHex(pct);
+                    } else if (hookData.column.index === 5) {
+                        if (kpi.trendColor === 'text-green-600') hookData.cell.styles.textColor = [22, 163, 74];
+                        else if (kpi.trendColor === 'text-red-600') hookData.cell.styles.textColor = [220, 38, 38];
+                        else hookData.cell.styles.textColor = [107, 114, 128];
+                    } else if (hookData.column.index === 6) {
+                        // Tint only the status cell so the tint reads as a badge
+                        // instead of washing out the whole row.
+                        hookData.cell.styles.textColor = statusHex(pct);
+                        hookData.cell.styles.fillColor = tier === 'good' ? [220, 252, 231]
+                            : tier === 'ok' ? [254, 249, 195]
+                            : [254, 226, 226];
                     }
                 },
-                margin: { left: 14, right: 14 },
+                margin: { left: margin, right: margin, bottom: 20 },
+                didDrawPage: (hookData) => {
+                    if (hookData.pageNumber > 1) {
+                        doc.setFont('helvetica', 'normal');
+                        doc.setFontSize(7.5);
+                        doc.setTextColor(148, 163, 184);
+                        doc.text(`Laporan KPI ${selectedYear}  ·  ${quarterTitle}  (sambungan)`, margin, 12);
+                        doc.setDrawColor(219, 231, 255);
+                        doc.setLineWidth(0.3);
+                        doc.line(margin, 14.5, pageW - margin, 14.5);
+                    }
+                },
             });
 
-            // ── FOOTER ON EACH PAGE ──
+            // ── FOOTER ON EVERY PAGE ──
             const totalPages = doc.internal.getNumberOfPages();
             for (let p = 1; p <= totalPages; p++) {
                 doc.setPage(p);
-                doc.setDrawColor(210, 220, 240);
-                doc.line(14, 285, pageW - 14, 285);
-                doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(150, 150, 150);
-                doc.text('Pusat Alumni UPSI  ·  Dokumen Sulit Dalaman', 14, 290);
-                doc.text(`Halaman ${p} / ${totalPages}`, pageW - 14, 290, { align: 'right' });
+                doc.setDrawColor(219, 231, 255);
+                doc.setLineWidth(0.3);
+                doc.line(margin, pageH - 15, pageW - margin, pageH - 15);
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(7);
+                doc.setTextColor(148, 163, 184);
+                doc.text('Pusat Alumni UPSI  ·  Laporan dijana secara automatik daripada Dashboard KPI', margin, pageH - 10);
+                doc.text(`Halaman ${p} / ${totalPages}`, pageW - margin, pageH - 10, { align: 'right' });
             }
 
-            const filename = `Laporan_KPI_${selectedYear}_${currentQuarter.toUpperCase()}_${new Date().toISOString().slice(0,10)}.pdf`;
+            const filename = `Laporan_KPI_${selectedYear}_${currentQuarter.toUpperCase()}_${now.toISOString().slice(0, 10)}.pdf`;
             doc.save(filename);
             showToastNotification('PDF berjaya dijana!', 'success');
         });
