@@ -1470,14 +1470,22 @@ body.dark-mode .breakdown-bulan-badge {
 
 /* ===== TARIKH — count KPI breakdown items ===== */
 .breakdown-tarikh {
-    font-size: 0.7rem;
-    font-weight: 600;
-    color: #6b7280;
+    display: inline-block;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #4b5563;
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    padding: 1px 8px;
+    border-radius: 999px;
     white-space: nowrap;
-    margin-left: 1rem;
-    flex-shrink: 0;
+    letter-spacing: 0.02em;
 }
-body.dark-mode .breakdown-tarikh { color: #9ca3af; }
+body.dark-mode .breakdown-tarikh {
+    color: #d1d5db;
+    background: #374151;
+    border-color: #4b5563;
+}
 
 /* ===== YEAR PAGE TRANSITION VEIL ===== */
 #year-veil {

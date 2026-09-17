@@ -727,22 +727,27 @@ export function showDetailsModal(kpiId, triggerElement) {
 
         ordered.forEach(({ item, index }) => {
             const li = document.createElement('li');
-            li.className = 'flex justify-between items-center p-2 rounded-lg hover:bg-gray-50';
-            const bulanBadge = (showMonth && item.bulan)
+            li.className = 'flex justify-between items-start gap-3 p-2 rounded-lg hover:bg-gray-50';
+            // The date already carries the month, so the month badge would be
+            // redundant on count-KPI rows that have one.
+            const bulanBadge = (showMonth && item.bulan && !(isCountKpi && item.tarikh))
                 ? `<span class="breakdown-bulan-badge">${BULAN_MY[item.bulan]}</span>` : '';
             // Count KPIs have no meaningful value (always 1) — the date is the
             // useful fact, so it takes the value's place.
             const valueCell = (isCountKpi && showMonth)
                 ? (item.tarikh ? `<span class="breakdown-tarikh">${formatTarikhRange(item.tarikh, item.tarikhTamat)}</span>` : '')
-                : `<span class="font-bold text-brand-primary mx-4 item-value">${escapeHtml(item.value.toLocaleString())}</span>`;
-            li.innerHTML = `
-                <span class="font-semibold flex-1 item-name">${escapeHtml(item.name)}${bulanBadge}</span>
-                ${valueCell}
-                ${isEditMode ? `
+                : `<span class="font-bold text-brand-primary item-value">${escapeHtml(item.value.toLocaleString())}</span>`;
+            const actions = isEditMode ? `
                 <div class="item-actions flex items-center">
                     <button class="edit-breakdown-item-btn text-gray-400 hover:text-brand-primary" data-index="${index}"><i class="fas fa-pencil-alt"></i></button>
                     <button class="delete-breakdown-item-btn text-red-400 hover:text-red-600 ml-2" data-index="${index}"><i class="fas fa-trash-alt"></i></button>
-                </div>` : ''}
+                </div>` : '';
+            li.innerHTML = `
+                <span class="font-semibold flex-1 min-w-0 item-name">${escapeHtml(item.name)}${bulanBadge}</span>
+                <div class="flex items-center gap-2 flex-shrink-0">
+                    ${valueCell}
+                    ${actions}
+                </div>
             `;
             detailsList.appendChild(li);
         });
@@ -925,7 +930,7 @@ function handleEditBreakdownItem(liElement, kpiId, itemIndex, item) {
 
     liElement.innerHTML = `
         <div class="flex flex-col w-full gap-1">
-            <div class="flex gap-1 w-full">
+            <div class="flex flex-wrap gap-1 w-full">
                 <input type="text" class="flex-1 min-w-0 p-1 border rounded-lg bg-gray-100 edit-name text-sm" value="${escapeHtml(item.name)}">
                 ${monthField}
                 ${tarikhField}
