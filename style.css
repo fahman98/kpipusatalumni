@@ -800,10 +800,6 @@ body.dark-mode #admin-mode-ribbon {
 
 body.dark-mode #admin-mode-ribbon .ribbon-title { color: #fde68a; }
 body.dark-mode #admin-mode-ribbon .ribbon-sub   { color: #fcd34d; }
-body.dark-mode #admin-mode-ribbon .ribbon-badge {
-    background-color: #78350f;
-    color: #fbbf24;
-}
 
 /* --- ACHIEVER PANEL (#7) --- */
 #achiever-panel .achiever-card {
