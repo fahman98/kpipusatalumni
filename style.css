@@ -1468,6 +1468,17 @@ body.dark-mode .breakdown-bulan-badge {
     border-color: #1e40af;
 }
 
+/* ===== TARIKH — count KPI breakdown items ===== */
+.breakdown-tarikh {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #6b7280;
+    white-space: nowrap;
+    margin-left: 1rem;
+    flex-shrink: 0;
+}
+body.dark-mode .breakdown-tarikh { color: #9ca3af; }
+
 /* ===== YEAR PAGE TRANSITION VEIL ===== */
 #year-veil {
     position: fixed;

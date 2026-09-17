@@ -45,6 +45,31 @@ function bulanOptionsHTML(qNum, selectedBulan) {
     return html;
 }
 
+// Count KPIs: every breakdown item is ONE event, so `value` is always 1, each
+// entry carries a `tarikh` (YYYY-MM-DD), and `bulan` is derived from that date
+// instead of being picked by hand.
+const COUNT_KPI_IDS = new Set(['kembara', 'bicara', 'ziarah']);
+
+// Date bounds (YYYY-MM-DD) for the whole year — the event's date decides which
+// quarter the record starts in, so it is not tied to the quarter in view.
+function yearTarikhBounds() {
+    return {
+        min: `${selectedYear}-01-01`,
+        max: `${selectedYear}-12-31`
+    };
+}
+
+const bulanFromTarikh = (tarikh) => {
+    const m = /^\d{4}-(\d{2})-\d{2}$/.exec(tarikh || '');
+    return m ? parseInt(m[1], 10) : null;
+};
+
+// "2026-07-05" → "5 Jul"
+const formatTarikhShort = (tarikh) => {
+    const m = /^\d{4}-(\d{2})-(\d{2})$/.exec(tarikh || '');
+    return m ? `${parseInt(m[2], 10)} ${BULAN_MY[parseInt(m[1], 10)]}` : '';
+};
+
 // ── Phosphor icon mapping (legacy FA names → Phosphor names) ──
 const FA_TO_PHOSPHOR = {
     'fa-users':           'ph-users',
@@ -666,10 +691,24 @@ export function showDetailsModal(kpiId, triggerElement) {
         const showMonth = parseInt(selectedYear) >= 2026;
         const qNum = parseInt(activeQuarter.replace('q', ''), 10);
 
+        const isCountKpi = COUNT_KPI_IDS.has(kpi.id);
+
         // Auto-sort by month for 2026+ (items without bulan sink to the end).
-        // Keep the ORIGINAL array index so edit/delete still map to kpi.details.items.
+        // Count KPIs sort by full date when present; legacy rows keep the month
+        // order. Keep the ORIGINAL array index so edit/delete still map to
+        // kpi.details.items.
         let ordered = (items || []).map((item, index) => ({ item, index }));
-        if (showMonth) {
+        if (isCountKpi) {
+            const sortKey = (it) => {
+                if (it.tarikh) return Date.parse(it.tarikh) || Infinity;
+                const b = Number(it.bulan);
+                return b ? new Date(selectedYear, b - 1, 1).getTime() : Infinity;
+            };
+            ordered = ordered.sort((a, b) => {
+                const ka = sortKey(a.item), kb = sortKey(b.item);
+                return ka !== kb ? ka - kb : a.index - b.index;
+            });
+        } else if (showMonth) {
             ordered = ordered.sort((a, b) => {
                 const ba = Number(a.item.bulan) || 99;
                 const bb = Number(b.item.bulan) || 99;
@@ -682,9 +721,14 @@ export function showDetailsModal(kpiId, triggerElement) {
             li.className = 'flex justify-between items-center p-2 rounded-lg hover:bg-gray-50';
             const bulanBadge = (showMonth && item.bulan)
                 ? `<span class="breakdown-bulan-badge">${BULAN_MY[item.bulan]}</span>` : '';
+            // Count KPIs have no meaningful value (always 1) — the date is the
+            // useful fact, so it takes the value's place.
+            const valueCell = (isCountKpi && showMonth)
+                ? (item.tarikh ? `<span class="breakdown-tarikh">${formatTarikhShort(item.tarikh)}</span>` : '')
+                : `<span class="font-bold text-brand-primary mx-4 item-value">${escapeHtml(item.value.toLocaleString())}</span>`;
             li.innerHTML = `
                 <span class="font-semibold flex-1 item-name">${escapeHtml(item.name)}${bulanBadge}</span>
-                <span class="font-bold text-brand-primary mx-4 item-value">${escapeHtml(item.value.toLocaleString())}</span>
+                ${valueCell}
                 ${isEditMode ? `
                 <div class="item-actions flex items-center">
                     <button class="edit-breakdown-item-btn text-gray-400 hover:text-brand-primary" data-index="${index}"><i class="fas fa-pencil-alt"></i></button>
@@ -695,14 +739,25 @@ export function showDetailsModal(kpiId, triggerElement) {
         });
 
         if (isEditMode) {
-            const addMonthField = showMonth
+            // Count KPIs in 2026+ pick a date instead of a value + month: the
+            // value is fixed at 1 and `bulan` is derived from the date.
+            const useTarikh = isCountKpi && showMonth;
+            const bounds = yearTarikhBounds();
+            const valueField = useTarikh
+                ? ''
+                : `<input type="number" id="new-breakdown-value" placeholder="Nilai" class="w-24 p-2 border rounded-lg">`;
+            const addMonthField = !useTarikh && showMonth
                 ? `<select id="new-breakdown-bulan" class="p-2 border rounded-lg bg-white text-sm">${bulanOptionsHTML(qNum, null)}</select>` : '';
+            const tarikhField = useTarikh
+                ? `<input type="date" id="new-breakdown-tarikh" class="p-2 border rounded-lg bg-white text-sm" min="${bounds.min}" max="${bounds.max}" title="Tarikh peristiwa — suku ditentukan automatik dari bulan">`
+                : '';
             detailsAddNewWrapper.innerHTML = `
                 <div class="add-new-form-wrapper border-t pt-4 mt-4">
                     <div class="flex gap-2 flex-wrap items-stretch">
                         <input type="text" id="new-breakdown-name" placeholder="Nama Butiran" class="flex-1 min-w-[120px] p-2 border rounded-lg">
-                        <input type="number" id="new-breakdown-value" placeholder="Nilai" class="w-24 p-2 border rounded-lg">
+                        ${valueField}
                         ${addMonthField}
+                        ${tarikhField}
                     </div>
                     <button id="save-new-breakdown-btn" class="w-full mt-2 bg-brand-primary text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-800 transition-all">
                         Simpan Butiran
@@ -711,9 +766,29 @@ export function showDetailsModal(kpiId, triggerElement) {
             `;
             document.getElementById('save-new-breakdown-btn').onclick = async () => {
                 const nameInput = document.getElementById('new-breakdown-name');
+                const name = nameInput.value.trim();
+                if (useTarikh) {
+                    const tarikhInput = document.getElementById('new-breakdown-tarikh');
+                    const tarikh = tarikhInput.value;
+                    const bulan = bulanFromTarikh(tarikh);
+                    if (!name || !bulan) {
+                        showToastNotification('Sila isi nama dan tarikh.', 'danger');
+                        return;
+                    }
+                    if (!tarikh.startsWith(`${selectedYear}-`)) {
+                        showToastNotification(`Tarikh mesti dalam tahun ${selectedYear}.`, 'danger');
+                        return;
+                    }
+                    // The event's date decides where the record starts; cumulative
+                    // storage then carries it into every later quarter.
+                    const startQ = Math.ceil(bulan / 3);
+                    await updateKpiBreakdownList(`q${startQ}`, kpi.id, { name, value: 1, bulan, tarikh }, 'add');
+                    nameInput.value = '';
+                    tarikhInput.value = '';
+                    return;
+                }
                 const valueInput = document.getElementById('new-breakdown-value');
                 const bulanSel = document.getElementById('new-breakdown-bulan');
-                const name = nameInput.value.trim();
                 const value = parseFloat(valueInput.value);
                 const bulan = bulanSel && bulanSel.value ? parseInt(bulanSel.value, 10) : null;
                 if (name && !isNaN(value)) {
@@ -814,17 +889,28 @@ function handleEditBreakdownItem(liElement, kpiId, itemIndex, item) {
     const paginationContainer = getEl('pagination');
     const qNum = parseInt(paginationContainer.querySelector('.active').dataset.quarter, 10);
     const showMonth = parseInt(selectedYear) >= 2026;
-    const monthField = showMonth
+    // Count KPIs edit a date instead of a value. The date is metadata here — an
+    // edit never changes which quarter the record starts in — so any date in the
+    // year is allowed (legacy rows can be backfilled with their true date).
+    const useTarikh = COUNT_KPI_IDS.has(kpiId) && showMonth;
+    const tb = yearTarikhBounds();
+    const monthField = showMonth && !useTarikh
         ? `<select class="edit-bulan p-1 border rounded-lg bg-gray-100 text-sm">${bulanOptionsHTML(qNum, item.bulan || null)}</select>` : '';
+    const tarikhField = useTarikh
+        ? `<input type="date" class="edit-tarikh p-1 border rounded-lg bg-gray-100 text-sm" value="${escapeHtml(item.tarikh || '')}" min="${tb.min}" max="${tb.max}">` : '';
+    const valueField = useTarikh
+        ? ''
+        : `<input type="number" class="w-24 p-1 border rounded-lg bg-gray-100 edit-value text-sm" value="${escapeHtml(item.value)}">`;
 
     liElement.innerHTML = `
         <div class="flex flex-col w-full gap-1">
             <div class="flex gap-1 w-full">
                 <input type="text" class="flex-1 min-w-0 p-1 border rounded-lg bg-gray-100 edit-name text-sm" value="${escapeHtml(item.name)}">
                 ${monthField}
+                ${tarikhField}
             </div>
             <div class="flex items-center gap-1">
-                <input type="number" class="w-24 p-1 border rounded-lg bg-gray-100 edit-value text-sm" value="${escapeHtml(item.value)}">
+                ${valueField}
                 <div class="flex items-center ml-auto gap-2">
                     <button class="save-breakdown-item-btn text-green-500 hover:text-green-700"><i class="fas fa-check"></i></button>
                     <button class="cancel-breakdown-edit-btn text-red-500 hover:text-red-700"><i class="fas fa-times"></i></button>
@@ -839,6 +925,22 @@ function handleEditBreakdownItem(liElement, kpiId, itemIndex, item) {
 
     liElement.querySelector('.save-breakdown-item-btn').onclick = async () => {
         const newName = nameInput.value.trim();
+        if (useTarikh) {
+            const tarikh = liElement.querySelector('.edit-tarikh').value;
+            const bulan = bulanFromTarikh(tarikh);
+            if (!newName || !bulan || !tarikh.startsWith(`${selectedYear}-`)) {
+                showToastNotification(`Sila isi nama dan tarikh yang sah (tahun ${selectedYear}).`, 'danger');
+                liElement.innerHTML = originalHTML;
+                return;
+            }
+            const activeQuarterKey = `q${qNum}`;
+            await updateKpiBreakdownList(
+                activeQuarterKey, kpiId,
+                { index: itemIndex, data: { name: newName, bulan, tarikh }, expect: item },
+                'edit'
+            );
+            return;
+        }
         const newValue = parseFloat(liElement.querySelector('.edit-value').value);
         const bulanSel = liElement.querySelector('.edit-bulan');
         const bulan = bulanSel && bulanSel.value ? parseInt(bulanSel.value, 10) : null;
@@ -846,7 +948,7 @@ function handleEditBreakdownItem(liElement, kpiId, itemIndex, item) {
         if (newName && !isNaN(newValue)) {
             const data = { name: newName, value: newValue };
             if (bulan !== null) data.bulan = bulan;
-            const activeQuarterKey = `q${paginationContainer.querySelector('.active').dataset.quarter}`;
+            const activeQuarterKey = `q${qNum}`;
             // `expect` = the row as it was when this editor opened; api.js checks the
             // index still resolves to it before writing.
             await updateKpiBreakdownList(

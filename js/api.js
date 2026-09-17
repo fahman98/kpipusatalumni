@@ -802,7 +802,9 @@ export async function updateKpiBreakdownList(quarterKey, kpiId, payload, action)
                 // Q3 and Q4 — the later totals stayed permanently short while the
                 // toast still said it saved.
                 const startItems = itemsOf(snaps[startPos]) || [];
-                const isDup = addPayload.bulan != null
+                const isDup = addPayload.tarikh
+                    ? startItems.some(it => it.name === addPayload.name && String(it.tarikh ?? '') === String(addPayload.tarikh ?? ''))
+                    : addPayload.bulan != null
                     ? startItems.some(it => it.name === addPayload.name && String(it.bulan ?? '') === String(addPayload.bulan ?? ''))
                     : startItems.some(it => it.name === addPayload.name);
                 if (isDup) {
@@ -859,7 +861,7 @@ export async function updateKpiBreakdownList(quarterKey, kpiId, payload, action)
             return;
         }
         if (e && e.code === DUPLICATE_ITEM) {
-            showToastNotification("Butiran dengan nama dan bulan yang sama sudah wujud.", "danger");
+            showToastNotification("Butiran dengan nama dan tarikh/bulan yang sama sudah wujud.", "danger");
             return;
         }
         console.error(e);
