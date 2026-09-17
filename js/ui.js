@@ -64,10 +64,19 @@ const bulanFromTarikh = (tarikh) => {
     return m ? parseInt(m[1], 10) : null;
 };
 
-// "2026-07-05" → "5 Jul"
-const formatTarikhShort = (tarikh) => {
+const parseTarikh = (tarikh) => {
     const m = /^\d{4}-(\d{2})-(\d{2})$/.exec(tarikh || '');
-    return m ? `${parseInt(m[2], 10)} ${BULAN_MY[parseInt(m[1], 10)]}` : '';
+    return m ? { mo: parseInt(m[1], 10), d: parseInt(m[2], 10) } : null;
+};
+
+// "5 Jul" for a single day; "5–7 Jul" / "30 Jun–2 Jul" when the event spans days.
+const formatTarikhRange = (start, end) => {
+    const s = parseTarikh(start);
+    if (!s) return '';
+    const e = parseTarikh(end);
+    if (!e || (e.mo === s.mo && e.d === s.d)) return `${s.d} ${BULAN_MY[s.mo]}`;
+    if (e.mo === s.mo) return `${s.d}–${e.d} ${BULAN_MY[s.mo]}`;
+    return `${s.d} ${BULAN_MY[s.mo]}–${e.d} ${BULAN_MY[e.mo]}`;
 };
 
 // ── Phosphor icon mapping (legacy FA names → Phosphor names) ──
@@ -724,7 +733,7 @@ export function showDetailsModal(kpiId, triggerElement) {
             // Count KPIs have no meaningful value (always 1) — the date is the
             // useful fact, so it takes the value's place.
             const valueCell = (isCountKpi && showMonth)
-                ? (item.tarikh ? `<span class="breakdown-tarikh">${formatTarikhShort(item.tarikh)}</span>` : '')
+                ? (item.tarikh ? `<span class="breakdown-tarikh">${formatTarikhRange(item.tarikh, item.tarikhTamat)}</span>` : '')
                 : `<span class="font-bold text-brand-primary mx-4 item-value">${escapeHtml(item.value.toLocaleString())}</span>`;
             li.innerHTML = `
                 <span class="font-semibold flex-1 item-name">${escapeHtml(item.name)}${bulanBadge}</span>
@@ -749,7 +758,8 @@ export function showDetailsModal(kpiId, triggerElement) {
             const addMonthField = !useTarikh && showMonth
                 ? `<select id="new-breakdown-bulan" class="p-2 border rounded-lg bg-white text-sm">${bulanOptionsHTML(qNum, null)}</select>` : '';
             const tarikhField = useTarikh
-                ? `<input type="date" id="new-breakdown-tarikh" class="p-2 border rounded-lg bg-white text-sm" min="${bounds.min}" max="${bounds.max}" title="Tarikh peristiwa — suku ditentukan automatik dari bulan">`
+                ? `<input type="date" id="new-breakdown-tarikh" class="p-2 border rounded-lg bg-white text-sm" min="${bounds.min}" max="${bounds.max}" title="Tarikh mula peristiwa — suku ditentukan automatik dari bulan">
+                   <input type="date" id="new-breakdown-tarikh-tamat" class="p-2 border rounded-lg bg-white text-sm" min="${bounds.min}" max="${bounds.max}" title="Tarikh tamat — biar kosong jika sehari sahaja">`
                 : '';
             detailsAddNewWrapper.innerHTML = `
                 <div class="add-new-form-wrapper border-t pt-4 mt-4">
@@ -769,22 +779,32 @@ export function showDetailsModal(kpiId, triggerElement) {
                 const name = nameInput.value.trim();
                 if (useTarikh) {
                     const tarikhInput = document.getElementById('new-breakdown-tarikh');
+                    const tarikhTamatInput = document.getElementById('new-breakdown-tarikh-tamat');
                     const tarikh = tarikhInput.value;
+                    const tarikhTamat = tarikhTamatInput.value;
                     const bulan = bulanFromTarikh(tarikh);
                     if (!name || !bulan) {
-                        showToastNotification('Sila isi nama dan tarikh.', 'danger');
+                        showToastNotification('Sila isi nama dan tarikh mula.', 'danger');
                         return;
                     }
-                    if (!tarikh.startsWith(`${selectedYear}-`)) {
+                    if (!tarikh.startsWith(`${selectedYear}-`)
+                        || (tarikhTamat && !tarikhTamat.startsWith(`${selectedYear}-`))) {
                         showToastNotification(`Tarikh mesti dalam tahun ${selectedYear}.`, 'danger');
+                        return;
+                    }
+                    if (tarikhTamat && tarikhTamat < tarikh) {
+                        showToastNotification('Tarikh tamat mesti selepas tarikh mula.', 'danger');
                         return;
                     }
                     // The event's date decides where the record starts; cumulative
                     // storage then carries it into every later quarter.
                     const startQ = Math.ceil(bulan / 3);
-                    await updateKpiBreakdownList(`q${startQ}`, kpi.id, { name, value: 1, bulan, tarikh }, 'add');
+                    const payload = { name, value: 1, bulan, tarikh };
+                    if (tarikhTamat && tarikhTamat !== tarikh) payload.tarikhTamat = tarikhTamat;
+                    await updateKpiBreakdownList(`q${startQ}`, kpi.id, payload, 'add');
                     nameInput.value = '';
                     tarikhInput.value = '';
+                    tarikhTamatInput.value = '';
                     return;
                 }
                 const valueInput = document.getElementById('new-breakdown-value');
@@ -897,7 +917,8 @@ function handleEditBreakdownItem(liElement, kpiId, itemIndex, item) {
     const monthField = showMonth && !useTarikh
         ? `<select class="edit-bulan p-1 border rounded-lg bg-gray-100 text-sm">${bulanOptionsHTML(qNum, item.bulan || null)}</select>` : '';
     const tarikhField = useTarikh
-        ? `<input type="date" class="edit-tarikh p-1 border rounded-lg bg-gray-100 text-sm" value="${escapeHtml(item.tarikh || '')}" min="${tb.min}" max="${tb.max}">` : '';
+        ? `<input type="date" class="edit-tarikh p-1 border rounded-lg bg-gray-100 text-sm" value="${escapeHtml(item.tarikh || '')}" min="${tb.min}" max="${tb.max}" title="Tarikh mula">
+           <input type="date" class="edit-tarikh-tamat p-1 border rounded-lg bg-gray-100 text-sm" value="${escapeHtml(item.tarikhTamat || '')}" min="${tb.min}" max="${tb.max}" title="Tarikh tamat (kosong jika sehari)">` : '';
     const valueField = useTarikh
         ? ''
         : `<input type="number" class="w-24 p-1 border rounded-lg bg-gray-100 edit-value text-sm" value="${escapeHtml(item.value)}">`;
@@ -927,16 +948,25 @@ function handleEditBreakdownItem(liElement, kpiId, itemIndex, item) {
         const newName = nameInput.value.trim();
         if (useTarikh) {
             const tarikh = liElement.querySelector('.edit-tarikh').value;
+            const tarikhTamat = liElement.querySelector('.edit-tarikh-tamat').value;
             const bulan = bulanFromTarikh(tarikh);
-            if (!newName || !bulan || !tarikh.startsWith(`${selectedYear}-`)) {
+            if (!newName || !bulan || !tarikh.startsWith(`${selectedYear}-`)
+                || (tarikhTamat && !tarikhTamat.startsWith(`${selectedYear}-`))) {
                 showToastNotification(`Sila isi nama dan tarikh yang sah (tahun ${selectedYear}).`, 'danger');
                 liElement.innerHTML = originalHTML;
                 return;
             }
+            if (tarikhTamat && tarikhTamat < tarikh) {
+                showToastNotification('Tarikh tamat mesti selepas tarikh mula.', 'danger');
+                return;
+            }
+            const data = { name: newName, bulan, tarikh };
+            if (tarikhTamat && tarikhTamat !== tarikh) data.tarikhTamat = tarikhTamat;
+            else if (item.tarikhTamat) data.tarikhTamat = null;   // cleared
             const activeQuarterKey = `q${qNum}`;
             await updateKpiBreakdownList(
                 activeQuarterKey, kpiId,
-                { index: itemIndex, data: { name: newName, bulan, tarikh }, expect: item },
+                { index: itemIndex, data, expect: item },
                 'edit'
             );
             return;
