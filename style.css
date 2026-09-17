@@ -1073,81 +1073,233 @@ body.dark-mode .theme-toggle-btn:hover {
     );
 }
 
-/* ==================== PRINT STYLES ==================== */
+/* ==================== PRINT STYLES ====================
+   The screen layout is tuned for touch + glass surfaces; on paper it needs to
+   survive "background graphics: off" and a fixed A4 column width. The rules:
+   1. Force exact colours so status rings/bars/chips never print white.
+   2. A compact 3-up grid using minmax(0, 1fr) tracks — plain `1fr` tracks
+      floor at each card's min-content width, which shoved the 3rd column off
+      the right edge of the sheet.
+   3. Solid colours for the gradient KPI values (background-clip:text prints
+      blank when backgrounds are disabled).
+   4. Everything interactive stays on screen. Dark mode is stripped for the
+      duration of the print job in main.js, so these rules only describe the
+      light theme. */
 @media print {
-    /* Sembunyikan elemen yang tidak perlu dalam cetakan */
-    header .flex,
+    *,
+    *::before,
+    *::after {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    html,
+    body {
+        background: #fff !important;
+        color: #111827 !important;
+    }
+
+    /* ---------- Screen-only chrome ---------- */
     nav,
     footer,
-    #add-kpi-container,
+    #main-nav,
+    #bottom-nav,
     #global-loading-overlay,
-    .settings-btn,
-    .edit-kpi-btn,
-    .show-chart-btn,
-    .desc-popover,
+    #offline-banner,
+    #add-kpi-container,
+    #stats-bar,
+    #admin-mode-ribbon,
+    #search-filter-container,
+    #pagination,
+    #empty-search-state,
+    #view-toggle-btn,
+    #kpi-tooltip,
+    #kb-hint,
+    #year-veil,
+    .theme-toggle-btn,
     .modal,
     #toast-notification,
     #install-prompt,
     #ios-install-modal,
     #password-modal,
     #confirm-modal,
-    #input-modal {
+    #input-modal,
+    .settings-btn,
+    .edit-kpi-btn,
+    .show-chart-btn,
+    .show-details-btn,
+    .kpi-action-btn,
+    .status-dot,
+    .desc-popover,
+    .details-btn-wrapper,
+    #show-overall-chart-btn,
+    #header-inner > div:last-child,
+    .kpi-header-fixed > .flex-shrink-0 {
         display: none !important;
     }
 
-    body {
-        background: white !important;
-        color: black !important;
-    }
-
+    /* ---------- Page frame ---------- */
     #dashboard-container {
+        width: 100% !important;
+        max-width: none !important;
+        margin: 0 !important;
         padding: 0 !important;
     }
 
-    #main-title, #sub-title {
-        color: #0d47a1 !important;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
+    /* ---------- Branded report header (logos + title stay) ---------- */
+    header {
+        position: static !important;
+        margin: 0 0 8px !important;
+        box-shadow: none !important;
+        border-bottom: 2px solid #0d47a1;
+        padding-bottom: 8px;
+    }
+
+    #header-inner {
+        background: #fff !important;
+        border: 0 !important;
+        box-shadow: none !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        padding: 0 !important;
+        gap: 16px !important;
+    }
+
+    #header-inner img {
+        height: 40px !important;
+        max-height: 40px !important;
+    }
+
+    #main-title { color: #0d47a1 !important; }
+    #sub-title { color: #4b5563 !important; }
+
+    /* Print-only report meta line (text injected in main.js) */
+    #print-meta {
+        display: block !important;
+        text-align: center;
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: #6b7280;
+        margin: 6px 0 10px;
+    }
+
+    .brand-gradient-bar {
+        animation: none !important;
+        margin-bottom: 0 !important;
+    }
+
+    /* ---------- KPI grid: compact 3 columns, never wider than the sheet ---------- */
+    #kpi-grid-container {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        gap: 10px !important;
+    }
+
+    #kpi-grid-container.grid-enter,
+    #kpi-grid-container.grid-exit {
+        animation: none !important;
+        opacity: 1 !important;
+        transform: none !important;
     }
 
     .kpi-card {
-        break-inside: avoid;
-        box-shadow: none !important;
+        min-width: 0 !important;
         border: 1px solid #d1d5db !important;
+        border-radius: 10px !important;
+        box-shadow: none !important;
+        overflow: hidden;
+        break-inside: avoid;
         page-break-inside: avoid;
     }
 
-    #kpi-grid-container {
-        grid-template-columns: repeat(3, 1fr) !important;
-        gap: 12px !important;
+    .kpi-status-bar { border-radius: 10px 0 0 10px !important; }
+
+    /* Compact spacing — the screen card is sized for touch. */
+    .kpi-card .px-5 {
+        padding-left: 0.7rem !important;
+        padding-right: 0.7rem !important;
     }
 
-    .progress-bar {
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
+    .kpi-card .kpi-header-fixed {
+        padding-top: 0.55rem !important;
+        padding-bottom: 0.4rem !important;
+        gap: 0.5rem !important;
     }
 
-    /* Hide interactive / layout-only elements */
-    #stats-bar,
-    #admin-mode-ribbon,
-    #search-filter-container,
-    #pagination,
-    .theme-toggle-btn,
-    #overall-highlight,
-    #empty-search-state,
-    #export-csv-btn,
-    #export-pdf-btn,
-    #print-btn { display: none !important; }
+    .kpi-card .kpi-ring-wrap {
+        width: 38px !important;
+        height: 38px !important;
+    }
 
-    header {
+    .kpi-card .kpi-ring-inner.kpi-icon-container {
+        width: 28px !important;
+        height: 28px !important;
+    }
+
+    .kpi-card .kpi-icon { font-size: 0.8rem !important; }
+
+    .kpi-card .kpi-name {
+        font-size: 0.76rem !important;
+        line-height: 1.25 !important;
+    }
+
+    .kpi-card .value-wrapper,
+    .kpi-card .animated-value { font-size: 1.05rem !important; }
+
+    .kpi-card .kpi-target-display,
+    .kpi-card .kpi-updated-at { font-size: 0.62rem !important; }
+
+    /* The details button is hidden above, so keep the percentage flush right
+       (with a single flex child, justify-between would push it left). */
+    .kpi-card .kpi-percentage-display {
+        font-size: 0.68rem !important;
+        margin-left: auto !important;
+    }
+
+    .kpi-card .kpi-trend { font-size: 0.65rem !important; }
+    .kpi-card .mt-3 { margin-top: 0.45rem !important; }
+    .kpi-card .pb-4 { padding-bottom: 0.55rem !important; }
+    .kpi-card .h-5 { height: 14px !important; }
+    .kpi-card .progress-label { font-size: 0.6rem !important; }
+
+    /* Solid status colours: gradient text (background-clip:text) comes out
+       blank when background graphics are disabled in the print dialog. */
+    .value-gradient-good {
+        background: none !important;
+        -webkit-text-fill-color: #15803d !important;
+        color: #15803d !important;
+    }
+
+    .value-gradient-ok {
+        background: none !important;
+        -webkit-text-fill-color: #b45309 !important;
+        color: #b45309 !important;
+    }
+
+    .value-gradient-bad {
+        background: none !important;
+        -webkit-text-fill-color: #b91c1c !important;
+        color: #b91c1c !important;
+    }
+
+    /* ---------- Overall gauge stays as the report headline ---------- */
+    #overall-highlight {
         box-shadow: none !important;
-        border-bottom: 1px solid #d1d5db;
-        padding-bottom: 8px;
-        margin-bottom: 12px;
+        border-radius: 10px !important;
+        margin-bottom: 10px !important;
+        padding: 6px 14px !important;
+        break-inside: avoid;
     }
 
-    /* Hide header right controls, keep logos + title */
-    header .flex > div:last-child { display: none !important; }
+    /* ---------- Executive table view ---------- */
+    #kpi-table-container > div {
+        box-shadow: none !important;
+        border-color: #e5e7eb !important;
+    }
+
+    #kpi-table-container th,
+    #kpi-table-container td {
+        border-color: #e5e7eb !important;
+    }
 }
 
 /* ===== MOBILE QUARTER SEGMENTED CONTROL ===== */
@@ -1332,11 +1484,6 @@ body.dark-mode #kpi-table-container th,
 body.dark-mode #kpi-table-container td {
     border-color: rgba(75,85,99,0.3);
     color: #d1d5db;
-}
-
-/* Print: show table if active, hide grid */
-@media print {
-    #view-toggle-btn { display: none !important; }
 }
 
 /* ===== GLASSMORPHISM HEADER ===== */
@@ -1857,8 +2004,28 @@ body.dark-mode .bottom-nav-tab.active {
     color: #60a5fa;
 }
 
+/* ===== PRINT: LAST-WORD OVERRIDES =====
+   The glassmorphism rules for `#header-inner` and `.kpi-card` are declared
+   further down the file with !important, so equal-specificity print rules
+   above would lose on source order. These sit last on purpose: on paper the
+   cards and header should be flat white, with no entrance animation or
+   backdrop blur (the entrance animation starts cards at opacity:0). */
 @media print {
-    #bottom-nav {
-        display: none !important;
+    #header-inner,
+    body.dark-mode #header-inner {
+        background: #ffffff !important;
+        border: 1px solid #e5e7eb !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+    }
+
+    .kpi-card,
+    body.dark-mode .kpi-card {
+        background: #ffffff !important;
+        opacity: 1 !important;
+        transform: none !important;
+        animation: none !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
     }
 }

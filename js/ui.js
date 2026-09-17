@@ -1107,8 +1107,10 @@ export function filterDashboardCards(statusFilter) {
 // Tracks the in-flight rAF per element so a re-render can cancel the previous
 // run. Without this, two loops fight over the same node — the overall-gauge text
 // is a persistent element, so back-to-back snapshots used to leave whichever
-// animation finished last as the winner.
-const _animHandles = new WeakMap();
+// animation finished last as the winner. A Map (not a WeakMap) because the
+// beforeprint handler below walks the live animations and snaps them to their
+// final value, so a printed sheet never captures a half-counted number.
+const _activeAnims = new Map();
 
 // Counts UP to the real figure and never shows anything else.
 //
@@ -1120,15 +1122,18 @@ const _animHandles = new WeakMap();
 export function animateValue(element, start, end, duration, formatter) {
     if (!element) return;
 
-    const prev = _animHandles.get(element);
-    if (prev) cancelAnimationFrame(prev);
+    const prev = _activeAnims.get(element);
+    if (prev) cancelAnimationFrame(prev.handle);
 
     const finish = () => {
-        _animHandles.delete(element);
+        _activeAnims.delete(element);
         element.textContent = formatter(end);
         element.style.fontFamily = "";
         element.style.color = "";
     };
+
+    const state = { handle: 0, finish };
+    _activeAnims.set(element, state);
 
     // Honour the OS "reduce motion" setting — land on the true value at once.
     const reduceMotion = typeof window.matchMedia === 'function' &&
@@ -1142,6 +1147,7 @@ export function animateValue(element, start, end, duration, formatter) {
     let startTime = null;
 
     const step = (timestamp) => {
+        if (_activeAnims.get(element) !== state) return; // finished or superseded
         if (startTime === null) startTime = timestamp;
         const progress = Math.min((timestamp - startTime) / duration, 1);
 
@@ -1150,12 +1156,21 @@ export function animateValue(element, start, end, duration, formatter) {
             // final one, so nothing misleading is ever rendered.
             const eased = 1 - Math.pow(1 - progress, 3);
             element.textContent = formatter(start + (end - start) * eased);
-            _animHandles.set(element, requestAnimationFrame(step));
+            state.handle = requestAnimationFrame(step);
         } else {
             finish();
         }
     };
-    _animHandles.set(element, requestAnimationFrame(step));
+    state.handle = requestAnimationFrame(step);
+}
+
+// window.print() snapshots the page while rAF is paused, so printing within the
+// first 1.5s of a render used to capture half-counted figures (in the monospace
+// animation font). Snap every running count-up to its final value instead.
+if (typeof window !== 'undefined') {
+    window.addEventListener('beforeprint', () => {
+        Array.from(_activeAnims.values()).forEach((state) => state.finish());
+    });
 }
 
 export function getStatusColor(percentage) {

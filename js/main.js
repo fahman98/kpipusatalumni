@@ -1210,6 +1210,32 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- PRINT ---
+    const PRINT_QUARTER_LABELS = { q1: 'Suku Pertama', q2: 'Suku Kedua', q3: 'Suku Ketiga', q4: 'Suku Keempat' };
+
+    function updatePrintMeta() {
+        const metaEl = getEl('print-meta');
+        if (!metaEl) return;
+        const now = new Date();
+        const tarikh = now.toLocaleDateString('ms-MY', { day: 'numeric', month: 'long', year: 'numeric' });
+        const masa = now.toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' });
+        const suku = PRINT_QUARTER_LABELS[currentQuarter] || currentQuarter.toUpperCase();
+        metaEl.textContent = `Laporan KPI ${selectedYear} · ${suku} · Dicetak pada ${tarikh}, ${masa}`;
+    }
+
+    // The print stylesheet describes the light theme (white paper). A dark-mode
+    // screen would otherwise print grey-on-grey, so strip the class for the
+    // duration of the print job and restore it once the dialog closes.
+    let wasDarkModeBeforePrint = false;
+    window.addEventListener('beforeprint', () => {
+        wasDarkModeBeforePrint = document.body.classList.contains('dark-mode');
+        if (wasDarkModeBeforePrint) document.body.classList.remove('dark-mode');
+        updatePrintMeta();
+    });
+    window.addEventListener('afterprint', () => {
+        if (wasDarkModeBeforePrint) document.body.classList.add('dark-mode');
+        wasDarkModeBeforePrint = false;
+    });
+
     const printBtn = getEl('print-btn');
     if (printBtn) {
         printBtn.addEventListener('click', () => window.print());

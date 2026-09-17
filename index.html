@@ -58,8 +58,8 @@
     <link rel="apple-touch-icon" href="./images/apple-touch-icon.png">
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="style.css?v=5.0">
-    <link rel="stylesheet" href="tailwind.css?v=4">
+    <link rel="stylesheet" href="style.css?v=5.1">
+    <link rel="stylesheet" href="tailwind.css?v=5">
 </head>
 
 <body class="bg-gray-100 relative overflow-x-hidden">
@@ -185,6 +185,9 @@
         </header>
         <!-- Premium gradient accent line -->
         <div class="brand-gradient-bar hidden md:block"></div>
+
+        <!-- Print-only report meta line (text injected in main.js, shown in @media print) -->
+        <p id="print-meta" class="hidden"></p>
 
         <!-- Admin Mode Ribbon (#4) -->
         <div id="admin-mode-ribbon"
@@ -998,7 +1001,7 @@
         </div>
 
         <!-- Load Main Script as Module -->
-        <script type="module" src="js/main.js?v=5.0"></script>
+        <script type="module" src="js/main.js?v=5.1"></script>
 </body>
 
 </html>
