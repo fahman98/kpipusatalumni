@@ -1468,24 +1468,39 @@ body.dark-mode .breakdown-bulan-badge {
     border-color: #1e40af;
 }
 
-/* ===== TARIKH — count KPI breakdown items ===== */
-.breakdown-tarikh {
-    display: inline-block;
-    font-size: 0.68rem;
-    font-weight: 700;
-    color: #4b5563;
-    background: #f3f4f6;
-    border: 1px solid #e5e7eb;
-    padding: 1px 8px;
-    border-radius: 999px;
-    white-space: nowrap;
-    letter-spacing: 0.02em;
+/* ===== BREAKDOWN ITEM ROWS (details modal) ===== */
+.breakdown-item {
+    border: 1px solid #eef1f4;
+    border-radius: 0.75rem;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
 }
-body.dark-mode .breakdown-tarikh {
-    color: #d1d5db;
-    background: #374151;
+.breakdown-item:hover {
+    border-color: #e2e6ea;
+    background: #fafbfc;
+}
+body.dark-mode .breakdown-item {
+    border-color: #374151;
+}
+body.dark-mode .breakdown-item:hover {
     border-color: #4b5563;
+    background: #374151;
 }
+
+.breakdown-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.3rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #6b7280;
+    letter-spacing: 0.01em;
+}
+.breakdown-meta i { font-size: 0.68rem; color: #9ca3af; }
+body.dark-mode .breakdown-meta { color: #9ca3af; }
+body.dark-mode .breakdown-meta i { color: #6b7280; }
+.breakdown-meta-warn, .breakdown-meta-warn i { color: #d97706; }
+body.dark-mode .breakdown-meta-warn, body.dark-mode .breakdown-meta-warn i { color: #fbbf24; }
 
 /* ===== YEAR PAGE TRANSITION VEIL ===== */
 #year-veil {

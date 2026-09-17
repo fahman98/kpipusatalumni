@@ -727,15 +727,22 @@ export function showDetailsModal(kpiId, triggerElement) {
 
         ordered.forEach(({ item, index }) => {
             const li = document.createElement('li');
-            li.className = 'flex justify-between items-start gap-3 p-2 rounded-lg hover:bg-gray-50';
+            li.className = 'breakdown-item flex items-start gap-3 px-3 py-2.5';
+            const isEventRow = isCountKpi && showMonth;
+            const tanggal = isEventRow && item.tarikh
+                ? formatTarikhRange(item.tarikh, item.tarikhTamat) : '';
             // The date already carries the month, so the month badge would be
             // redundant on count-KPI rows that have one.
-            const bulanBadge = (showMonth && item.bulan && !(isCountKpi && item.tarikh))
+            const bulanBadge = (showMonth && item.bulan && !(isEventRow && item.tarikh))
                 ? `<span class="breakdown-bulan-badge">${BULAN_MY[item.bulan]}</span>` : '';
-            // Count KPIs have no meaningful value (always 1) — the date is the
-            // useful fact, so it takes the value's place.
-            const valueCell = (isCountKpi && showMonth)
-                ? (item.tarikh ? `<span class="breakdown-tarikh">${formatTarikhRange(item.tarikh, item.tarikhTamat)}</span>` : '')
+            // Second line: the event's date, or a nudge to backfill it (admin only).
+            const metaRow = isEventRow
+                ? (tanggal
+                    ? `<p class="breakdown-meta"><i class="fas fa-calendar-day"></i><span>${tanggal}</span></p>`
+                    : (isEditMode ? `<p class="breakdown-meta breakdown-meta-warn"><i class="fas fa-exclamation-circle"></i><span>Tiada tarikh</span></p>` : ''))
+                : '';
+            const valueCell = isEventRow
+                ? ''
                 : `<span class="font-bold text-brand-primary item-value">${escapeHtml(item.value.toLocaleString())}</span>`;
             const actions = isEditMode ? `
                 <div class="item-actions flex items-center">
@@ -743,7 +750,10 @@ export function showDetailsModal(kpiId, triggerElement) {
                     <button class="delete-breakdown-item-btn text-red-400 hover:text-red-600 ml-2" data-index="${index}"><i class="fas fa-trash-alt"></i></button>
                 </div>` : '';
             li.innerHTML = `
-                <span class="font-semibold flex-1 min-w-0 item-name">${escapeHtml(item.name)}${bulanBadge}</span>
+                <div class="min-w-0 flex-1">
+                    <span class="font-semibold text-sm text-gray-800 break-words item-name">${escapeHtml(item.name)}${bulanBadge}</span>
+                    ${metaRow}
+                </div>
                 <div class="flex items-center gap-2 flex-shrink-0">
                     ${valueCell}
                     ${actions}
