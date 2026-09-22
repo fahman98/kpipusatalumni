@@ -50,6 +50,10 @@ function bulanOptionsHTML(qNum, selectedBulan) {
 // instead of being picked by hand.
 const COUNT_KPI_IDS = new Set(['kembara', 'bicara', 'ziarah']);
 
+// Kembara events also record how many alumni turned up (`hadir`). Optional
+// metadata per event — it never changes the KPI's value (one event = 1).
+const HADIR_KPI_ID = 'kembara';
+
 // Date bounds (YYYY-MM-DD) for the whole year — the event's date decides which
 // quarter the record starts in, so it is not tied to the quarter in view.
 function yearTarikhBounds() {
@@ -68,6 +72,14 @@ const parseTarikh = (tarikh) => {
     const m = /^\d{4}-(\d{2})-(\d{2})$/.exec(tarikh || '');
     return m ? { mo: parseInt(m[1], 10), d: parseInt(m[2], 10) } : null;
 };
+
+// Attendance input → null when left blank (no record), a non-negative whole
+// number when valid, NaN when the admin typed something invalid.
+function parseHadirInput(input) {
+    if (!input || input.value.trim() === '') return null;
+    const n = Number(input.value.trim());
+    return Number.isInteger(n) && n >= 0 ? n : NaN;
+}
 
 // "5 Jul" for a single day; "5–7 Jul" / "30 Jun–2 Jul" when the event spans days.
 const formatTarikhRange = (start, end) => {
@@ -553,12 +565,17 @@ export function showDetailsModal(kpiId, triggerElement) {
     const detailsModalDescription = getEl('details-modal-description');
     const detailsList = getEl('details-list');
     const detailsAddNewWrapper = getEl('details-add-new-wrapper');
+    const detailsSummary = getEl('details-summary');
 
     const { type, title, description, achieved, targetList, items } = kpi.details;
     detailsModalTitle.textContent = title;
     detailsModalDescription.textContent = description;
     detailsList.innerHTML = '';
     detailsAddNewWrapper.innerHTML = '';
+    if (detailsSummary) {
+        detailsSummary.classList.add('hidden');
+        detailsSummary.innerHTML = '';
+    }
 
     if (type === 'list') {
         const allItems = [...new Set([...(targetList || [])])];
@@ -735,11 +752,18 @@ export function showDetailsModal(kpiId, triggerElement) {
             // redundant on count-KPI rows that have one.
             const bulanBadge = (showMonth && item.bulan && !(isEventRow && item.tarikh))
                 ? `<span class="breakdown-bulan-badge">${BULAN_MY[item.bulan]}</span>` : '';
-            // Second line: the event's date, or a nudge to backfill it (admin only).
-            const metaRow = isEventRow
-                ? (tanggal
-                    ? `<p class="breakdown-meta"><i class="fas fa-calendar-day"></i><span>${tanggal}</span></p>`
-                    : (isEditMode ? `<p class="breakdown-meta breakdown-meta-warn"><i class="fas fa-exclamation-circle"></i><span>Tiada tarikh</span></p>` : ''))
+            // Kembara rows also carry how many alumni attended.
+            const hadirChip = isEventRow && kpi.id === HADIR_KPI_ID && item.hadir != null
+                ? `<span class="breakdown-hadir-chip"><i class="fas fa-users"></i><span>${Number(item.hadir).toLocaleString()} alumni</span></span>` : '';
+            // Second line: the event's date (or a nudge to backfill it) plus the
+            // attendance chip.
+            const dateMeta = tanggal
+                ? `<i class="fas fa-calendar-day"></i><span>${tanggal}</span>`
+                : (isEditMode && isEventRow
+                    ? `<i class="fas fa-exclamation-circle"></i><span>Tiada tarikh</span>`
+                    : '');
+            const metaRow = (dateMeta || hadirChip)
+                ? `<p class="breakdown-meta${!tanggal && isEditMode && isEventRow ? ' breakdown-meta-warn' : ''}">${dateMeta}${hadirChip}</p>`
                 : '';
             const valueCell = isEventRow
                 ? ''
@@ -776,6 +800,9 @@ export function showDetailsModal(kpiId, triggerElement) {
                 ? `<input type="date" id="new-breakdown-tarikh" class="p-2 border rounded-lg bg-white text-sm" min="${bounds.min}" max="${bounds.max}" title="Tarikh mula peristiwa — suku ditentukan automatik dari bulan">
                    <input type="date" id="new-breakdown-tarikh-tamat" class="p-2 border rounded-lg bg-white text-sm" min="${bounds.min}" max="${bounds.max}" title="Tarikh tamat — biar kosong jika sehari sahaja">`
                 : '';
+            const hadirField = useTarikh && kpi.id === HADIR_KPI_ID
+                ? `<input type="number" id="new-breakdown-hadir" min="0" step="1" inputmode="numeric" placeholder="Bil. alumni hadir" class="w-36 p-2 border rounded-lg" title="Bilangan alumni yang hadir — biar kosong jika tiada rekod">`
+                : '';
             detailsAddNewWrapper.innerHTML = `
                 <div class="add-new-form-wrapper border-t pt-4 mt-4">
                     <div class="flex gap-2 flex-wrap items-stretch">
@@ -783,6 +810,7 @@ export function showDetailsModal(kpiId, triggerElement) {
                         ${valueField}
                         ${addMonthField}
                         ${tarikhField}
+                        ${hadirField}
                     </div>
                     <button id="save-new-breakdown-btn" class="w-full mt-2 bg-brand-primary text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-800 transition-all">
                         Simpan Butiran
@@ -811,15 +839,23 @@ export function showDetailsModal(kpiId, triggerElement) {
                         showToastNotification('Tarikh tamat mesti selepas tarikh mula.', 'danger');
                         return;
                     }
+                    const hadir = parseHadirInput(document.getElementById('new-breakdown-hadir'));
+                    if (Number.isNaN(hadir)) {
+                        showToastNotification('Bilangan hadir mesti nombor bulat positif.', 'danger');
+                        return;
+                    }
                     // The event's date decides where the record starts; cumulative
                     // storage then carries it into every later quarter.
                     const startQ = Math.ceil(bulan / 3);
                     const payload = { name, value: 1, bulan, tarikh };
                     if (tarikhTamat && tarikhTamat !== tarikh) payload.tarikhTamat = tarikhTamat;
+                    if (hadir !== null) payload.hadir = hadir;
                     await updateKpiBreakdownList(`q${startQ}`, kpi.id, payload, 'add');
                     nameInput.value = '';
                     tarikhInput.value = '';
                     tarikhTamatInput.value = '';
+                    const hadirInput = document.getElementById('new-breakdown-hadir');
+                    if (hadirInput) hadirInput.value = '';
                     return;
                 }
                 const valueInput = document.getElementById('new-breakdown-value');
@@ -866,6 +902,17 @@ export function showDetailsModal(kpiId, triggerElement) {
                     handleEditBreakdownItem(li, kpi.id, itemIndex, item);
                 }
             };
+        }
+    }
+    // Cumulative attendance across the events shown for the current quarter.
+    if (detailsSummary && type === 'breakdownList' && kpi.id === HADIR_KPI_ID) {
+        const totalHadir = (items || []).reduce((sum, it) => sum + (Number(it.hadir) || 0), 0);
+        if (totalHadir > 0) {
+            detailsSummary.innerHTML = `
+                <i class="fas fa-users"></i>
+                <span>Jumlah kehadiran alumni</span>
+                <strong>${totalHadir.toLocaleString()} alumni</strong>`;
+            detailsSummary.classList.remove('hidden');
         }
     }
     openModal(detailsModal, triggerElement);
@@ -937,6 +984,9 @@ function handleEditBreakdownItem(liElement, kpiId, itemIndex, item) {
     const valueField = useTarikh
         ? ''
         : `<input type="number" class="w-24 p-1 border rounded-lg bg-gray-100 edit-value text-sm" value="${escapeHtml(item.value)}">`;
+    const hadirField = useTarikh && kpiId === HADIR_KPI_ID
+        ? `<input type="number" class="w-36 p-1 border rounded-lg bg-gray-100 edit-hadir text-sm" min="0" step="1" inputmode="numeric" placeholder="Bil. alumni hadir" value="${item.hadir != null ? escapeHtml(item.hadir) : ''}" title="Bilangan alumni yang hadir">`
+        : '';
 
     liElement.innerHTML = `
         <div class="flex flex-col w-full gap-1">
@@ -947,6 +997,7 @@ function handleEditBreakdownItem(liElement, kpiId, itemIndex, item) {
             </div>
             <div class="flex items-center gap-1">
                 ${valueField}
+                ${hadirField}
                 <div class="flex items-center ml-auto gap-2">
                     <button class="save-breakdown-item-btn text-green-500 hover:text-green-700"><i class="fas fa-check"></i></button>
                     <button class="cancel-breakdown-edit-btn text-red-500 hover:text-red-700"><i class="fas fa-times"></i></button>
@@ -975,9 +1026,16 @@ function handleEditBreakdownItem(liElement, kpiId, itemIndex, item) {
                 showToastNotification('Tarikh tamat mesti selepas tarikh mula.', 'danger');
                 return;
             }
+            const hadir = parseHadirInput(liElement.querySelector('.edit-hadir'));
+            if (Number.isNaN(hadir)) {
+                showToastNotification('Bilangan hadir mesti nombor bulat positif.', 'danger');
+                return;
+            }
             const data = { name: newName, bulan, tarikh };
             if (tarikhTamat && tarikhTamat !== tarikh) data.tarikhTamat = tarikhTamat;
             else if (item.tarikhTamat) data.tarikhTamat = null;   // cleared
+            if (hadir !== null) data.hadir = hadir;
+            else if (item.hadir != null) data.hadir = null;       // cleared
             const activeQuarterKey = `q${qNum}`;
             await updateKpiBreakdownList(
                 activeQuarterKey, kpiId,

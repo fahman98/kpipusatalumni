@@ -1643,6 +1643,53 @@ body.dark-mode .breakdown-meta i { color: #6b7280; }
 .breakdown-meta-warn, .breakdown-meta-warn i { color: #d97706; }
 body.dark-mode .breakdown-meta-warn, body.dark-mode .breakdown-meta-warn i { color: #fbbf24; }
 
+/* Attendance chip on Kembara rows (bilangan alumni hadir) */
+.breakdown-hadir-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-left: auto;
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1d4ed8;
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+}
+.breakdown-hadir-chip i { color: #3b82f6; font-size: 0.6rem; }
+body.dark-mode .breakdown-hadir-chip {
+    background: #1e3a8a;
+    border-color: #1e40af;
+    color: #93c5fd;
+}
+body.dark-mode .breakdown-hadir-chip i { color: #93c5fd; }
+
+/* Total attendance banner under the Kembara breakdown list */
+#details-summary {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.9rem;
+    padding: 0.55rem 0.75rem;
+    border-radius: 0.6rem;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1e40af;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+#details-summary i { color: #3b82f6; }
+#details-summary strong { margin-left: auto; font-size: 0.92rem; }
+#details-summary.hidden { display: none; }
+body.dark-mode #details-summary {
+    background: #1e3a8a;
+    border-color: #1e40af;
+    color: #bfdbfe;
+}
+body.dark-mode #details-summary i { color: #93c5fd; }
+
 /* ===== YEAR PAGE TRANSITION VEIL ===== */
 #year-veil {
     position: fixed;
