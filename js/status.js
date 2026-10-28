@@ -20,3 +20,48 @@ export function statusHex(percentage) { return STATUS_HEX[statusTier(percentage)
 // Tailwind/CSS background class for progress bars & tinted surfaces.
 export const STATUS_BAR_CLASS = { good: 'bg-status-good', ok: 'bg-status-ok', bad: 'bg-status-bad' };
 export function statusBarClass(percentage) { return STATUS_BAR_CLASS[statusTier(percentage)]; }
+
+// --- PACE (status ikut suku) ---------------------------------------------
+// Quarter documents hold CUMULATIVE year-to-date figures (a value saved in Q2
+// is carried into Q3 and Q4), but the target is annual. Judging Q1's 25% of
+// the annual target against the 75%/30% thresholds painted every KPI red each
+// spring even when it was exactly on schedule. Status is therefore judged
+// against the share of the target that should be done by now, while the
+// percentage shown stays the honest figure against the full annual target.
+
+// Share (0-1] of the annual target expected by the end of `quarterNum` in
+// `year`. In the running year it is capped at the part of the year already
+// gone (to the day), so a quarter still under way is judged against today
+// rather than its last day.
+export function expectedFraction(year, quarterNum, now = new Date()) {
+    const q = Math.min(Math.max(parseInt(quarterNum, 10) || 4, 1), 4);
+    const quarterEnd = q / 4;
+    const y = parseInt(year, 10);
+    if (y !== now.getFullYear()) return quarterEnd;
+    const start = new Date(y, 0, 1), end = new Date(y + 1, 0, 1);
+    return Math.min(quarterEnd, (now - start) / (end - start));
+}
+
+// The dashboard's current year + quarter, set by main.js on every quarter or
+// year switch so cards, stats, table and PDF all judge the same way.
+let paceFraction = 1;
+export function setPaceContext(year, quarterNum) {
+    paceFraction = expectedFraction(year, quarterNum);
+}
+export function getPaceFraction() { return paceFraction; }
+
+// Does this KPI accumulate over the year? Percentage KPIs (e.g. a
+// satisfaction index) are a level, not a running total, so they are not
+// pro-rated.
+export function isPacedKpi(kpi) {
+    return !!kpi && !kpi.isPercentage;
+}
+
+// The percentage the status tier is judged on: `pct` against the target
+// expected by now. 100 means exactly on schedule.
+export function paceAdjustedPct(pct, fraction = paceFraction) {
+    return fraction > 0 ? (Number(pct) || 0) / fraction : (Number(pct) || 0);
+}
+export function kpiStatusPct(kpi, pct) {
+    return isPacedKpi(kpi) ? paceAdjustedPct(pct) : (Number(pct) || 0);
+}

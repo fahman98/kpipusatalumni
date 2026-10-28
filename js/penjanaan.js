@@ -19,7 +19,7 @@ import {
     getPendanaanKpiTarget
 } from './api.js';
 
-import { statusBarClass } from './status.js';
+import { statusBarClass, expectedFraction, paceAdjustedPct } from './status.js';
 
 const PENDANAAN_KPI_ID = 'pendanaan';
 
@@ -497,7 +497,14 @@ function render() {
     const total = itemsIndexed.reduce((sum, it) => sum + (Number(it.value) || 0), 0);
     const pct = cachedTarget > 0 ? Math.min((total / cachedTarget) * 100, 100) : 0;
     const pctRaw = cachedTarget > 0 ? (total / cachedTarget) * 100 : 0;
-    const barColor = statusBarClass(pctRaw);
+    // This view covers the whole year, so judge it against the share of the
+    // annual target due by today (same rule as the dashboard cards).
+    const paceFraction = expectedFraction(currentYear, 4);
+    const barColor = statusBarClass(paceAdjustedPct(pctRaw, paceFraction));
+    const paceMarkerHtml = paceFraction < 1
+        ? `<div class="kpi-pace-marker kpi-pace-marker-light" style="left:${paceFraction * 100}%" aria-hidden="true"></div>` : '';
+    const paceTitle = paceFraction < 1
+        ? ` title="Jangkaan setakat ini: ${Math.round(paceFraction * 100)}% daripada sasaran tahunan"` : '';
 
     const addBtnHtml = isAdminMode
         ? `<button id="penjanaan-add-btn" class="bg-brand-primary text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-800 shadow-md transition-all text-sm flex items-center gap-2 flex-shrink-0">
@@ -550,10 +557,11 @@ function render() {
                     <p class="text-base font-bold leading-none">${escapeHtml(formatRM(cachedTarget))}</p>
                 </div>
             </div>
-            <div class="w-full bg-white/20 rounded-full h-3 overflow-hidden">
+            <div class="relative w-full bg-white/20 rounded-full h-3 overflow-hidden"${paceTitle}>
                 <div class="${barColor} h-3 rounded-full transition-all duration-700" style="width:${pct}%"></div>
+                ${paceMarkerHtml}
             </div>
-            <p class="text-right text-white/90 text-sm font-bold mt-1.5">${pctRaw.toFixed(2)}%</p>
+            <p class="text-right text-white/90 text-sm font-bold mt-1.5">${pctRaw.toFixed(1)}%</p>
         </div>
 
         ${groupsHtml}

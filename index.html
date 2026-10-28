@@ -58,8 +58,8 @@
     <link rel="apple-touch-icon" href="./images/apple-touch-icon.png">
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="style.css?v=5.1">
-    <link rel="stylesheet" href="tailwind.css?v=8">
+    <link rel="stylesheet" href="style.css?v=5.2">
+    <link rel="stylesheet" href="tailwind.css?v=9">
 </head>
 
 <body class="bg-gray-100 relative overflow-x-hidden">
@@ -373,6 +373,12 @@
                 </div>
             </div>
         </div>
+
+        <!-- Explains the pace marker; text set in main.js, hidden when the full year is due -->
+        <p id="pace-note" class="hidden -mt-1 mb-4 px-1 items-start gap-2 text-xs text-gray-500 leading-snug">
+            <span class="pace-note-swatch" aria-hidden="true"></span>
+            <span id="pace-note-text"></span>
+        </p>
 
         <div id="kpi-grid-container" class="relative grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             <!-- Content or Skeleton will be injected here -->
@@ -827,25 +833,21 @@
                     </div>
                 </div>
 
-                <!-- PROGRESS SECTION: thicker bar + inline label (#5) -->
+                <!-- PROGRESS SECTION: details chip + percentage, bar with pace marker -->
                 <div class="px-5 pb-4 mt-3">
-                    <div class="flex justify-between items-center mb-1.5">
-                        <div class="details-btn-wrapper w-7 h-7">
-                            <button
-                                class="show-details-btn text-gray-400 hover:text-brand-primary rounded-full w-full h-full items-center justify-center hover:bg-gray-100 transition-all hidden"
-                                aria-label="Lihat Butiran" title="Lihat Butiran">
-                                <i class="fas fa-ellipsis-h text-xs"></i>
-                            </button>
-                        </div>
-                        <p class="kpi-percentage-display text-right text-xs font-bold text-gray-500">0.00%</p>
+                    <div class="flex justify-between items-center gap-2 mb-1.5 min-h-[1.75rem]">
+                        <button class="show-details-btn kpi-details-chip hidden"
+                            aria-label="Lihat Butiran" title="Lihat Butiran">
+                            <i class="fas fa-list-ul" aria-hidden="true"></i>
+                            <span class="kpi-details-label">Butiran</span>
+                            <i class="fas fa-chevron-right kpi-details-chevron" aria-hidden="true"></i>
+                        </button>
+                        <p class="kpi-percentage-display ml-auto text-right text-xs font-bold text-gray-500">0.0%</p>
                     </div>
-                    <!-- h-5 = 20px, label inside bar (#5) -->
-                    <div class="w-full bg-gray-100 rounded-full h-5 overflow-hidden">
-                        <div class="progress-bar h-5 rounded-full flex items-center justify-end pr-2"
-                            style="width: 0%">
-                            <span class="progress-label text-white text-xs font-bold leading-none"
-                                style="opacity:0"></span>
-                        </div>
+                    <div class="kpi-bar-track relative w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+                        <div class="progress-bar h-3 rounded-full" style="width: 0%"></div>
+                        <!-- Where a cumulative KPI should be by now (set in createKpiCard) -->
+                        <div class="kpi-pace-marker hidden" aria-hidden="true"></div>
                     </div>
                 </div>
             </div>
@@ -1011,7 +1013,7 @@
         </div>
 
         <!-- Load Main Script as Module -->
-        <script type="module" src="js/main.js?v=5.2"></script>
+        <script type="module" src="js/main.js?v=5.3"></script>
 </body>
 
 </html>
