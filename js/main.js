@@ -42,7 +42,7 @@ import { renderGaugeChart, showHistoryChart, destroyKpiChart } from './charts.js
 import { handleAdminLogin, resetTerminalModal, runBootSequence, randomGlitch, runLogoutSequence } from './admin.js';
 import { initTakwim } from './takwim.js';
 import { initPenjanaan } from './penjanaan.js';
-import { statusTier, statusHex } from './status.js';
+import { statusTier, statusHex, setPaceContext, getPaceFraction, kpiStatusPct } from './status.js';
 import { isAdminUser } from './auth.js';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -191,6 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- MAIN FUNCTION: UPDATE DASHBOARD ---
     window.updateDashboard = function (quarterKey) {
         currentQuarter = quarterKey;
+        setPaceContext(selectedYear, quarterKey.replace('q', ''));
         // Remember the active quarter so a refresh or SW update restores the
         // user's place instead of snapping back to Suku 1.
         try { sessionStorage.setItem('kpi_active_quarter', quarterKey); } catch (e) {}
@@ -240,6 +241,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (mainContentWrapper) mainContentWrapper.classList.remove('hidden');
                 if (emptyStateContainer) emptyStateContainer.classList.add('hidden');
                 if (statsBar) statsBar.classList.add('hidden');
+                updatePaceNote(null);
                 if (adminSetupActions) adminSetupActions.classList.add('hidden');
                 if (mainTitle) mainTitle.innerHTML = `Dashboard KPI ${selectedYear} <br> Ralat Sambungan`;
                 return;
@@ -250,6 +252,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (kpiGridContainer) kpiGridContainer.innerHTML = '';
                 if (emptyStateContainer) emptyStateContainer.classList.remove('hidden');
                 if (statsBar) statsBar.classList.add('hidden');
+                updatePaceNote(null);
 
                 if (isEditMode) {
                     if (adminSetupActions) adminSetupActions.classList.remove('hidden');
@@ -298,6 +301,7 @@ document.addEventListener('DOMContentLoaded', () => {
             kpiDataCache[quarterKey].processedKpis = processedKpis;
 
             let totalPct = 0;
+            let totalStatusPct = 0;
             let count = 0;
             let goodCount = 0, okCount = 0, badCount = 0;
 
@@ -387,9 +391,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const pct = getKpiPercentage(kpi);
                 const cappedPct = Math.min(pct, 100);
                 totalPct += cappedPct;
+                const sPct = kpiStatusPct(kpi, pct);
+                totalStatusPct += Math.min(sPct, 100);
                 count++;
 
-                const tier = statusTier(pct);
+                const tier = statusTier(sPct);
                 if (tier === 'good') goodCount++;
                 else if (tier === 'ok') okCount++;
                 else badCount++;
@@ -397,12 +403,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const overall = count > 0 ? totalPct / count : 0;
             renderGaugeChart(overall);
-            updateFavicon(overall);
+            updateFavicon(overall, count > 0 ? totalStatusPct / count : 0);
             document.title = `KPI ${overall.toFixed(0)}% · Pusat Alumni UPSI`;
 
             // Update stats bar
             if (statsBar) {
                 statsBar.classList.remove('hidden');
+                updatePaceNote(quarterKey);
                 const el = (id) => document.getElementById(id);
                 if (el('stat-total')) el('stat-total').textContent = count;
                 if (el('stat-good')) el('stat-good').textContent = goodCount;
@@ -687,7 +694,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const valStr = kpi.isCurrency ? 'RM ' + Math.floor(val).toLocaleString()
                      : kpi.isPercentage ? val.toFixed(1) + '%'
                      : Math.floor(val).toLocaleString();
-        const color = statusHex(pct);
+        const color = statusHex(kpiStatusPct(kpi, pct));
 
         getEl('focus-kpi-name').textContent = kpi.name;
         getEl('focus-kpi-pct').textContent = cappedPct.toFixed(1) + '%';
@@ -1182,6 +1189,30 @@ document.addEventListener('DOMContentLoaded', () => {
     // There is no print button any more — the branded PDF export is the
     // supported way to produce a report. These hooks only make the browser's
     // own Ctrl+P output presentable for anyone who reaches for it.
+    // Sentence explaining what status is judged against, shared by the line
+    // under the stats bar and the PDF. Empty once the whole annual target is
+    // due (a finished year's Suku 4), where status already means the plain %.
+    function paceNoteText(quarterKey) {
+        const fraction = getPaceFraction();
+        if (fraction >= 1) return '';
+        const qNum = parseInt(quarterKey.replace('q', ''), 10);
+        const when = fraction < qNum / 4
+            ? `setakat hari ini (${new Date().toLocaleDateString('en-GB')})`
+            : `pada akhir Suku ${qNum}`;
+        return `Status dinilai berbanding jangkaan ${when} (${Math.round(fraction * 100)}% daripada sasaran tahunan). KPI berbentuk peratus dinilai terus.`;
+    }
+
+    function updatePaceNote(quarterKey) {
+        const note = getEl('pace-note');
+        const text = getEl('pace-note-text');
+        if (!note || !text) return;
+        // null = no data on screen (empty year / load error) → nothing to explain
+        const msg = quarterKey ? paceNoteText(quarterKey) : '';
+        text.textContent = msg && `${msg} Garis pada bar menandakan jangkaan ini.`;
+        note.classList.toggle('hidden', !msg);
+        note.classList.toggle('flex', !!msg);
+    }
+
     const PRINT_QUARTER_LABELS = { q1: 'Suku Pertama', q2: 'Suku Kedua', q3: 'Suku Ketiga', q4: 'Suku Keempat' };
 
     function updatePrintMeta() {
@@ -1295,7 +1326,7 @@ document.addEventListener('DOMContentLoaded', () => {
             data.processedKpis.forEach((kpi) => {
                 const pct = getKpiPercentage(kpi);
                 totalPct += Math.min(pct, 100);
-                const tier = statusTier(pct);
+                const tier = statusTier(kpiStatusPct(kpi, pct));
                 if (tier === 'good') goodCount++;
                 else if (tier === 'ok') okCount++;
                 else badCount++;
@@ -1385,6 +1416,16 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             y += statH + 6;
 
+            const paceNote = paceNoteText(currentQuarter);
+            if (paceNote) {
+                doc.setFont('helvetica', 'italic');
+                doc.setFontSize(7);
+                doc.setTextColor(100, 116, 139);
+                const lines = doc.splitTextToSize(paceNote, contentW);
+                doc.text(lines, margin, y - 2);
+                y += lines.length * 3.2 + 2;
+            }
+
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(7.5);
             doc.setTextColor(100, 116, 139);
@@ -1412,7 +1453,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         targetStr,
                         `${pct.toFixed(2)}%`,
                         kpi.trend || '—',
-                        STATUS_LABEL[statusTier(pct)],
+                        STATUS_LABEL[statusTier(kpiStatusPct(kpi, pct))],
                     ];
                 }),
                 theme: 'grid',
@@ -1445,10 +1486,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (hookData.section !== 'body') return;
                     const kpi = data.processedKpis[hookData.row.index];
                     if (!kpi) return;
-                    const pct = getKpiPercentage(kpi);
-                    const tier = statusTier(pct);
+                    const sPct = kpiStatusPct(kpi, getKpiPercentage(kpi));
+                    const tier = statusTier(sPct);
                     if (hookData.column.index === 4) {
-                        hookData.cell.styles.textColor = statusHex(pct);
+                        hookData.cell.styles.textColor = statusHex(sPct);
                     } else if (hookData.column.index === 5) {
                         if (kpi.trendColor === 'text-green-600') hookData.cell.styles.textColor = [22, 163, 74];
                         else if (kpi.trendColor === 'text-red-600') hookData.cell.styles.textColor = [220, 38, 38];
@@ -1456,7 +1497,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     } else if (hookData.column.index === 6) {
                         // Tint only the status cell so the tint reads as a badge
                         // instead of washing out the whole row.
-                        hookData.cell.styles.textColor = statusHex(pct);
+                        hookData.cell.styles.textColor = statusHex(sPct);
                         hookData.cell.styles.fillColor = tier === 'good' ? [220, 252, 231]
                             : tier === 'ok' ? [254, 249, 195]
                             : [254, 226, 226];
@@ -1612,7 +1653,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // because that message is driven by hidden *cards* which aren't shown here.
         const wantStatus = activeStatusFilter;
         const visibleKpis = data.processedKpis.filter(kpi =>
-            wantStatus === 'all' || statusTier(getKpiPercentage(kpi)) === wantStatus
+            wantStatus === 'all' || statusTier(kpiStatusPct(kpi, getKpiPercentage(kpi))) === wantStatus
         );
 
         const emptyState = getEl('empty-search-state');
@@ -1627,12 +1668,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 ? 'RM ' + val.toLocaleString('en-US', { minimumFractionDigits: 0 })
                 : kpi.isPercentage ? val.toFixed(1) + '%'
                 : Math.floor(val).toLocaleString();
-            const dotColor  = statusHex(pct);
-            const badge     = pct >= 75 ? 'bg-green-100 text-green-700'
-                            : pct >= 30 ? 'bg-amber-100 text-amber-700'
-                            :             'bg-red-100 text-red-600';
-            const iconBg    = pct >= 75 ? 'bg-green-50'   : pct >= 30 ? 'bg-amber-50'   : 'bg-red-50';
-            const iconClr   = pct >= 75 ? 'text-green-600': pct >= 30 ? 'text-amber-600': 'text-red-600';
+            const sPct      = kpiStatusPct(kpi, pct);
+            const tier      = statusTier(sPct);
+            const dotColor  = statusHex(sPct);
+            const badge     = { good: 'bg-green-100 text-green-700', ok: 'bg-amber-100 text-amber-700', bad: 'bg-red-100 text-red-600' }[tier];
+            const iconBg    = { good: 'bg-green-50',   ok: 'bg-amber-50',   bad: 'bg-red-50' }[tier];
+            const iconClr   = { good: 'text-green-600', ok: 'text-amber-600', bad: 'text-red-600' }[tier];
             const trendTxt  = kpi.trend || '—';
             const trendClr  = kpi.trendColor || 'text-gray-400';
 
@@ -1721,13 +1762,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ===== ANIMATED FAVICON =====
-    function updateFavicon(pct) {
+    // `pct` is drawn as the figure; `statusPct` (pace-adjusted) picks the colour.
+    function updateFavicon(pct, statusPct = pct) {
         try {
             const size = 64, cx = 32, cy = 32, r = 27;
             const canvas = document.createElement('canvas');
             canvas.width = size; canvas.height = size;
             const ctx = canvas.getContext('2d');
-            const color = statusHex(pct);
+            const color = statusHex(statusPct);
 
             // Coloured background circle
             ctx.fillStyle = color;

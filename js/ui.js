@@ -8,7 +8,7 @@ import {
     selectedYear
 } from './api.js';
 
-import { statusTier, statusHex, statusBarClass } from './status.js';
+import { statusTier, statusHex, statusBarClass, kpiStatusPct, isPacedKpi, getPaceFraction } from './status.js';
 
 const BULAN_MY = ['', 'Jan', 'Feb', 'Mac', 'Apr', 'Mei', 'Jun', 'Jul', 'Ogos', 'Sep', 'Okt', 'Nov', 'Dis'];
 const BULAN_FULL = ['', 'Januari', 'Februari', 'Mac', 'April', 'Mei', 'Jun', 'Julai', 'Ogos', 'September', 'Oktober', 'November', 'Disember'];
@@ -105,6 +105,15 @@ const FA_TO_PHOSPHOR = {
     'fa-star':            'ph-star',
     'fa-chart-bar':       'ph-chart-bar',
 };
+
+// Breakdown rows use the same money format as the card, so a record reads
+// "RM 42,000.00" in the list and on the card rather than a bare "42,000".
+function formatItemValue(kpi, value) {
+    const n = Number(value) || 0;
+    return kpi.isCurrency
+        ? `RM ${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+        : n.toLocaleString();
+}
 
 export function getPhosphorIcon(faIcon) {
     if (!faIcon) return 'ph-chart-bar';
@@ -344,16 +353,35 @@ export function createKpiCard(kpi) {
     const cardClone = template.content.cloneNode(true);
     const cardElement = cardClone.querySelector('.kpi-card');
     const displayPercentage = getKpiPercentage(kpi);
+    // Colours follow the pace-adjusted figure (see status.js); the bar, ring and
+    // percentage text still show progress against the full annual target.
+    const statusPct = kpiStatusPct(kpi, displayPercentage);
     const isComplete = displayPercentage >= 100;
 
     cardElement.querySelector('.show-chart-btn').dataset.kpiId = kpi.id;
     const detailsBtn = cardElement.querySelector('.show-details-btn');
 
-    // Logic Butang Titik Tiga
+    // Details chip — names what it opens and how many records sit behind it
     if (kpi.details) {
         detailsBtn.dataset.kpiId = kpi.id;
         detailsBtn.classList.remove('hidden');
-        detailsBtn.classList.add('flex');
+        const records = kpi.details.items || kpi.details.achieved;
+        const count = Array.isArray(records) ? records.length : 0;
+        if (count > 0) {
+            cardElement.querySelector('.kpi-details-label').textContent = `Butiran (${count})`;
+            detailsBtn.setAttribute('aria-label', `Lihat butiran, ${count} rekod`);
+        }
+    }
+
+    // Pace marker: where a cumulative KPI should stand by now
+    const paceMarker = cardElement.querySelector('.kpi-pace-marker');
+    const paceFraction = getPaceFraction();
+    if (paceMarker && isPacedKpi(kpi) && paceFraction < 1) {
+        const expectedPct = paceFraction * 100;
+        paceMarker.style.left = `${expectedPct}%`;
+        paceMarker.classList.remove('hidden');
+        cardElement.querySelector('.kpi-bar-track').title =
+            `Jangkaan setakat ini: ${expectedPct.toFixed(0)}% daripada sasaran tahunan`;
     }
 
     cardElement.querySelector('.kpi-icon').classList.add(getPhosphorIcon(kpi.icon));
@@ -369,26 +397,26 @@ export function createKpiCard(kpi) {
     // #8: Coloured left status bar
     const statusBarEl = cardElement.querySelector('.kpi-status-bar');
     if (statusBarEl) {
-        statusBarEl.classList.add(getStatusColor(displayPercentage));
+        statusBarEl.classList.add(getStatusColor(statusPct));
     }
 
     // #9: Status-tinted icon container background
     const iconContainer = cardElement.querySelector('.kpi-icon-container');
     if (iconContainer) {
-        iconContainer.classList.add('icon-bg-' + statusTier(displayPercentage));
+        iconContainer.classList.add('icon-bg-' + statusTier(statusPct));
     }
 
     // Gradient text on KPI value
     const animatedValueEl = cardElement.querySelector('.animated-value');
     if (animatedValueEl) {
-        animatedValueEl.classList.add('value-gradient-' + statusTier(displayPercentage));
+        animatedValueEl.classList.add('value-gradient-' + statusTier(statusPct));
     }
 
     // Ring progress: set CSS vars for conic-gradient
     const ringWrap = cardElement.querySelector('.kpi-ring-wrap');
     if (ringWrap) {
         const cappedPct = Math.min(displayPercentage, 100);
-        const ringColor = statusHex(displayPercentage);
+        const ringColor = statusHex(statusPct);
         ringWrap.style.setProperty('--ring-pct', `${cappedPct}%`);
         ringWrap.style.setProperty('--ring-color', ringColor);
     }
@@ -455,7 +483,7 @@ export function createKpiCard(kpi) {
         trendElement.remove();
     }
 
-    cardElement.querySelector('.progress-bar').classList.add(getStatusColor(displayPercentage));
+    cardElement.querySelector('.progress-bar').classList.add(getStatusColor(statusPct));
     cardElement.querySelector('.progress-bar').dataset.targetWidth = `${Math.min(displayPercentage, 100)}%`;
 
     const targetDisplay = cardElement.querySelector('.kpi-target-display');
@@ -466,7 +494,7 @@ export function createKpiCard(kpi) {
         if (typeof displayTarget === 'number') {
             const formattedTarget = displayTarget > 9999 ? `${(displayTarget / 1000).toLocaleString()}k` : displayTarget.toLocaleString();
             // #6: Target on own line below value, formatted as "Sasaran: X"
-            targetDisplay.textContent = `Sasaran: ${formattedTarget}`;
+            targetDisplay.textContent = `Sasaran: ${kpi.isCurrency ? 'RM ' : ''}${formattedTarget}`;
         } else {
             targetDisplay.remove();
         }
@@ -507,7 +535,7 @@ export function animateCardElements(card, kpi) {
 
     const animatedValueEl = card.querySelector('.animated-value');
     if (animatedValueEl) {
-        let formatter = kpi.isPercentage ? val => `${val.toFixed(2)}%` :
+        let formatter = kpi.isPercentage ? val => `${val.toFixed(1)}%` :
             kpi.isCurrency ? val => `RM ${val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` :
                 val => Math.floor(val).toLocaleString();
         animateValue(animatedValueEl, 0, valueToAnimate, 1500, formatter);
@@ -515,20 +543,7 @@ export function animateCardElements(card, kpi) {
 
     const percentageDisplayEl = card.querySelector('.kpi-percentage-display');
     if (percentageDisplayEl) {
-        animateValue(percentageDisplayEl, 0, displayPercentage, 1500, val => `${val.toFixed(2)}%`);
-    }
-
-    // #5: Show percentage label inside progress bar after bar animation completes
-    const progressLabel = card.querySelector('.progress-label');
-    if (progressLabel) {
-        const clampedPct = Math.min(displayPercentage, 100);
-        // Only show label when bar is wide enough to contain text (≥ 20%)
-        if (clampedPct >= 20) {
-            setTimeout(() => {
-                progressLabel.textContent = `${clampedPct.toFixed(1)}%`;
-                progressLabel.style.opacity = '1';
-            }, 1600); // after 1.5s bar animation
-        }
+        animateValue(percentageDisplayEl, 0, displayPercentage, 1500, val => `${val.toFixed(1)}%`);
     }
 
     if (displayPercentage >= 100) {
@@ -568,7 +583,7 @@ export function showDetailsModal(kpiId, triggerElement) {
     const detailsSummary = getEl('details-summary');
 
     const { type, title, description, achieved, targetList, items } = kpi.details;
-    detailsModalTitle.textContent = title;
+    detailsModalTitle.textContent = title || kpi.name;
     detailsModalDescription.textContent = description;
     detailsList.innerHTML = '';
     detailsAddNewWrapper.innerHTML = '';
@@ -767,7 +782,7 @@ export function showDetailsModal(kpiId, triggerElement) {
                 : '';
             const valueCell = isEventRow
                 ? ''
-                : `<span class="font-bold text-brand-primary item-value">${escapeHtml(item.value.toLocaleString())}</span>`;
+                : `<span class="font-bold text-brand-primary item-value">${escapeHtml(formatItemValue(kpi, item.value))}</span>`;
             const actions = isEditMode ? `
                 <div class="item-actions flex items-center">
                     <button class="edit-breakdown-item-btn text-gray-400 hover:text-brand-primary" data-index="${index}"><i class="fas fa-pencil-alt"></i></button>

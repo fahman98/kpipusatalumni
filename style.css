@@ -692,6 +692,58 @@ body.dark-mode #desc-input {
     color: #0d47a1;
 }
 
+/* "Butiran (n)" chip — replaces the bare ellipsis so it reads as a button */
+.kpi-details-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+    border: 1px solid #dbeafe;
+    background: #eff6ff;
+    color: #0d47a1;
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1;
+    white-space: nowrap;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.kpi-details-chip.hidden { display: none; }
+.kpi-details-chip:hover { background: #dbeafe; border-color: #bfdbfe; }
+.kpi-details-chip:focus-visible { outline: 2px solid #0d47a1; outline-offset: 2px; }
+.kpi-details-chip i { font-size: 0.65rem; }
+.kpi-details-chip .kpi-details-chevron { font-size: 0.55rem; opacity: 0.7; }
+body.dark-mode .kpi-details-chip { background: #1e3a8a; border-color: #1e40af; color: #bfdbfe; }
+body.dark-mode .kpi-details-chip:hover { background: #1e40af; }
+
+/* Pace marker: where a cumulative KPI should be by now (see status.js) */
+.kpi-pace-marker {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    margin-left: -1px;
+    background: #1f2937;
+    opacity: 0.55;
+    pointer-events: none;
+}
+.kpi-pace-marker.hidden { display: none; }
+.kpi-pace-marker-light,
+body.dark-mode .kpi-pace-marker { background: #ffffff; opacity: 0.8; }
+
+/* Explains the marker, under the stats bar */
+.pace-note-swatch {
+    flex-shrink: 0;
+    width: 2px;
+    height: 0.9rem;
+    margin-top: 0.1rem;
+    border-radius: 1px;
+    background: #1f2937;
+    opacity: 0.55;
+}
+body.dark-mode #pace-note { color: #9ca3af; }
+body.dark-mode .pace-note-swatch { background: #ffffff; opacity: 0.8; }
+
 /* ===== PHOSPHOR ICONS (DUOTONE) ===== */
 /* Duotone fill layer opacity — subtle secondary layer */
 .kpi-icon-container { --ph-fill-opacity: 0.25; }
@@ -1257,8 +1309,7 @@ body.dark-mode .theme-toggle-btn:hover {
     .kpi-card .kpi-trend { font-size: 0.65rem !important; }
     .kpi-card .mt-3 { margin-top: 0.45rem !important; }
     .kpi-card .pb-4 { padding-bottom: 0.55rem !important; }
-    .kpi-card .h-5 { height: 14px !important; }
-    .kpi-card .progress-label { font-size: 0.6rem !important; }
+    .kpi-card .h-3 { height: 10px !important; }
 
     /* Solid status colours: gradient text (background-clip:text) comes out
        blank when background graphics are disabled in the print dialog. */
