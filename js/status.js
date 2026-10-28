@@ -13,6 +13,9 @@ export function statusTier(percentage) {
     return 'bad';
 }
 
+// Words for each tier — the colour is never the only signal.
+export const STATUS_LABEL = { good: 'Cemerlang', ok: 'Sederhana', bad: 'Perlu Perhatian' };
+
 // Solid hex used on canvas (favicon, gauges), rings and status dots.
 export const STATUS_HEX = { good: '#43a047', ok: '#f59e0b', bad: '#e53935' };
 export function statusHex(percentage) { return STATUS_HEX[statusTier(percentage)]; }

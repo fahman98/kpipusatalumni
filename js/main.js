@@ -42,7 +42,7 @@ import { renderGaugeChart, showHistoryChart, destroyKpiChart } from './charts.js
 import { handleAdminLogin, resetLoginModal, runLogoutSequence } from './admin.js';
 import { initTakwim } from './takwim.js';
 import { initPenjanaan } from './penjanaan.js';
-import { statusTier, statusHex, setPaceContext, getPaceFraction, kpiStatusPct } from './status.js';
+import { statusTier, statusHex, setPaceContext, getPaceFraction, kpiStatusPct, STATUS_LABEL } from './status.js';
 import { isAdminUser } from './auth.js';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -133,6 +133,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function subscribeFooter(year) {
         if (unsubLastUpdated) { unsubLastUpdated(); unsubLastUpdated = null; }
         lastUpdatedLabel = null;
+        // Drop the previous year's quarter date too, or a year with no data
+        // kept showing the last year's "Data dikemaskini pada ..." line.
+        quarterFooterDate = '';
         renderFooter();
         unsubLastUpdated = subscribeLastUpdated(year, (label) => {
             lastUpdatedLabel = label;
@@ -180,11 +183,23 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     } catch (e) { /* sessionStorage unavailable — default to Suku 1 */ }
 
-    // Update admin action button labels with dynamic years
-    const cloneBtnLabel = document.getElementById('clone-btn-label');
-    if (cloneBtnLabel) cloneBtnLabel.textContent = `Copy Struktur ${prevYear}`;
-    const reCloneBtnLabel = document.getElementById('reclone-btn-label');
-    if (reCloneBtnLabel) reCloneBtnLabel.textContent = `Fix/Reset ${prevYear}`;
+    // Copy / reset always work on the year in the selector, sourcing the year
+    // before it. They used to be pinned to the calendar year (label, warning)
+    // and to calendar-year-minus-one (source) while writing to the SELECTED
+    // year, so viewing 2025 and pressing reset zeroed 2025 under a warning
+    // that named 2026.
+    const cloneSourceYear = () => String(parseInt(selectedYear, 10) - 1);
+    function updateCloneLabels() {
+        const target = String(selectedYear), source = cloneSourceYear();
+        const cloneBtnLabel = getEl('clone-btn-label');
+        if (cloneBtnLabel) cloneBtnLabel.textContent = `Salin Struktur ${source}`;
+        const reCloneBtnLabel = getEl('reclone-btn-label');
+        if (reCloneBtnLabel) reCloneBtnLabel.textContent = `Reset Data ${target}`;
+        const reCloneDesc = getEl('reclone-desc');
+        if (reCloneDesc) reCloneDesc.textContent =
+            `Padam semua nilai ${target} dan salin semula struktur KPI dari ${source}. ` +
+            `Salinan sandaran (fail JSON) dimuat turun ke komputer anda dahulu.`;
+    }
 
     const PRINT_QUARTER_LABELS = { q1: 'Suku Pertama', q2: 'Suku Kedua', q3: 'Suku Ketiga', q4: 'Suku Keempat' };
 
@@ -200,6 +215,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.updateDashboard = function (quarterKey) {
         currentQuarter = quarterKey;
         setPaceContext(selectedYear, quarterKey.replace('q', ''));
+        updateCloneLabels();
         // Remember the active quarter so a refresh or SW update restores the
         // user's place instead of snapping back to Suku 1.
         try { sessionStorage.setItem('kpi_active_quarter', quarterKey); } catch (e) {}
@@ -247,6 +263,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (emptyStateContainer) emptyStateContainer.classList.add('hidden');
                 if (statsBar) statsBar.classList.add('hidden');
                 updatePaceNote(null);
+                hideTableView();
                 if (adminSetupActions) adminSetupActions.classList.add('hidden');
                 setHeaderTitle('Ralat Sambungan');
                 return;
@@ -258,6 +275,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (emptyStateContainer) emptyStateContainer.classList.remove('hidden');
                 if (statsBar) statsBar.classList.add('hidden');
                 updatePaceNote(null);
+                hideTableView();
 
                 if (isEditMode) {
                     if (adminSetupActions) adminSetupActions.classList.remove('hidden');
@@ -444,8 +462,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 setTimeout(() => kpiGridContainer.classList.remove('grid-enter'), 400);
             }
 
-            // Refresh table view if active
-            if (isTableView) renderTableView();
+            // Refresh table view if active (and bring it back if an empty or
+            // failed load hid it)
+            if (isTableView) {
+                getEl('kpi-table-container')?.classList.remove('hidden');
+                renderTableView();
+            }
         });
     };
 
@@ -965,7 +987,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (cancelDescBtn) cancelDescBtn.addEventListener('click', () => closeModal(editDescModal));
     if (editDescModalClose) editDescModalClose.addEventListener('click', () => closeModal(editDescModal));
 
-    if (cloneBtn) cloneBtn.addEventListener('click', () => cloneFromYear(String(prevYear)));
+    if (cloneBtn) cloneBtn.addEventListener('click', () => cloneFromYear(cloneSourceYear()));
     if (startFreshBtn) startFreshBtn.addEventListener('click', () => openModal(addKpiModal));
     if (openAddKpiBtn) openAddKpiBtn.addEventListener('click', () => { getEl('add-kpi-form').reset(); openModal(addKpiModal); });
 
@@ -973,10 +995,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const reCloneBtn = document.getElementById('re-clone-btn');
     if (reCloneBtn) {
         reCloneBtn.addEventListener('click', () => {
+            // Read the years at click time, not page load
+            const target = String(selectedYear), source = cloneSourceYear();
             showConfirmModal(
-                `Reset Data ${currentYear}?`,
-                `AMARAN: Ini akan memadam SEMUA data ${currentYear} dan menyalin semula struktur asal dari ${prevYear}. Data ${currentYear} yang sedia ada akan hilang kekal. Teruskan?`,
-                () => cloneFromYear(String(prevYear))
+                `Reset Data ${target}?`,
+                `AMARAN: Semua nilai KPI ${target} (keempat-empat suku) akan dipadam dan struktur disalin semula dari ${source}. ` +
+                `Salinan sandaran data ${target} akan dimuat turun ke komputer anda dahulu. Jika sandaran gagal, reset dibatalkan.`,
+                () => cloneFromYear(source, { backup: true }),
+                { requireText: target, okLabel: `Reset ${target}` }
             );
         });
     }
@@ -1326,7 +1352,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const period = (data.subtitle || '').replace(/[()]/g, '').trim();
 
             // ── SUMMARY STATS ──
-            const STATUS_LABEL = { good: 'Cemerlang', ok: 'Sederhana', bad: 'Perlu Perhatian' };
             let totalPct = 0, goodCount = 0, okCount = 0, badCount = 0;
             data.processedKpis.forEach((kpi) => {
                 const pct = getKpiPercentage(kpi);
@@ -1646,6 +1671,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const viewToggleBtn = getEl('view-toggle-btn');
     const kpiTableContainer = getEl('kpi-table-container');
 
+    // An empty or failed load must not leave the previous year's rows on
+    // screen under the "Tiada Data" panel. Table mode itself stays on, so the
+    // next year with data comes back as a table.
+    function hideTableView() {
+        const container = getEl('kpi-table-container');
+        if (container) container.classList.add('hidden');
+        const tbody = getEl('kpi-table-body');
+        if (tbody) tbody.innerHTML = '';
+        getEl('empty-search-state')?.classList.add('hidden');
+    }
+
     function renderTableView() {
         const tbody = getEl('kpi-table-body');
         if (!tbody) return;
@@ -1675,8 +1711,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 : Math.floor(val).toLocaleString();
             const sPct      = kpiStatusPct(kpi, pct);
             const tier      = statusTier(sPct);
-            const dotColor  = statusHex(sPct);
             const badge     = { good: 'bg-green-100 text-green-700', ok: 'bg-amber-100 text-amber-700', bad: 'bg-red-100 text-red-600' }[tier];
+            const statusTxt = STATUS_LABEL[tier];
+            // Same number format as the card: thousands separator, RM, %.
+            const targetStr = typeof kpi.target === 'number'
+                ? (kpi.isCurrency ? 'RM ' : '') + kpi.target.toLocaleString('en-US') + (kpi.isPercentage ? '%' : '')
+                : (kpi.target || '—');
             const iconBg    = { good: 'bg-green-50',   ok: 'bg-amber-50',   bad: 'bg-red-50' }[tier];
             const iconClr   = { good: 'text-green-600', ok: 'text-amber-600', bad: 'text-red-600' }[tier];
             const trendTxt  = kpi.trend || '—';
@@ -1684,23 +1724,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const tr = document.createElement('tr');
             tr.className = 'border-b border-gray-50 hover:bg-blue-50/30 transition-colors';
+            // Phones get three columns (KPI, Nilai with the target under it, %
+            // with the status word under it) so nothing runs off the screen.
             tr.innerHTML = `
-                <td class="px-4 py-3">
-                    <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-lg ${iconBg} flex items-center justify-center flex-shrink-0">
+                <td class="px-3 sm:px-4 py-3">
+                    <div class="flex items-center gap-2 sm:gap-3">
+                        <div class="w-8 h-8 rounded-lg ${iconBg} hidden sm:flex items-center justify-center flex-shrink-0">
                             <i class="ph-duotone ${getPhosphorIcon(kpi.icon)} ${iconClr} text-xs"></i>
                         </div>
-                        <span class="font-semibold text-gray-800 text-sm">${escapeHtml(kpi.name)}</span>
+                        <span class="font-semibold text-gray-800 text-sm leading-snug">${escapeHtml(kpi.name)}</span>
                     </div>
                 </td>
-                <td class="px-4 py-3 text-right font-bold text-gray-800 text-sm">${valStr}</td>
-                <td class="px-4 py-3 text-right text-gray-400 text-sm">${escapeHtml(kpi.target)}</td>
-                <td class="px-4 py-3 text-right">
+                <td class="px-3 sm:px-4 py-3 text-right text-sm whitespace-nowrap">
+                    <span class="font-bold text-gray-800">${escapeHtml(valStr)}</span>
+                    <span class="sm:hidden block text-xs text-gray-400 mt-0.5">/ ${escapeHtml(targetStr)}</span>
+                </td>
+                <td class="px-4 py-3 text-right text-gray-400 text-sm whitespace-nowrap hidden sm:table-cell">${escapeHtml(targetStr)}</td>
+                <td class="px-3 sm:px-4 py-3 text-right whitespace-nowrap">
                     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${badge}">${cappedPct.toFixed(1)}%</span>
+                    <span class="sm:hidden block text-[11px] font-semibold text-gray-500 mt-1">${statusTxt}</span>
                 </td>
                 <td class="px-4 py-3 text-center text-sm font-bold ${escapeHtml(trendClr)} hidden sm:table-cell">${escapeHtml(trendTxt)}</td>
-                <td class="px-4 py-3 text-center hidden sm:table-cell">
-                    <span class="w-2.5 h-2.5 rounded-full inline-block" style="background:${dotColor}"></span>
+                <td class="px-4 py-3 text-center hidden sm:table-cell whitespace-nowrap">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${badge}">${statusTxt}</span>
                 </td>`;
             tbody.appendChild(tr);
         });
