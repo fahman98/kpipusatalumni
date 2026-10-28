@@ -1292,12 +1292,10 @@ export function openModal(modalElement, triggerElement) {
     const firstFocusableElement = modalElement.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
     if (firstFocusableElement) firstFocusableElement.focus();
 
+    // Login: start in the email field, not on the close button.
     if (modalElement.id === 'password-modal') {
-        const inputArea = document.getElementById('terminal-input-area');
-        if (inputArea && !inputArea.classList.contains('hidden')) {
-            const terminalInput = document.getElementById('email-input');
-            if (terminalInput && !terminalInput.classList.contains('input-disabled')) terminalInput.focus();
-        }
+        const emailInput = document.getElementById('email-input');
+        if (emailInput && !emailInput.disabled) emailInput.focus();
     }
 }
 

@@ -39,7 +39,7 @@ import {
 } from './api.js';
 
 import { renderGaugeChart, showHistoryChart, destroyKpiChart } from './charts.js';
-import { handleAdminLogin, resetTerminalModal, runBootSequence, randomGlitch, runLogoutSequence } from './admin.js';
+import { handleAdminLogin, resetLoginModal, runLogoutSequence } from './admin.js';
 import { initTakwim } from './takwim.js';
 import { initPenjanaan } from './penjanaan.js';
 import { statusTier, statusHex, setPaceContext, getPaceFraction, kpiStatusPct } from './status.js';
@@ -62,9 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const adminLogoutBtn = getEl('admin-logout-btn');
     const passwordModal = getEl('password-modal');
     const passwordModalClose = getEl('password-modal-close');
-    const passwordSubmitBtn = getEl('password-submit-btn');
-    const emailInput = getEl('email-input');
-    const passwordInput = getEl('password-input');
+    const loginForm = getEl('login-form');
 
 
 
@@ -188,6 +186,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const reCloneBtnLabel = document.getElementById('reclone-btn-label');
     if (reCloneBtnLabel) reCloneBtnLabel.textContent = `Fix/Reset ${prevYear}`;
 
+    const PRINT_QUARTER_LABELS = { q1: 'Suku Pertama', q2: 'Suku Kedua', q3: 'Suku Ketiga', q4: 'Suku Keempat' };
+
+    // Header: one line on every screen. The quarter goes in the sub-title
+    // (shown from md up); on phones the quarter tabs already say which one is
+    // active, and a two-line title crowded the app bar.
+    function setHeaderTitle(sub) {
+        if (mainTitle) mainTitle.textContent = `Dashboard KPI ${selectedYear}`;
+        if (subTitle) subTitle.textContent = sub || '';
+    }
+
     // --- MAIN FUNCTION: UPDATE DASHBOARD ---
     window.updateDashboard = function (quarterKey) {
         currentQuarter = quarterKey;
@@ -202,10 +210,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // 1. Set Title Serta-merta
-        if (mainTitle) {
-            const qMap = { 'q1': 'Suku Pertama', 'q2': 'Suku Kedua', 'q3': 'Suku Ketiga', 'q4': 'Suku Keempat' };
-            mainTitle.innerHTML = `Dashboard KPI ${selectedYear} <br> ${qMap[quarterKey]}`;
-        }
+        setHeaderTitle(PRINT_QUARTER_LABELS[quarterKey]);
 
         // 2. Reset View states
         if (mainContentWrapper) mainContentWrapper.classList.add('hidden');
@@ -243,7 +248,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (statsBar) statsBar.classList.add('hidden');
                 updatePaceNote(null);
                 if (adminSetupActions) adminSetupActions.classList.add('hidden');
-                if (mainTitle) mainTitle.innerHTML = `Dashboard KPI ${selectedYear} <br> Ralat Sambungan`;
+                setHeaderTitle('Ralat Sambungan');
                 return;
             }
 
@@ -260,7 +265,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (adminSetupActions) adminSetupActions.classList.add('hidden');
                 }
 
-                if (mainTitle) mainTitle.innerHTML = `Dashboard KPI ${selectedYear} <br> Tiada Data`;
+                setHeaderTitle('Tiada Data');
                 return;
             }
 
@@ -269,8 +274,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (mainContentWrapper) mainContentWrapper.classList.remove('hidden');
 
             // Update Title
-            if (mainTitle) mainTitle.innerHTML = `Dashboard KPI ${escapeHtml(selectedYear)} <br> ${escapeHtml(currentData.title || quarterKey.toUpperCase())}`;
-            if (subTitle) subTitle.textContent = (currentData.subtitle || '').replace(/[()]/g, '');
+            const period = (currentData.subtitle || '').replace(/[()]/g, '').trim();
+            const quarterLabel = currentData.title || PRINT_QUARTER_LABELS[quarterKey];
+            setHeaderTitle(period ? `${quarterLabel} · ${period}` : quarterLabel);
             if (currentData.footerDate) quarterFooterDate = currentData.footerDate;
             renderFooter();
 
@@ -402,8 +408,9 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             const overall = count > 0 ? totalPct / count : 0;
-            renderGaugeChart(overall);
-            updateFavicon(overall, count > 0 ? totalStatusPct / count : 0);
+            const overallStatus = count > 0 ? totalStatusPct / count : 0;
+            renderGaugeChart(overall, overallStatus);
+            updateFavicon(overall, overallStatus);
             document.title = `KPI ${overall.toFixed(0)}% · Pusat Alumni UPSI`;
 
             // Update stats bar
@@ -932,11 +939,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Admin & Auth
-    if (adminLoginBtn) adminLoginBtn.addEventListener('click', () => { resetTerminalModal(); openModal(passwordModal, adminLoginBtn); runBootSequence(); randomGlitch(); });
+    if (adminLoginBtn) adminLoginBtn.addEventListener('click', () => { resetLoginModal(); openModal(passwordModal, adminLoginBtn); });
     if (passwordModalClose) passwordModalClose.addEventListener('click', () => closeModal(passwordModal));
-    if (passwordSubmitBtn) passwordSubmitBtn.addEventListener('click', handleAdminLogin);
-    if (passwordInput) passwordInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); handleAdminLogin(); } });
-    if (emailInput) emailInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); passwordInput.focus(); } });
+    // Submit (button or Enter in either field) goes through the form so the
+    // browser's password manager sees a normal sign-in.
+    if (loginForm) loginForm.addEventListener('submit', (e) => { e.preventDefault(); handleAdminLogin(); });
 
     // Logout with custom sequence
     if (adminLogoutBtn) {
@@ -1212,8 +1219,6 @@ document.addEventListener('DOMContentLoaded', () => {
         note.classList.toggle('hidden', !msg);
         note.classList.toggle('flex', !!msg);
     }
-
-    const PRINT_QUARTER_LABELS = { q1: 'Suku Pertama', q2: 'Suku Kedua', q3: 'Suku Ketiga', q4: 'Suku Keempat' };
 
     function updatePrintMeta() {
         const metaEl = getEl('print-meta');
@@ -1806,11 +1811,46 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => showToastNotification('Aplikasi dikemas kini ke versi terbaharu.', 'success'), 800);
     }
 
+    // The Firebase SDK failed to load or start (CDN blocked, patchy campus
+    // Wi-Fi on a first visit). Nothing on the page can load without it, so say
+    // so plainly with a reload button instead of leaving an empty dashboard
+    // behind a toast that fades after a few seconds.
+    function showBootError() {
+        if (getEl('boot-error')) return;
+        hideLoading();
+        // Admin login needs Firebase too, so its button would only fail.
+        ['main-nav', 'view-dashboard', 'view-takwim', 'view-penjanaan', 'bottom-nav', 'admin-login-btn'].forEach(id => {
+            const el = getEl(id);
+            if (el) el.style.display = 'none';   // inline: beats md:flex on #main-nav
+        });
+        setHeaderTitle('');
+        const panel = document.createElement('div');
+        panel.id = 'boot-error';
+        panel.setAttribute('role', 'alert');
+        panel.className = 'flex flex-col items-center justify-center text-center p-10 bg-white rounded-xl shadow-sm border-2 border-dashed border-red-200 mt-4';
+        panel.innerHTML = `
+            <div class="bg-red-50 p-4 rounded-full mb-4">
+                <i class="ph-duotone ph-plugs text-red-500 text-4xl" aria-hidden="true"></i>
+            </div>
+            <h3 class="text-lg font-bold text-gray-700 mb-1">Sistem Tidak Dapat Dimuatkan</h3>
+            <p class="text-gray-500 text-sm mb-4 max-w-sm">Sambungan ke pelayan gagal. Semak sambungan internet anda, kemudian muat semula halaman.</p>
+            <button id="boot-error-reload" type="button" class="bg-brand-primary text-white px-5 py-2 rounded-lg font-bold hover:bg-blue-800 transition-all text-sm flex items-center gap-2">
+                <i class="fas fa-redo" aria-hidden="true"></i><span>Muat Semula</span>
+            </button>`;
+        const anchor = getEl('main-nav') || getEl('view-dashboard');
+        if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(panel, anchor);
+        getEl('boot-error-reload').addEventListener('click', () => window.location.reload());
+    }
+
     // Start App
     try {
+        // config.js throws before declaring `db` when the SDK never arrived.
+        if (typeof firebase === 'undefined' || typeof db === 'undefined') {
+            throw new Error('Firebase SDK not loaded');
+        }
         initializeApp();
     } catch (err) {
         console.error('Firebase init failed:', err);
-        showToastNotification('Gagal memulakan sambungan. Sila muat semula halaman.', 'danger');
+        showBootError();
     }
 });

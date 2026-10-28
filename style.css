@@ -374,200 +374,40 @@ body.dark-mode .animate-pulse .border-gray-50 {
 
 
 
-/* --- HACKER TERMINAL STYLES --- */
-.terminal-window {
-    background-color: #0c0c0c;
-    border: 2px solid #00ff00;
-    color: #00ff00;
-    font-family: 'Courier New', Courier, monospace;
-    box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
-    width: 100%;
-    max-width: 500px;
-    border-radius: 4px;
-    position: relative;
-    overflow: hidden;
-    transition: transform 0.1s;
-}
-
-/* Scanline Effect */
-.terminal-window::before {
-    content: " ";
+/* --- ADMIN LOGIN MODAL --- */
+.login-input {
     display: block;
-    position: absolute;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    right: 0;
-    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-    z-index: 2;
-    background-size: 100% 2px, 3px 100%;
-    pointer-events: none;
-}
-
-.terminal-header {
-    background-color: #00ff00;
-    color: #000;
-    padding: 4px 10px;
-    font-weight: bold;
-    font-size: 0.9rem;
-    letter-spacing: 1px;
-    display: flex;
-    justify-content: space-between;
-}
-
-.terminal-body {
-    padding: 20px;
-    position: relative;
-    z-index: 1;
-    max-height: 400px;
-    overflow-y: auto;
-}
-
-/* Hide scrollbar for terminal body but allow scroll */
-.terminal-body::-webkit-scrollbar {
-    width: 0px;
-    background: transparent;
-}
-
-.terminal-text {
-    margin-bottom: 8px;
+    width: 100%;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    padding: 0.6rem 0.75rem;
     font-size: 0.95rem;
-    text-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
-    line-height: 1.4;
+    color: #1f2937;
+    background: #fff;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
-
-.terminal-input-line {
-    display: flex;
-    align-items: center;
-    margin-top: 15px;
-    border-bottom: 1px solid #003300;
-    padding-bottom: 5px;
-}
-
-.terminal-prompt {
-    margin-right: 10px;
-    color: #00ff00;
-    font-weight: bold;
-}
-
-.terminal-input {
-    background: transparent;
-    border: none;
-    color: #00ff00;
-    width: 100%;
+.login-input:focus {
     outline: none;
-    font-family: 'Courier New', Courier, monospace;
-    font-size: 1rem;
-    text-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
+    border-color: #0d47a1;
+    box-shadow: 0 0 0 3px rgba(13, 71, 161, 0.15);
 }
+.login-input:disabled { opacity: 0.6; cursor: not-allowed; }
+#password-submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
-/* Customize blinking cursor logic */
-.blinking-cursor {
-    display: inline-block;
-    width: 10px;
-    height: 18px;
-    background-color: #00ff00;
-    animation: blink 1s step-end infinite;
-    vertical-align: middle;
-    margin-left: 2px;
+.login-feedback {
+    font-size: 0.85rem;
+    font-weight: 600;
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid transparent;
 }
-
-@keyframes blink {
-
-    0%,
-    100% {
-        opacity: 1;
-    }
-
-    50% {
-        opacity: 0;
-    }
-}
-
-.terminal-btn {
-    background: transparent;
-    border: 1px solid #00ff00;
-    color: #00ff00;
-    padding: 8px 16px;
-    margin-top: 20px;
-    width: 100%;
-    font-family: 'Courier New', Courier, monospace;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.2s;
-    text-transform: uppercase;
-}
-
-.terminal-btn:hover {
-    background-color: #00ff00;
-    color: #000;
-    box-shadow: 0 0 15px #00ff00;
-}
-
-/* --- Lockout & Alert Styles --- */
-.access-denied {
-    color: #ff0000 !important;
-    border-color: #ff0000 !important;
-    text-shadow: 0 0 5px rgba(255, 0, 0, 0.8);
-}
-
-.access-granted {
-    color: #00ff00 !important;
-}
-
-.terminal-lockout {
-    color: #ff0000 !important;
-    animation: blink-urgent 0.5s step-end infinite;
-    font-weight: bold;
-}
-
-@keyframes blink-urgent {
-
-    0%,
-    100% {
-        opacity: 1;
-    }
-
-    50% {
-        opacity: 0.5;
-    }
-}
-
-.input-disabled {
-    opacity: 0.5;
-    pointer-events: none;
-}
-
-/* --- GLITCH EFFECT ANIMATION --- */
-@keyframes glitch-anim {
-    0% {
-        transform: translate(0);
-    }
-
-    20% {
-        transform: translate(-2px, 2px);
-    }
-
-    40% {
-        transform: translate(-2px, -2px);
-    }
-
-    60% {
-        transform: translate(2px, 2px);
-    }
-
-    80% {
-        transform: translate(2px, -2px);
-    }
-
-    100% {
-        transform: translate(0);
-    }
-}
-
-.terminal-glitch {
-    animation: glitch-anim 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
-}
+.login-feedback.hidden { display: none; }
+.login-feedback.is-error   { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
+.login-feedback.is-success { background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
+.login-feedback.is-info    { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+body.dark-mode .login-feedback.is-error   { background: #450a0a; color: #fca5a5; border-color: #7f1d1d; }
+body.dark-mode .login-feedback.is-success { background: #052e16; color: #86efac; border-color: #166534; }
+body.dark-mode .login-feedback.is-info    { background: #1e3a8a; color: #bfdbfe; border-color: #1e40af; }
 
 /* --- KPI Description Popover & Modal Styles --- */
 .info-btn {
@@ -1865,7 +1705,7 @@ body.dark-mode .detail-btn-delete:hover{ background:#5b1414; }
 
 /* ===== REDUCED MOTION =====
    Honour the OS "reduce motion" setting. The dashboard runs several infinite
-   animations (gradient bar, status dots, shimmer, terminal glitch) plus a
+   animations (gradient bar, status dots, shimmer) plus a
    value count-up on every render, which is a vestibular / photosensitivity
    trigger. Colour and layout are untouched — only motion. */
 @media (prefers-reduced-motion: reduce) {
@@ -1911,6 +1751,44 @@ body.dark-mode .detail-btn-delete:hover{ background:#5b1414; }
         min-width: 40px;
         min-height: 40px;
     }
+
+    /* "Butiran (n)" chip on the card */
+    .kpi-details-chip {
+        min-height: 36px;
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+    }
+}
+
+/* ===== COMPACT KPI CARDS (PHONE) =====
+   One card used to take ~220px, so a phone showed barely three KPIs per
+   screen. Trim the padding, shrink the ring and put "Sasaran" and "Kemaskini"
+   on one line; nothing is hidden. */
+@media (max-width: 639px) {
+    #kpi-grid-container { gap: 0.75rem; }
+
+    .kpi-card .kpi-header-fixed {
+        padding: 0.75rem 1rem 0.5rem;
+        align-items: center;
+    }
+    .kpi-card .kpi-ring-wrap { width: 44px; height: 44px; }
+    .kpi-card .kpi-ring-inner.kpi-icon-container { width: 36px; height: 36px; border-radius: 10px; }
+    .kpi-card .kpi-icon { font-size: 1.1rem; }
+
+    .kpi-card > .px-5 { padding-left: 1rem; padding-right: 1rem; }
+    .kpi-card .animated-value { font-size: 1.375rem; }
+
+    .kpi-card .kpi-target-display,
+    .kpi-card .kpi-updated-at {
+        display: inline;
+        margin-top: 0;
+    }
+    .kpi-card .kpi-target-display { display: inline-block; margin-top: 0.375rem; }
+    .kpi-card .kpi-target-display + .kpi-updated-at::before { content: "  ·  "; white-space: pre; }
+    /* Percentage KPIs have no target line, so the date starts the row */
+    .kpi-card .text-2xl + .kpi-updated-at { display: inline-block; margin-top: 0.375rem; }
+
+    .kpi-card > .pb-4 { padding-bottom: 0.75rem; margin-top: 0.5rem; }
 }
 
 /* ===== TEXT CONTRAST =====
