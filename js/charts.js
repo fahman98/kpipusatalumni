@@ -1,6 +1,7 @@
 // --- JS/CHARTS.JS ---
 import { animateValue, getKpiPercentage, calculateKpiValue, openModal, showToastNotification } from './ui.js';
 import { kpiDataCache, getKpiDataFromFirestore } from './api.js';
+import { statusHex } from './status.js';
 
 let kpiChartInstance = null;
 let gaugeChartInstance = null;
@@ -13,24 +14,21 @@ export function destroyKpiChart() {
 }
 
 
-export function renderGaugeChart(value) {
+// `value` is the overall achievement drawn on the arc; `statusPct` is the
+// pace-adjusted figure that picks its colour, so the gauge agrees with the
+// cards (a red-to-green gradient painted every early quarter red).
+export function renderGaugeChart(value, statusPct = value) {
     const canvas = document.getElementById('overall-gauge-chart');
     if (!canvas) return;
     const overallGaugeCtx = canvas.getContext('2d');
     const gaugeText = document.getElementById('gauge-value-text');
-    animateValue(gaugeText, 0, value, 1500, val => `${val.toFixed(2)}%`);
+    animateValue(gaugeText, 0, value, 1500, val => `${val.toFixed(1)}%`);
 
     if (gaugeChartInstance) {
         gaugeChartInstance.destroy();
     }
 
 
-
-    // Create Gradient
-    const gradient = overallGaugeCtx.createLinearGradient(0, 0, 300, 0); // Left to Right
-    gradient.addColorStop(0, '#ef4444'); // Red
-    gradient.addColorStop(0.5, '#eab308'); // Yellow
-    gradient.addColorStop(1, '#22c55e'); // Green
 
     gaugeChartInstance = new Chart(overallGaugeCtx, {
         type: 'doughnut',
@@ -39,7 +37,7 @@ export function renderGaugeChart(value) {
             datasets: [{
                 data: [value, 100 - value],
                 backgroundColor: [
-                    gradient,
+                    statusHex(statusPct),
                     'rgba(255, 255, 255, 0.1)'
                 ],
                 borderWidth: 0,

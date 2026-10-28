@@ -1,320 +1,213 @@
 // --- JS/ADMIN.JS ---
-import { openModal, closeModal, showToastNotification } from './ui.js';
+import { closeModal, showLoading, showToastNotification } from './ui.js';
 import { isAdminUser } from './auth.js';
 
-let glitchTimeout;
-let bootSequenceTimeouts = [];
 let failedAttempts = 0;
 let isLocked = false;
+let lockCountdown = null;
 
+const MAX_ATTEMPTS = 3;
+const LOCK_SECONDS = 10;
 const SS_LOCK_UNTIL = 'kpi_admin_lock_until';
 const SS_ATTEMPTS = 'kpi_admin_attempts';
 
 // Helper to get element safely
 const getEl = (id) => document.getElementById(id);
 
-// Export reset function to allow UI to use it
-export function resetTerminalModal() {
-    const modal = getEl('password-modal');
-    if (!modal) return;
+// sessionStorage can throw (private mode, blocked site data) — a lockout that
+// can't be persisted still works for this page, it just won't survive a reload.
+const ssGet = (k) => { try { return sessionStorage.getItem(k); } catch (_) { return null; } };
+const ssSet = (k, v) => { try { sessionStorage.setItem(k, v); } catch (_) {} };
+const ssDel = (k) => { try { sessionStorage.removeItem(k); } catch (_) {} };
 
-    const inputArea = getEl('terminal-input-area');
-    const feedback = getEl('terminal-feedback');
-    const body = modal.querySelector('.terminal-body');
+// Plain-language reasons for the Firebase error codes an admin can actually hit.
+// Wrong email and wrong password share one message on purpose: telling them
+// apart would confirm which addresses have an account.
+const AUTH_ERRORS = {
+    'auth/invalid-email': 'Format emel tidak sah.',
+    'auth/user-not-found': 'Emel atau kata laluan tidak sah.',
+    'auth/wrong-password': 'Emel atau kata laluan tidak sah.',
+    'auth/invalid-credential': 'Emel atau kata laluan tidak sah.',
+    'auth/invalid-login-credentials': 'Emel atau kata laluan tidak sah.',
+    'auth/user-disabled': 'Akaun ini telah dinyahaktifkan.',
+    'auth/too-many-requests': 'Terlalu banyak cubaan. Sila cuba sebentar lagi.',
+    'auth/network-request-failed': 'Tiada sambungan internet. Sila cuba lagi.',
+};
+
+// type: 'error' | 'success' | 'info'
+function setFeedback(message, type = 'info') {
+    const feedback = getEl('login-feedback');
+    if (!feedback) return;
+    feedback.textContent = message || '';
+    feedback.classList.toggle('hidden', !message);
+    feedback.classList.remove('is-error', 'is-success', 'is-info');
+    if (message) feedback.classList.add(`is-${type}`);
+}
+
+function setFormDisabled(disabled) {
+    ['email-input', 'password-input', 'password-submit-btn'].forEach(id => {
+        const el = getEl(id);
+        if (el) el.disabled = disabled;
+    });
+}
+
+function setSubmitting(submitting) {
+    const label = getEl('login-submit-label');
+    if (label) label.textContent = submitting ? 'Menyemak...' : 'Log Masuk';
+    setFormDisabled(submitting);
+}
+
+// Return the modal to a clean state. Called on open and on close.
+export function resetLoginModal() {
     const passwordInput = getEl('password-input');
     const emailInput = getEl('email-input');
-    
-    // Clear logs but keep structure
-    const bootLogs = body.querySelectorAll('.boot-log, .logout-log');
-    bootLogs.forEach(log => log.remove());
-    
-    if(inputArea) inputArea.classList.add('hidden');
-    
-    if(feedback) {
-        feedback.textContent = '';
-        feedback.className = 'terminal-text mt-4 h-6 font-bold';
-    }
-    
-    // Clear timeouts
-    bootSequenceTimeouts.forEach(timeout => clearTimeout(timeout));
-    bootSequenceTimeouts = [];
-    
-    clearTimeout(glitchTimeout);
-    const terminalWindow = getEl('terminal-window');
-    if(terminalWindow) terminalWindow.classList.remove('terminal-glitch');
+    const toggle = getEl('password-toggle');
 
-    // Semak sama ada lockout masih aktif dalam sessionStorage
-    const lockUntil = parseInt(sessionStorage.getItem(SS_LOCK_UNTIL) || '0');
-    const lockActive = Date.now() < lockUntil;
-
-    if (!lockActive) {
-        failedAttempts = 0;
-        isLocked = false;
-        sessionStorage.removeItem(SS_LOCK_UNTIL);
-        sessionStorage.removeItem(SS_ATTEMPTS);
-    }
-
+    setFeedback('');
+    setSubmitting(false);
+    if (emailInput) emailInput.value = '';
     if (passwordInput) {
         passwordInput.value = '';
-        if (!lockActive) {
-            passwordInput.disabled = false;
-            passwordInput.classList.remove('input-disabled');
-        }
+        passwordInput.type = 'password';
     }
-    if (emailInput) {
-        emailInput.value = '';
-        if (!lockActive) {
-            emailInput.disabled = false;
-            emailInput.classList.remove('input-disabled');
-        }
+    if (toggle) {
+        toggle.setAttribute('aria-pressed', 'false');
+        toggle.setAttribute('aria-label', 'Tunjuk kata laluan');
+        toggle.innerHTML = '<i class="fas fa-eye" aria-hidden="true"></i>';
+    }
+
+    // A lockout outlives the modal: closing and reopening it must not reset
+    // the countdown, so pick it back up from sessionStorage.
+    const lockUntil = parseInt(ssGet(SS_LOCK_UNTIL) || '0', 10);
+    if (Date.now() < lockUntil) {
+        failedAttempts = parseInt(ssGet(SS_ATTEMPTS) || String(MAX_ATTEMPTS), 10);
+        startLockCountdown(lockUntil);
+    } else if (!isLocked) {
+        failedAttempts = 0;
+        ssDel(SS_LOCK_UNTIL);
+        ssDel(SS_ATTEMPTS);
     }
 }
 
 // Add event listener for custom modal-close event from UI
 document.addEventListener('modal-closed', (e) => {
-    if(e.detail && e.detail.modalId === 'password-modal') {
-        resetTerminalModal();
+    if (e.detail && e.detail.modalId === 'password-modal') {
+        resetLoginModal();
     }
 });
 
-// Terminal Effect Functions
-export function randomGlitch() {
-    const terminalWindow = getEl('terminal-window');
-    const modal = getEl('password-modal');
-    
-    if (!terminalWindow || !modal || !modal.classList.contains('is-open')) return;
-    
-    terminalWindow.classList.add('terminal-glitch');
-    
-    setTimeout(() => {
-        terminalWindow.classList.remove('terminal-glitch');
-    }, 200);
-    
-    const nextGlitchTime = Math.random() * 4000 + 2000;
-    glitchTimeout = setTimeout(randomGlitch, nextGlitchTime);
-}
+// Show / hide the password so a long password can be checked before sending.
+document.addEventListener('click', (e) => {
+    const toggle = e.target.closest('#password-toggle');
+    if (!toggle) return;
+    const input = getEl('password-input');
+    if (!input) return;
+    const show = input.type === 'password';
+    input.type = show ? 'text' : 'password';
+    toggle.setAttribute('aria-pressed', String(show));
+    toggle.setAttribute('aria-label', show ? 'Sembunyi kata laluan' : 'Tunjuk kata laluan');
+    toggle.innerHTML = `<i class="fas ${show ? 'fa-eye-slash' : 'fa-eye'}" aria-hidden="true"></i>`;
+    input.focus();
+});
 
-export function runBootSequence() {
-    const body = getEl('terminal-body');
-    const inputArea = getEl('terminal-input-area');
-    
-    if (!body || !inputArea) return;
-
-    const bootMessages = [
-        "> INITIALIZING KERNEL...",
-        "> CHECKING MEMORY MAP: 00000000 - 0009FC00 [OK]",
-        "> LOADING DRIVERS...",
-        "> MOUNTING FILE SYSTEM (RW)...",
-        "> STARTING NETWORKING SERVICE...",
-        "> CONNECTING TO SECURE SERVER...",
-        "> [ OK ] CONNECTED: 192.168.1.105",
-        "> LOADING SECURITY MODULES...",
-        "> DECRYPTING LOGIN INTERFACE...",
-        "> SYSTEM READY."
-    ];
-
-    let delay = 0;
-    
-    bootMessages.forEach((msg, index) => {
-        const timeoutId = setTimeout(() => {
-            const p = document.createElement('p');
-            p.className = 'terminal-text boot-log';
-            p.textContent = msg;
-            body.insertBefore(p, inputArea);
-            body.scrollTop = body.scrollHeight;
-            
-            if (index === bootMessages.length - 1) {
-                setTimeout(() => {
-                    inputArea.classList.remove('hidden');
-                    const emailInput = getEl('email-input');
-                    if(emailInput) emailInput.focus();
-                    body.scrollTop = body.scrollHeight;
-                }, 300);
-            }
-        }, delay);
-        
-        bootSequenceTimeouts.push(timeoutId);
-        delay += Math.floor(Math.random() * 150) + 50; 
-    });
-}
-
-function triggerLockdown() {
-    const passwordInput = getEl('password-input');
-    const emailInput = getEl('email-input');
-    const feedback = getEl('terminal-feedback');
-    
+function startLockCountdown(lockUntil) {
     isLocked = true;
-    sessionStorage.setItem(SS_LOCK_UNTIL, (Date.now() + 10000).toString());
-    sessionStorage.setItem(SS_ATTEMPTS, failedAttempts.toString());
+    setSubmitting(false);
+    setFormDisabled(true);
+    clearInterval(lockCountdown);
 
-    if(passwordInput) {
-        passwordInput.disabled = true;
-        passwordInput.classList.add('input-disabled');
-    }
-    if(emailInput) {
-        emailInput.disabled = true;
-        emailInput.classList.add('input-disabled');
-    }
-
-    let timeLeft = 10;
-    
-    if(feedback) {
-        feedback.textContent = `> SYSTEM LOCKDOWN INITIATED. COOLDOWN: ${timeLeft}s`;
-        feedback.className = "terminal-text mt-4 h-6 terminal-lockout";
-    }
-
-    const countdownInterval = setInterval(() => {
-        timeLeft--;
-        if (timeLeft > 0) {
-            if(feedback) feedback.textContent = `> SYSTEM LOCKDOWN INITIATED. COOLDOWN: ${timeLeft}s`;
-        } else {
-            clearInterval(countdownInterval);
-            isLocked = false;
-            failedAttempts = 0;
-            sessionStorage.removeItem(SS_LOCK_UNTIL);
-            sessionStorage.removeItem(SS_ATTEMPTS);
-            
-            if(passwordInput) {
-                passwordInput.disabled = false;
-                passwordInput.classList.remove('input-disabled');
-            }
-            if(emailInput) {
-                emailInput.disabled = false;
-                emailInput.classList.remove('input-disabled');
-                emailInput.focus();
-            }
-            
-            if(feedback) {
-                feedback.textContent = "> COOLDOWN COMPLETE. RETRY AUTHORIZED.";
-                feedback.className = "terminal-text mt-4 h-6 font-bold";
-            }
+    const tick = () => {
+        const left = Math.ceil((lockUntil - Date.now()) / 1000);
+        if (left > 0) {
+            setFeedback(`Terlalu banyak cubaan gagal. Cuba lagi dalam ${left} saat.`, 'error');
+            return;
         }
-    }, 1000);
+        clearInterval(lockCountdown);
+        isLocked = false;
+        failedAttempts = 0;
+        ssDel(SS_LOCK_UNTIL);
+        ssDel(SS_ATTEMPTS);
+        setFormDisabled(false);
+        setFeedback('Anda boleh cuba log masuk semula.', 'info');
+        const emailInput = getEl('email-input');
+        if (emailInput) emailInput.focus();
+    };
+    tick();
+    lockCountdown = setInterval(tick, 1000);
+}
+
+function registerFailure(message) {
+    failedAttempts++;
+    if (failedAttempts >= MAX_ATTEMPTS) {
+        const lockUntil = Date.now() + LOCK_SECONDS * 1000;
+        ssSet(SS_LOCK_UNTIL, String(lockUntil));
+        ssSet(SS_ATTEMPTS, String(failedAttempts));
+        startLockCountdown(lockUntil);
+        return;
+    }
+    setSubmitting(false);
+    setFeedback(message, 'error');
+    const passwordInput = getEl('password-input');
+    if (passwordInput) { passwordInput.value = ''; passwordInput.focus(); }
 }
 
 export function handleAdminLogin() {
     // Sync dari sessionStorage — tangani kes modal ditutup & dibuka semula semasa lockout
-    const storedLockUntil = parseInt(sessionStorage.getItem(SS_LOCK_UNTIL) || '0');
+    const storedLockUntil = parseInt(ssGet(SS_LOCK_UNTIL) || '0', 10);
     if (Date.now() < storedLockUntil) {
-        isLocked = true;
-        failedAttempts = parseInt(sessionStorage.getItem(SS_ATTEMPTS) || '3');
+        startLockCountdown(storedLockUntil);
+        return;
     }
     if (isLocked) return;
-    
+
     const emailInput = getEl('email-input');
     const passwordInput = getEl('password-input');
-    const feedback = getEl('terminal-feedback');
     const passwordModal = getEl('password-modal');
-    
-    const email = emailInput ? emailInput.value : '';
+
+    const email = emailInput ? emailInput.value.trim() : '';
     const password = passwordInput ? passwordInput.value : '';
-    
-    if(!email || !password) {
-         if(feedback) {
-             feedback.textContent = "> ERROR: MISSING CREDENTIALS.";
-             feedback.classList.add('access-denied');
-         }
-         return;
+
+    if (!email || !password) {
+        setFeedback('Sila isi emel dan kata laluan.', 'error');
+        (email ? passwordInput : emailInput)?.focus();
+        return;
     }
 
-    if(feedback) {
-        feedback.textContent = "> VERIFYING ENCRYPTED KEYS...";
-        feedback.className = "terminal-text mt-4 h-6 font-bold";
-    }
-    
+    setFeedback('');
+    setSubmitting(true);
+
     firebase.auth().signInWithEmailAndPassword(email, password)
         .then((userCredential) => {
-             // Firebase menerima MANA-MANA akaun sah dalam projek ini. Hanya
-             // email admin yang layak — tolak yang lain di sini supaya pengguna
-             // dapat sebab yang jelas, bukan ditendang senyap oleh main.js.
-             if (!isAdminUser(userCredential.user)) {
-                 firebase.auth().signOut().catch(() => {});
-                 failedAttempts++;
-                 if (failedAttempts >= 3) {
-                     triggerLockdown();
-                 } else if (feedback) {
-                     feedback.textContent = "> [ACCESS DENIED] ACCOUNT NOT AUTHORIZED.";
-                     feedback.classList.add('access-denied');
-                 }
-                 return;
-             }
+            // Firebase menerima MANA-MANA akaun sah dalam projek ini. Hanya
+            // email admin yang layak — tolak yang lain di sini supaya pengguna
+            // dapat sebab yang jelas, bukan ditendang senyap oleh main.js.
+            if (!isAdminUser(userCredential.user)) {
+                firebase.auth().signOut().catch(() => {});
+                registerFailure('Akaun ini tiada kebenaran admin.');
+                return;
+            }
 
-             // Clear lockout state on successful login
-             sessionStorage.removeItem(SS_LOCK_UNTIL);
-             sessionStorage.removeItem(SS_ATTEMPTS);
-             failedAttempts = 0;
+            // Clear lockout state on successful login
+            ssDel(SS_LOCK_UNTIL);
+            ssDel(SS_ATTEMPTS);
+            failedAttempts = 0;
 
-             if(feedback) {
-                 feedback.textContent = "> [ACCESS GRANTED] PERMISSIONS UPDATED.";
-                 feedback.classList.add('access-granted');
-             }
-
-             setTimeout(() => {
-                 closeModal(passwordModal);
-                 if(emailInput) emailInput.value = '';
-                 if(passwordInput) passwordInput.value = '';
-             }, 1000);
+            // main.js shows the welcome toast once the auth state flips.
+            closeModal(passwordModal);
         })
         .catch((error) => {
             console.error("Login failed:", error);
-            failedAttempts++;
-            if (failedAttempts >= 3) {
-                triggerLockdown();
-            } else {
-                if(feedback) {
-                    feedback.textContent = `> [ACCESS DENIED] ${error.code.replace('auth/', '').toUpperCase()}`;
-                    feedback.classList.add('access-denied');
-                }
-            }
+            registerFailure(AUTH_ERRORS[error && error.code] || 'Log masuk gagal. Sila cuba lagi.');
         });
 }
 
-// --- NEW LOGOUT SEQUENCE FUNCTION (FIXED) ---
+// Sign out, then reload so every view falls back to Guest Mode cleanly.
 export function runLogoutSequence() {
-    resetTerminalModal();
-    const modal = getEl('password-modal');
-    openModal(modal); // Show terminal
-    randomGlitch();
-    
-    const body = getEl('terminal-body');
-    const inputArea = getEl('terminal-input-area');
-    
-    if(inputArea) inputArea.classList.add('hidden'); // Hide inputs for logout
-
-    const logs = [
-        "> INITIATING LOGOUT SEQUENCE...",
-        "> REVOKING ADMIN PRIVILEGES...",
-        "> CLOSING SECURE CONNECTION...",
-        "> [SESSION TERMINATED] GOODBYE."
-    ];
-
-    let delay = 0;
-    logs.forEach((log, index) => {
-        setTimeout(() => {
-            const p = document.createElement('p');
-            p.className = 'terminal-text logout-log';
-            p.textContent = log;
-            if(body) {
-                body.insertBefore(p, inputArea);
-                body.scrollTop = body.scrollHeight;
-            }
-            if (index === logs.length - 1) {
-                p.classList.add('access-denied'); 
-            }
-        }, delay);
-        delay += 600;
-    });
-
-    // Actual Sign Out after animation
-    setTimeout(() => {
-        firebase.auth().signOut().then(() => {
-            closeModal(modal); // Close terminal first
-            // FORCE RELOAD to clear state and return to Guest Mode
-            window.location.reload(); 
-        }).catch((error) => {
+    showLoading('Log keluar...');
+    firebase.auth().signOut()
+        .catch((error) => {
             console.error("Logout error:", error);
-            closeModal(modal);
-            window.location.reload(); // Reload anyway to be safe
-        });
-    }, delay + 800);
+            showToastNotification('Log keluar gagal, memuat semula halaman.', 'danger');
+        })
+        .finally(() => window.location.reload());
 }

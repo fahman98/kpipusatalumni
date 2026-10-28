@@ -411,10 +411,8 @@ async function editRecord(orig, updated) {
 // ---- Rendering --------------------------------------------------------
 
 function recordRowHtml(item, globalIndex) {
-    const bulanBadge = item.bulan
-        ? `<span class="inline-flex items-center text-xs font-semibold bg-blue-50 text-brand-primary rounded-full px-2 py-0.5 flex-shrink-0">${escapeHtml(BULAN_MY[parseInt(item.bulan, 10)] || '?')}</span>`
-        : `<span class="inline-flex items-center text-xs font-semibold bg-gray-100 text-gray-400 rounded-full px-2 py-0.5 flex-shrink-0">—</span>`;
-
+    // No month pill: every row already sits under its month divider (or the
+    // "Tidak Dinyatakan" group), so repeating the month on the row is noise.
     const adminHtml = isAdminMode
         ? `<div class="flex items-center gap-1 flex-shrink-0">
                <button class="penjanaan-edit-btn text-gray-400 hover:text-brand-primary p-1" data-idx="${globalIndex}" title="Edit"><i class="fas fa-pencil-alt text-xs"></i></button>
@@ -423,8 +421,7 @@ function recordRowHtml(item, globalIndex) {
 
     return `
     <div class="penjanaan-record-row flex items-center gap-2 py-2 px-1.5 border-b border-gray-50 last:border-0 cursor-pointer hover:bg-gray-50 rounded-lg transition-colors" data-idx="${globalIndex}" role="button" tabindex="0" title="Lihat butiran">
-        ${bulanBadge}
-        <span class="flex-1 min-w-0 text-sm text-gray-700 truncate">${escapeHtml(item.name)}</span>
+        <span class="flex-1 min-w-0 text-sm text-gray-700 leading-snug line-clamp-2 break-words">${escapeHtml(item.name)}</span>
         <span class="text-sm font-bold text-brand-primary flex-shrink-0">${escapeHtml(formatRM(item.value))}</span>
         ${adminHtml}
     </div>`;
