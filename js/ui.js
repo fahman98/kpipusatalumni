@@ -186,7 +186,10 @@ export function hideLoading() {
 }
 
 // --- CONFIRM MODAL ---
-export function showConfirmModal(title, message, onConfirm) {
+// options.requireText: the user must type this exact text (e.g. the year being
+// wiped) before the confirm button unlocks. Used for irreversible actions so a
+// stray tap on "Teruskan" can't destroy data. options.okLabel renames the button.
+export function showConfirmModal(title, message, onConfirm, options = {}) {
     const modal = document.getElementById('confirm-modal');
     const titleEl = document.getElementById('confirm-modal-title');
     const msgEl = document.getElementById('confirm-modal-message');
@@ -205,7 +208,32 @@ export function showConfirmModal(title, message, onConfirm) {
     const newCancel = cancelBtn.cloneNode(true);
     cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
 
+    newOk.textContent = options.okLabel || 'Teruskan';
+
+    // Typed confirmation (fresh input each time so old listeners don't stack)
+    const typedWrap = document.getElementById('confirm-modal-typed');
+    const oldInput = document.getElementById('confirm-modal-input');
+    const required = options.requireText ? String(options.requireText) : '';
+    let typedInput = null;
+    if (typedWrap && oldInput) {
+        typedInput = oldInput.cloneNode(false);
+        typedInput.value = '';
+        oldInput.parentNode.replaceChild(typedInput, oldInput);
+        typedWrap.classList.toggle('hidden', !required);
+        const label = document.getElementById('confirm-modal-input-label');
+        if (label) label.textContent = required ? `Taip ${required} untuk mengesahkan:` : '';
+    }
+    const typedOk = () => !required || (typedInput && typedInput.value.trim() === required);
+    const syncOk = () => {
+        newOk.disabled = !typedOk();
+        newOk.classList.toggle('opacity-50', newOk.disabled);
+        newOk.classList.toggle('cursor-not-allowed', newOk.disabled);
+    };
+    if (typedInput) typedInput.addEventListener('input', syncOk);
+    syncOk();
+
     newOk.addEventListener('click', () => {
+        if (!typedOk()) return;
         onConfirm();
         modal.classList.add('hidden');
         syncBodyScrollLock();
@@ -218,6 +246,7 @@ export function showConfirmModal(title, message, onConfirm) {
 
     modal.classList.remove('hidden');
     syncBodyScrollLock();
+    if (required && typedInput) typedInput.focus();
 }
 
 // --- INPUT MODAL ---

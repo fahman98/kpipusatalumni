@@ -441,62 +441,96 @@ export function deleteKpi(kpiId) {
 }
 
 // 4. CLONE FROM PREVIOUS YEAR
-export async function cloneFromYear(sourceYear) {
+//
+// Copies the KPI structure of `sourceYear` into the year currently selected,
+// with every value reset to 0. This OVERWRITES the target year's quarter
+// documents, so it guards against the ways it used to destroy data:
+//   - the target year is captured once, up front: switching the year selector
+//     while the reads are in flight can no longer redirect the write;
+//   - source and target must differ (copying a year onto itself zeroed it);
+//   - a source year with no data aborts with nothing written (it used to
+//     "succeed" and report a copy that never happened);
+//   - with `options.backup`, the target year's current documents are first
+//     downloaded as a JSON file, and the reset is cancelled if that fails.
+export async function cloneFromYear(sourceYear, options = {}) {
     if (!isEditMode) return;
+    if (!assertOnline()) return;
+
+    const targetYear = String(selectedYear);
+    sourceYear = String(sourceYear);
+    if (sourceYear === targetYear) {
+        showToastNotification("Tahun sumber dan tahun sasaran tidak boleh sama. Tiada perubahan dibuat.", "danger");
+        return;
+    }
+
     showLoading(`Menyalin data dari ${sourceYear}...`);
-    const batch = db.batch();
     const sourcePath = `artifacts/${getAppId()}/public/data/kpi-${sourceYear}`;
-    const targetPath = `artifacts/${getAppId()}/public/data/kpi-${selectedYear}`;
+    const targetPath = `artifacts/${getAppId()}/public/data/kpi-${targetYear}`;
 
     try {
-        for (let i = 1; i <= 4; i++) {
-            const qKey = `q${i}`;
-            const sourceDoc = await db.collection(sourcePath).doc(qKey).get();
+        const sourceSnaps = await Promise.all(
+            ALL_QUARTERS.map(i => db.collection(sourcePath).doc(`q${i}`).get()));
+        if (!sourceSnaps.some(snap => snap.exists)) {
+            showToastNotification(`Tiada data KPI ${sourceYear} untuk disalin. Tiada perubahan dibuat.`, "danger");
+            return;
+        }
 
-            if (sourceDoc.exists) {
-                const data = sourceDoc.data();
-                // Reset values to 0 for new year
-                // Helper to reset item values recursively
-                const resetItemValues = (items) => {
-                    return items.map(item => {
-                        const newItem = { ...item, value: 0 };
-                        if (item.subItems && Array.isArray(item.subItems)) {
-                            newItem.subItems = resetItemValues(item.subItems);
-                        }
-                        return newItem;
-                    });
-                };
-
-                const cleanKpis = data.kpis.map(k => ({
-                    ...k,
-                    value: 0,
-                    details: k.details ? {
-                        ...k.details,
-                        items: k.details.items ? resetItemValues(k.details.items) : [],
-                        achieved: []
-                    } : null
-                }));
-
-                const targetDocRef = db.collection(targetPath).doc(qKey);
-
-                let title = `Suku ${i}`;
-                let subtitle = `(${selectedYear})`;
-                if (i === 1) { title = "Suku Pertama"; subtitle = `(Januari - Mac ${selectedYear})`; }
-                if (i === 2) { title = "Suku Kedua"; subtitle = `(April - Jun ${selectedYear})`; }
-                if (i === 3) { title = "Suku Ketiga"; subtitle = `(Julai - September ${selectedYear})`; }
-                if (i === 4) { title = "Suku Keempat"; subtitle = `(Oktober - Disember ${selectedYear})`; }
-
-                batch.set(targetDocRef, {
-                    title: title,
-                    subtitle: subtitle,
-                    kpis: cleanKpis,
-                    footerDate: nowFooterDate()
-                });
+        if (options.backup) {
+            const targetSnaps = await Promise.all(
+                ALL_QUARTERS.map(i => db.collection(targetPath).doc(`q${i}`).get()));
+            if (!downloadYearBackup(targetYear, targetSnaps)) {
+                showToastNotification("Salinan sandaran gagal dimuat turun. Reset dibatalkan, tiada perubahan dibuat.", "danger");
+                return;
             }
         }
+
+        // Reset values to 0 for new year
+        // Helper to reset item values recursively
+        const resetItemValues = (items) => {
+            return items.map(item => {
+                const newItem = { ...item, value: 0 };
+                if (item.subItems && Array.isArray(item.subItems)) {
+                    newItem.subItems = resetItemValues(item.subItems);
+                }
+                return newItem;
+            });
+        };
+
+        const batch = db.batch();
+        sourceSnaps.forEach((sourceDoc, idx) => {
+            if (!sourceDoc.exists) return;
+            const i = idx + 1;
+            const data = sourceDoc.data();
+
+            const cleanKpis = (data.kpis || []).map(k => ({
+                ...k,
+                value: 0,
+                details: k.details ? {
+                    ...k.details,
+                    items: k.details.items ? resetItemValues(k.details.items) : [],
+                    achieved: []
+                } : null
+            }));
+
+            const targetDocRef = db.collection(targetPath).doc(`q${i}`);
+
+            let title = `Suku ${i}`;
+            let subtitle = `(${targetYear})`;
+            if (i === 1) { title = "Suku Pertama"; subtitle = `(Januari - Mac ${targetYear})`; }
+            if (i === 2) { title = "Suku Kedua"; subtitle = `(April - Jun ${targetYear})`; }
+            if (i === 3) { title = "Suku Ketiga"; subtitle = `(Julai - September ${targetYear})`; }
+            if (i === 4) { title = "Suku Keempat"; subtitle = `(Oktober - Disember ${targetYear})`; }
+
+            batch.set(targetDocRef, {
+                title: title,
+                subtitle: subtitle,
+                kpis: cleanKpis,
+                footerDate: nowFooterDate()
+            });
+        });
         await batch.commit();
-        await writeAuditLog('CLONE_YEAR', { sourceYear, targetYear: selectedYear });
-        showToastNotification(`Berjaya menyalin struktur dari ${sourceYear}!`, "success");
+        await writeAuditLog('CLONE_YEAR', { sourceYear, targetYear, backup: !!options.backup });
+        showToastNotification(`Berjaya menyalin struktur dari ${sourceYear} ke ${targetYear}!`, "success");
     } catch (e) {
         console.error(e);
         if (e.code === 'permission-denied') {
@@ -506,6 +540,31 @@ export async function cloneFromYear(sourceYear) {
         }
     } finally {
         hideLoading();
+    }
+}
+
+// Save a year's four quarter documents to the admin's computer as JSON, so a
+// reset can always be undone by hand. Returns false if the file could not be
+// produced. Reads only; nothing is written to Firestore.
+function downloadYearBackup(year, snaps) {
+    try {
+        const docs = {};
+        snaps.forEach((snap, idx) => { docs[`q${idx + 1}`] = snap.exists ? snap.data() : null; });
+        const payload = { app: getAppId(), year: String(year), exportedAt: new Date().toISOString(), docs };
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+        a.href = url;
+        a.download = `Sandaran_KPI_${year}_${stamp}.json`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
+        return true;
+    } catch (e) {
+        console.error("downloadYearBackup error:", e);
+        return false;
     }
 }
 
