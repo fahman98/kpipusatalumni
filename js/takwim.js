@@ -112,16 +112,33 @@ const STATUS_STYLES = {
     'Dibatalkan':        { pill: 'status-pill status-pill-red',   icon: 'ph-x-circle' }
 };
 
-// Status matching is case- and whitespace-insensitive, so "dibatalkan" typed
-// in a hurry still keeps its pill and lands in the right section.
+// Status matching is case- and whitespace-insensitive, so a legacy note typed
+// in a hurry ("dibatalkan") still keeps its pill and lands in the right section.
 function normalizedStatus(notes) {
     const n = String(notes == null ? '' : notes).trim().toLowerCase();
     if (!n) return null;
     return Object.keys(STATUS_STYLES).find(k => k.toLowerCase() === n) || null;
 }
 
-function statusStyle(notes) {
-    const key = normalizedStatus(notes);
+// Status and notes are separate fields (`status` from a dropdown, `notes` free
+// text). Events saved before that split have no `status` key and carry the
+// status word inside `notes`; they are read the old way and left untouched in
+// Firestore until an admin next edits them, when the form saves both fields.
+const isLegacyEvent = (ev) => !Object.prototype.hasOwnProperty.call(ev, 'status');
+
+function eventStatus(ev) {
+    return isLegacyEvent(ev) ? normalizedStatus(ev.notes) : normalizedStatus(ev.status);
+}
+
+// The free-text note, minus a legacy note that was only the status word.
+function eventNotes(ev) {
+    const notes = String(ev.notes == null ? '' : ev.notes).trim();
+    if (isLegacyEvent(ev) && normalizedStatus(notes)) return '';
+    return notes;
+}
+
+function statusStyle(ev) {
+    const key = eventStatus(ev);
     return key ? { ...STATUS_STYLES[key], label: key } : null;
 }
 
@@ -163,15 +180,20 @@ function ensureModal() {
                         class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-brand-primary focus:border-brand-primary">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Catatan / Status</label>
-                    <input type="text" id="takwim-notes" list="takwim-notes-options" autocomplete="off"
-                        placeholder="Pilih status atau taip sendiri"
-                        class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-brand-primary focus:border-brand-primary">
-                    <datalist id="takwim-notes-options">
-                        <option value="Telah Berlangsung"></option>
-                        <option value="Ditangguhkan"></option>
-                        <option value="Dibatalkan"></option>
-                    </datalist>
+                    <label for="takwim-status" class="block text-sm font-medium text-gray-700">Status</label>
+                    <select id="takwim-status"
+                        class="mt-1 block w-full border border-gray-300 rounded-md p-2 bg-white focus:ring-brand-primary focus:border-brand-primary">
+                        <option value="">Tiada (ikut tarikh)</option>
+                        <option value="Telah Berlangsung">Telah Berlangsung</option>
+                        <option value="Ditangguhkan">Ditangguhkan</option>
+                        <option value="Dibatalkan">Dibatalkan</option>
+                    </select>
+                    <p class="text-xs text-gray-400 mt-1">Aktiviti Ditangguhkan atau Dibatalkan dipaparkan dalam bahagian tersendiri.</p>
+                </div>
+                <div>
+                    <label for="takwim-notes" class="block text-sm font-medium text-gray-700">Catatan <span class="text-xs text-gray-400 font-normal">(pilihan)</span></label>
+                    <textarea id="takwim-notes" rows="2" placeholder="Contoh: Ditangguhkan ke Januari 2027"
+                        class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-brand-primary focus:border-brand-primary"></textarea>
                 </div>
                 <div class="flex gap-2 pt-2">
                     <button type="button" id="takwim-cancel-btn"
@@ -195,6 +217,7 @@ function ensureModal() {
         const date = modal.querySelector('#takwim-date').value;
         const dateTo = modal.querySelector('#takwim-date-to').value || '';
         const location = modal.querySelector('#takwim-location').value.trim();
+        const status = modal.querySelector('#takwim-status').value;
         const notes = modal.querySelector('#takwim-notes').value.trim();
 
         if (!title || !date) {
@@ -207,9 +230,9 @@ function ensureModal() {
         }
         close();
         if (id) {
-            await updateTakwimEvent(currentYear, id, { title, date, dateTo, location, notes });
+            await updateTakwimEvent(currentYear, id, { title, date, dateTo, location, status, notes });
         } else {
-            await addTakwimEvent(currentYear, { title, date, dateTo, location, notes });
+            await addTakwimEvent(currentYear, { title, date, dateTo, location, status, notes });
         }
         // Real-time listener will refresh the list automatically.
     });
@@ -225,7 +248,10 @@ function openTakwimModal(eventObj) {
     modal.querySelector('#takwim-date').value = eventObj ? (eventObj.date || '') : '';
     modal.querySelector('#takwim-date-to').value = eventObj ? (eventObj.dateTo || '') : '';
     modal.querySelector('#takwim-location').value = eventObj ? (eventObj.location || '') : '';
-    modal.querySelector('#takwim-notes').value = eventObj ? (eventObj.notes || '') : '';
+    // A legacy event's status word moves into the dropdown here, so saving the
+    // form converts it to the two-field shape without losing anything.
+    modal.querySelector('#takwim-status').value = eventObj ? (eventStatus(eventObj) || '') : '';
+    modal.querySelector('#takwim-notes').value = eventObj ? eventNotes(eventObj) : '';
     openModal(modal);
 }
 
@@ -262,14 +288,16 @@ function ensureDetailModal() {
 
 function openDetailModal(ev) {
     const modal = ensureDetailModal();
-    const st = statusStyle(ev.notes);
+    const st = statusStyle(ev);
+    const notes = eventNotes(ev);
     const tarikh = ev.dateTo && ev.dateTo !== ev.date
         ? `${formatDate(ev.date)} – ${formatDate(ev.dateTo)}`
         : formatDate(ev.date);
-    const statusHtml = ev.notes
-        ? (st
-            ? `<span class="inline-flex items-center gap-1.5 text-sm font-bold ${st.pill} border rounded-full px-3 py-1"><i class="ph-duotone ${st.icon}"></i>${escapeHtml(st.label)}</span>`
-            : `<p class="text-sm font-semibold text-gray-700 break-words">${escapeHtml(ev.notes)}</p>`)
+    const statusHtml = st
+        ? `<span class="inline-flex items-center gap-1.5 text-sm font-bold ${st.pill} border rounded-full px-3 py-1"><i class="ph-duotone ${st.icon}"></i>${escapeHtml(st.label)}</span>`
+        : `<p class="text-sm text-gray-400 italic">Tiada status</p>`;
+    const notesHtml = notes
+        ? `<p class="text-sm font-semibold text-gray-700 break-words whitespace-pre-line">${escapeHtml(notes)}</p>`
         : `<p class="text-sm text-gray-400 italic">Tiada catatan</p>`;
 
     modal.querySelector('#takwim-detail-body').innerHTML = `
@@ -288,8 +316,12 @@ function openDetailModal(ev) {
                 : `<p class="text-sm text-gray-400 italic">Tiada lokasi</p>`}
         </div>
         <div>
-            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Status / Catatan</p>
+            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Status</p>
             ${statusHtml}
+        </div>
+        <div>
+            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Catatan</p>
+            ${notesHtml}
         </div>`;
 
     const actions = modal.querySelector('#takwim-detail-actions');
@@ -325,7 +357,8 @@ function eventCardHtml(ev) {
     // A same-month range ("26–27") wrapped inside the 56px badge at text-base;
     // one notch smaller keeps it on a single line so every badge stays 3 rows.
     const isDayRange = String(badge.day).includes('–');
-    const st = statusStyle(ev.notes);
+    const st = statusStyle(ev);
+    const notes = eventNotes(ev);
     const isClosed = st && (st.label === 'Dibatalkan' || st.label === 'Ditangguhkan');
     const when = isClosed ? null : countdownLabel(ev);
     const isToday = when === 'Hari ini' || when === 'Sedang berlangsung';
@@ -345,16 +378,16 @@ function eventCardHtml(ev) {
                <i class="ph-duotone ph-map-pin text-brand-primary"></i>
                <span>${escapeHtml(ev.location)}</span>
            </p>` : '';
-    const notesHtml = ev.notes
-        ? (st
-            ? `<span class="inline-flex items-center gap-1 text-xs font-bold ${st.pill} border rounded-full px-2 py-0.5 mt-1.5">
-                   <i class="ph-duotone ${st.icon}"></i>${escapeHtml(st.label)}
-               </span>`
-            : `<p class="flex items-start gap-1.5 text-sm text-gray-500 mt-1">
-                   <i class="ph-duotone ph-note text-brand-primary mt-0.5"></i>
-                   <span>${escapeHtml(ev.notes)}</span>
-               </p>`)
-        : '';
+    // Status pill and free-text note can now both appear on one card
+    const statusPillHtml = st
+        ? `<span class="inline-flex items-center gap-1 text-xs font-bold ${st.pill} border rounded-full px-2 py-0.5 mt-1.5">
+               <i class="ph-duotone ${st.icon}"></i>${escapeHtml(st.label)}
+           </span>` : '';
+    const notesHtml = statusPillHtml + (notes
+        ? `<p class="flex items-start gap-1.5 text-sm text-gray-500 mt-1">
+               <i class="ph-duotone ph-note text-brand-primary mt-0.5"></i>
+               <span class="break-words">${escapeHtml(notes)}</span>
+           </p>` : '');
     const adminHtml = isAdminMode
         ? `<div class="flex items-center gap-1 flex-shrink-0">
                <button class="takwim-edit-btn footer-action-btn bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200" data-id="${escapeHtml(ev.id)}" title="Edit" aria-label="Edit aktiviti">
@@ -403,10 +436,10 @@ function render() {
     const sorted = [...cachedEvents].sort((a, b) => String(a.date).localeCompare(String(b.date)));
 
     // Cancelled / postponed go to their own sections regardless of date
-    const cancelled  = sorted.filter(ev => normalizedStatus(ev.notes) === 'Dibatalkan');
-    const postponed  = sorted.filter(ev => normalizedStatus(ev.notes) === 'Ditangguhkan');
+    const cancelled  = sorted.filter(ev => eventStatus(ev) === 'Dibatalkan');
+    const postponed  = sorted.filter(ev => eventStatus(ev) === 'Ditangguhkan');
     const active     = sorted.filter(ev => {
-        const s = normalizedStatus(ev.notes);
+        const s = eventStatus(ev);
         return s !== 'Dibatalkan' && s !== 'Ditangguhkan';
     });
     // An event counts as "past" only once its LAST day is over, so multi-day

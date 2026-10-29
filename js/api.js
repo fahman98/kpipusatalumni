@@ -1123,6 +1123,7 @@ export async function addTakwimEvent(year, eventData) {
             date: eventData.date || '',
             dateTo: eventData.dateTo || '',
             location: eventData.location || '',
+            status: eventData.status || '',
             notes: eventData.notes || '',
             createdAt: new Date().toISOString()
         };
@@ -1167,6 +1168,10 @@ export async function updateTakwimEvent(year, eventId, updatedData) {
                 date: updatedData.date !== undefined ? updatedData.date : events[idx].date,
                 dateTo: updatedData.dateTo !== undefined ? updatedData.dateTo : (events[idx].dateTo || ''),
                 location: updatedData.location !== undefined ? updatedData.location : events[idx].location,
+                // Saving writes `status`, which moves a legacy event (status word
+                // kept in `notes`) to the two-field shape. The form pre-fills
+                // both from the legacy note, so nothing is lost.
+                status: updatedData.status !== undefined ? updatedData.status : (events[idx].status || ''),
                 notes: updatedData.notes !== undefined ? updatedData.notes : events[idx].notes
             };
             t.set(ref, { events }, { merge: true });
