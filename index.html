@@ -58,8 +58,8 @@
     <link rel="apple-touch-icon" href="./images/apple-touch-icon.png">
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="style.css?v=5.4">
-    <link rel="stylesheet" href="tailwind.css?v=13">
+    <link rel="stylesheet" href="style.css?v=5.5">
+    <link rel="stylesheet" href="tailwind.css?v=14">
 </head>
 
 <body class="bg-gray-100 relative overflow-x-hidden">
@@ -442,6 +442,21 @@
                 <button id="backup-download-btn" type="button"
                     class="mt-3 bg-brand-primary text-white hover:bg-blue-800 px-4 py-2 rounded-lg text-sm font-bold transition-colors">
                     <i class="fas fa-download mr-1.5" aria-hidden="true"></i>Muat Turun Sandaran
+                </button>
+            </div>
+
+            <!-- Audit log viewer (read-only) -->
+            <div id="history-zone" class="mt-4 max-w-xl mx-auto text-left border border-gray-200 bg-white rounded-xl p-4">
+                <p class="text-sm font-bold text-gray-700 flex items-center gap-2">
+                    <i class="fas fa-history" aria-hidden="true"></i>Sejarah Perubahan
+                </p>
+                <p class="text-xs text-gray-600 mt-1 leading-relaxed">
+                    Senarai semua perubahan data: bila, apa yang diubah, dan nilai lama berbanding nilai baharu.
+                    Salinan data yang dipadam boleh dilihat dan disalin dari sini.
+                </p>
+                <button id="history-open-btn" type="button"
+                    class="mt-3 bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 px-4 py-2 rounded-lg text-sm font-bold transition-colors">
+                    <i class="fas fa-history mr-1.5" aria-hidden="true"></i>Lihat Sejarah Perubahan
                 </button>
             </div>
 
@@ -1054,7 +1069,7 @@
         </div>
 
         <!-- Load Main Script as Module -->
-        <script type="module" src="js/main.js?v=5.8"></script>
+        <script type="module" src="js/main.js?v=5.9"></script>
 </body>
 
 </html>

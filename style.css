@@ -1766,6 +1766,16 @@ body.dark-mode .detail-btn-delete:hover{ background:#5b1414; }
     }
 }
 
+/* ===== SEJARAH PERUBAHAN (audit log viewer) ===== */
+.history-tone-add    { background: #dcfce7; color: #15803d; }
+.history-tone-edit   { background: #dbeafe; color: #1d4ed8; }
+.history-tone-delete { background: #fee2e2; color: #b91c1c; }
+body.dark-mode .history-tone-add    { background: #14532d; color: #86efac; }
+body.dark-mode .history-tone-edit   { background: #1e3a8a; color: #bfdbfe; }
+body.dark-mode .history-tone-delete { background: #7f1d1d; color: #fca5a5; }
+body.dark-mode .history-snapshot pre { background: #111827; border-color: #374151; color: #d1d5db; }
+body.dark-mode #history-zone { background: #1f2937; border-color: #374151; }
+
 /* ===== OVERLAY DIALOGS AS BOTTOM SHEETS (PHONE) =====
    Kemaskini Nilai, the confirm dialog and Edit Semua Suku sat centred on a
    phone while every other dialog rose from the bottom. Match them. */
