@@ -17,11 +17,12 @@ descriptions of PR #2 to #8.
 ## Data safety (top priority)
 - The owner cannot easily re-enter lost data. Never write to live Firestore
   from a session, and never press reset / delete in a live app.
-- Test against a mocked Firebase in Playwright: route `firebase-app.js` to a
-  mock defining `window.firebase` (auth, firestore with doc get/onSnapshot,
-  batch and runTransaction that record writes), strip `integrity=` from
-  `index.html`, serve CDN libs from local npm packages, and assert what would
-  be written. The proxy blocks Firebase/CDNs from the container anyway.
+- Test with `tests/` (see `tests/README.md`): `cd tests && npm install`
+  once, then `node run.js` (12 scenarios, ~90s) against `mock-firebase.js`,
+  which records every write instead of sending it. Clock pinned to
+  29/10/2026. Add a scenario to `tests/run.js` for each behaviour change;
+  extend the mock's seed data rather than touching live data. The proxy
+  blocks Firebase/CDNs from the container anyway.
 - Changing a stored data shape: stay backward compatible, never migrate
   existing docs in bulk; convert a record only when the admin next saves it
   (see Takwim `status` below).
@@ -76,7 +77,7 @@ descriptions of PR #2 to #8.
 3. Run what CI runs: `node --check` on each JS file (copy to `.mjs` first),
    `node .github/scripts/check-refs.mjs`, `node .github/scripts/check-rules.mjs`,
    and confirm the Tailwind output matches.
-4. Screenshot desktop (1366px) and phone (390px) against the mock.
+4. `node tests/run.js` passes; `--shots` for desktop / phone screenshots.
 
 ## Git workflow
 - Work on the session's branch, open a PR only when asked. On "merge bro":
