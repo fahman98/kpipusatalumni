@@ -35,11 +35,12 @@ import {
     updateKpiDescriptionInFirestore,
     getKpiDataFromFirestore,
     saveBulkKpiValues,
-    subscribeLastUpdated
+    subscribeLastUpdated,
+    downloadFullBackup
 } from './api.js';
 
 import { renderGaugeChart, showHistoryChart, destroyKpiChart } from './charts.js';
-import { handleAdminLogin, resetLoginModal, runLogoutSequence } from './admin.js';
+import { handleAdminLogin, resetLoginModal, runLogoutSequence, startIdleLogout, stopIdleLogout, IDLE_LOGOUT_FLAG } from './admin.js';
 import { initTakwim } from './takwim.js';
 import { initPenjanaan } from './penjanaan.js';
 import { statusTier, statusHex, setPaceContext, getPaceFraction, kpiStatusPct, quarterStarted, STATUS_LABEL } from './status.js';
@@ -585,6 +586,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (adminRibbon) adminRibbon.classList.remove('hidden');
 
                 showToastNotification(`Selamat datang, Admin (${user.email})`, "success");
+
+                // Sessions signed in before the switch to SESSION persistence
+                // were stored as LOCAL (kept forever); move them over too.
+                firebase.auth().setPersistence(firebase.auth.Auth.Persistence.SESSION)
+                    .catch((err) => console.warn('setPersistence(SESSION) failed:', err));
+                startIdleLogout();
             } else {
                 // GUEST MODE (anonymous, or signed-out fallback)
                 setEditMode(false);
@@ -595,6 +602,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // Hide admin specific elements immediately
                 if (adminSetupActions) adminSetupActions.classList.add('hidden');
+                stopIdleLogout();
+
+                // Explain an automatic sign-out once, after its reload
+                try {
+                    if (sessionStorage.getItem(IDLE_LOGOUT_FLAG)) {
+                        sessionStorage.removeItem(IDLE_LOGOUT_FLAG);
+                        showToastNotification('Anda telah dilog keluar secara automatik selepas 30 minit tanpa aktiviti.', 'info');
+                    }
+                } catch (_) {}
             }
 
             // Trigger Load (single, after auth has settled)
@@ -995,6 +1011,41 @@ document.addEventListener('DOMContentLoaded', () => {
     if (cloneBtn) cloneBtn.addEventListener('click', () => cloneFromYear(cloneSourceYear()));
     if (startFreshBtn) startFreshBtn.addEventListener('click', () => openModal(addKpiModal));
     if (openAddKpiBtn) openAddKpiBtn.addEventListener('click', () => { getEl('add-kpi-form').reset(); openModal(addKpiModal); });
+
+    // Full backup. The last-backup date is a per-browser reminder only
+    // (localStorage), so it can read "belum pernah" on another computer.
+    const BACKUP_KEY = 'kpi_last_full_backup';
+    const BACKUP_NUDGE_DAYS = 30;
+    function renderBackupLast() {
+        const el = getEl('backup-last');
+        if (!el) return;
+        let last = null;
+        try { last = localStorage.getItem(BACKUP_KEY); } catch (_) {}
+        const d = last ? new Date(last) : null;
+        if (!d || isNaN(d)) {
+            el.textContent = 'Sandaran terakhir dari komputer ini: belum pernah.';
+            el.className = 'text-xs mt-1.5 font-semibold text-amber-700';
+            return;
+        }
+        const days = Math.floor((Date.now() - d.getTime()) / 86400000);
+        const stale = days >= BACKUP_NUDGE_DAYS;
+        el.textContent = `Sandaran terakhir dari komputer ini: ${d.toLocaleDateString('en-GB')} (${days} hari lalu)` +
+            (stale ? '. Disyorkan buat sandaran baharu.' : '.');
+        el.className = `text-xs mt-1.5 font-semibold ${stale ? 'text-amber-700' : 'text-gray-500'}`;
+    }
+    renderBackupLast();
+    const backupBtn = getEl('backup-download-btn');
+    if (backupBtn) backupBtn.addEventListener('click', async () => {
+        backupBtn.disabled = true;
+        try {
+            if (await downloadFullBackup()) {
+                try { localStorage.setItem(BACKUP_KEY, new Date().toISOString()); } catch (_) {}
+                renderBackupLast();
+            }
+        } finally {
+            backupBtn.disabled = false;
+        }
+    });
 
     // Re-Clone Button with Custom Modal
     const reCloneBtn = document.getElementById('re-clone-btn');
