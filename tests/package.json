@@ -1,0 +1,15 @@
+{
+  "name": "kpipusatalumni-tests",
+  "private": true,
+  "description": "Browser tests against a mocked Firebase. Not deployed.",
+  "scripts": {
+    "test": "node run.js"
+  },
+  "devDependencies": {
+    "@fortawesome/fontawesome-free": "6.5.2",
+    "@phosphor-icons/web": "2.1.1",
+    "chart.js": "4.4.1",
+    "jspdf": "2.5.1",
+    "jspdf-autotable": "3.6.0"
+  }
+}
