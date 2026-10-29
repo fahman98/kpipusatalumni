@@ -176,7 +176,13 @@ export function handleAdminLogin() {
     setFeedback('');
     setSubmitting(true);
 
-    firebase.auth().signInWithEmailAndPassword(email, password)
+    // SESSION persistence: the admin login ends when the browser (or tab) is
+    // closed instead of staying signed in on that computer indefinitely. If
+    // the browser refuses (storage blocked), sign in anyway rather than lock
+    // the admin out; the idle logout below still applies.
+    firebase.auth().setPersistence(firebase.auth.Auth.Persistence.SESSION)
+        .catch((err) => console.warn('setPersistence(SESSION) failed:', err))
+        .then(() => firebase.auth().signInWithEmailAndPassword(email, password))
         .then((userCredential) => {
             // Firebase menerima MANA-MANA akaun sah dalam projek ini. Hanya
             // email admin yang layak — tolak yang lain di sini supaya pengguna
@@ -210,4 +216,68 @@ export function runLogoutSequence() {
             showToastNotification('Log keluar gagal, memuat semula halaman.', 'danger');
         })
         .finally(() => window.location.reload());
+}
+
+// --- IDLE LOGOUT -----------------------------------------------------------
+// An admin left signed in on a shared office PC or an event-counter laptop
+// could have their data changed by whoever sat down next. After 30 minutes
+// with no pointer / key / scroll activity the admin is signed out, with a
+// warning 2 minutes before. Runs only while signed in as admin.
+const IDLE_LIMIT_MS = 30 * 60 * 1000;
+const IDLE_WARN_MS = 2 * 60 * 1000;
+const ACTIVITY_EVENTS = ['pointerdown', 'keydown', 'wheel', 'touchstart', 'scroll'];
+export const IDLE_LOGOUT_FLAG = 'kpi_idle_logout';
+
+let idleWatching = false;
+let lastActivity = 0;
+let idleTimer = null;
+let warnTimer = null;
+
+function scheduleIdleTimers() {
+    clearTimeout(idleTimer);
+    clearTimeout(warnTimer);
+    warnTimer = setTimeout(() => {
+        showToastNotification('Tiada aktiviti dikesan. Anda akan dilog keluar dalam 2 minit.', 'info');
+    }, IDLE_LIMIT_MS - IDLE_WARN_MS);
+    idleTimer = setTimeout(idleLogout, IDLE_LIMIT_MS);
+}
+
+function onActivity() {
+    const now = Date.now();
+    if (now - lastActivity < 5000) return;   // rescheduling on every scroll frame is wasteful
+    lastActivity = now;
+    scheduleIdleTimers();
+}
+
+// Background tabs and a sleeping laptop can delay timers well past 30
+// minutes, so check the elapsed time directly when the page comes back.
+function onVisibility() {
+    if (document.visibilityState === 'visible' && Date.now() - lastActivity >= IDLE_LIMIT_MS) {
+        idleLogout();
+    }
+}
+
+function idleLogout() {
+    if (!idleWatching) return;
+    stopIdleLogout();
+    ssSet(IDLE_LOGOUT_FLAG, '1');   // main.js explains it after the reload
+    runLogoutSequence();
+}
+
+export function startIdleLogout() {
+    if (idleWatching) return;
+    idleWatching = true;
+    lastActivity = Date.now();
+    ACTIVITY_EVENTS.forEach(ev => window.addEventListener(ev, onActivity, { passive: true, capture: true }));
+    document.addEventListener('visibilitychange', onVisibility);
+    scheduleIdleTimers();
+}
+
+export function stopIdleLogout() {
+    if (!idleWatching) return;
+    idleWatching = false;
+    clearTimeout(idleTimer);
+    clearTimeout(warnTimer);
+    ACTIVITY_EVENTS.forEach(ev => window.removeEventListener(ev, onActivity, { capture: true }));
+    document.removeEventListener('visibilitychange', onVisibility);
 }

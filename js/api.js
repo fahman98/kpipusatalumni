@@ -70,6 +70,12 @@ export function subscribeLastUpdated(year, callback) {
 }
 
 // --- AUDIT LOG ---
+// Deletes and edits now record WHAT was removed or replaced (a full copy under
+// `deleted` / `before`), not just an id, so a mistaken delete can be put back
+// by hand from the log. Firestore rejects `undefined`, so details go through a
+// JSON round-trip that drops undefined fields.
+const auditSafe = (obj) => (obj === undefined ? null : JSON.parse(JSON.stringify(obj)));
+
 async function writeAuditLog(action, details) {
     try {
         const user = firebase.auth().currentUser;
@@ -78,7 +84,7 @@ async function writeAuditLog(action, details) {
             user: user ? user.email : 'unknown',
             action,
             year: selectedYear,
-            details
+            details: auditSafe(details)
         });
     } catch (e) {
         console.error("Audit log error:", e);
@@ -420,11 +426,17 @@ export function deleteKpi(kpiId) {
             if (!assertOnline()) return;
             showLoading("Memadam KPI...");
 
+            // Copy of the KPI as it stood in each quarter. Keyed by quarter and
+            // assigned (not pushed), so a re-run of the transaction overwrites
+            // rather than duplicates.
+            const deleted = {};
             try {
-                await runQuarterTransaction(ALL_QUARTERS, (data) => {
+                await runQuarterTransaction(ALL_QUARTERS, (data, qNum) => {
+                    const gone = data.kpis.find(k => k.id === kpiId);
+                    deleted[`q${qNum}`] = gone ? auditSafe(gone) : null;
                     data.kpis = data.kpis.filter(k => k.id !== kpiId);
                 });
-                await writeAuditLog('DELETE_KPI', { kpiId });
+                await writeAuditLog('DELETE_KPI', { kpiId, deleted });
                 showToastNotification("KPI berjaya dipadam.", "success");
             } catch (e) {
                 console.error(e);
@@ -547,24 +559,83 @@ export async function cloneFromYear(sourceYear, options = {}) {
 // reset can always be undone by hand. Returns false if the file could not be
 // produced. Reads only; nothing is written to Firestore.
 function downloadYearBackup(year, snaps) {
+    const docs = {};
+    snaps.forEach((snap, idx) => { docs[`q${idx + 1}`] = snap.exists ? snap.data() : null; });
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+    return downloadJson(`Sandaran_KPI_${year}_${stamp}.json`,
+        { app: getAppId(), year: String(year), exportedAt: new Date().toISOString(), docs });
+}
+
+// Hand the browser a JSON file to save. Returns false if it could not be built.
+function downloadJson(filename, payload) {
     try {
-        const docs = {};
-        snaps.forEach((snap, idx) => { docs[`q${idx + 1}`] = snap.exists ? snap.data() : null; });
-        const payload = { app: getAppId(), year: String(year), exportedAt: new Date().toISOString(), docs };
         const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
         a.href = url;
-        a.download = `Sandaran_KPI_${year}_${stamp}.json`;
+        a.download = filename;
         document.body.appendChild(a);
         a.click();
         a.remove();
         setTimeout(() => URL.revokeObjectURL(url), 10000);
         return true;
     } catch (e) {
-        console.error("downloadYearBackup error:", e);
+        console.error("downloadJson error:", e);
         return false;
+    }
+}
+
+// --- FULL BACKUP (admin, read-only) ---------------------------------------
+// One JSON file with every year's KPI quarters, Takwim and "last updated"
+// marker, for the admin to keep off-site (e.g. the office Google Drive). It
+// only READS. The client SDK can't list collections, so it walks a fixed
+// year range; years with no documents are left out of the file.
+export const BACKUP_FIRST_YEAR = 2020;
+
+export async function downloadFullBackup() {
+    if (!isEditMode) return false;
+    if (!assertOnline()) return false;
+    showLoading("Menyediakan sandaran...");
+    try {
+        const base = `artifacts/${getAppId()}/public/data`;
+        const lastYear = new Date().getFullYear() + 1;
+        const years = {};
+        let docCount = 0;
+        for (let y = BACKUP_FIRST_YEAR; y <= lastYear; y++) {
+            const [quarters, takwim, meta] = await Promise.all([
+                Promise.all(ALL_QUARTERS.map(i => db.collection(`${base}/kpi-${y}`).doc(`q${i}`).get())),
+                db.collection(`${base}/takwim-${y}`).doc('main').get(),
+                db.collection(`${base}/meta`).doc(String(y)).get()
+            ]);
+            const kpi = {};
+            quarters.forEach((snap, idx) => { if (snap.exists) { kpi[`q${idx + 1}`] = snap.data(); docCount++; } });
+            const entry = {};
+            if (Object.keys(kpi).length) entry.kpi = kpi;
+            if (takwim.exists) { entry.takwim = takwim.data(); docCount++; }
+            if (meta.exists) { entry.meta = meta.data(); docCount++; }
+            if (Object.keys(entry).length) years[y] = entry;
+        }
+        if (!docCount) {
+            showToastNotification("Tiada data dijumpai untuk disandarkan.", "danger");
+            return false;
+        }
+        const now = new Date();
+        const stamp = now.toISOString().slice(0, 10);
+        const ok = downloadJson(`Sandaran_Penuh_KPI_Alumni_${stamp}.json`, {
+            app: getAppId(),
+            exportedAt: now.toISOString(),
+            exportedBy: (firebase.auth().currentUser || {}).email || null,
+            years
+        });
+        if (ok) showToastNotification(`Sandaran dimuat turun (${Object.keys(years).length} tahun, ${docCount} dokumen).`, "success");
+        else showToastNotification("Fail sandaran gagal dihasilkan.", "danger");
+        return ok;
+    } catch (e) {
+        console.error("downloadFullBackup error:", e);
+        showToastNotification("Gagal menyediakan sandaran. Semak sambungan internet.", "danger");
+        return false;
+    } finally {
+        hideLoading();
     }
 }
 
@@ -602,6 +673,7 @@ export async function updateKpiValueInFirestore(quarterKey, kpiId, newValue, bul
     const quarterNums = quartersFrom(startQuarterNum);
 
     showLoading("Menyimpan...");
+    let oldValue = null;   // for the audit log; reassigned if the transaction re-runs
     try {
         await db.runTransaction(async (t) => {
             const refs = quarterNums.map(n => db.collection(basePath).doc(`q${n}`));
@@ -614,6 +686,7 @@ export async function updateKpiValueInFirestore(quarterKey, kpiId, newValue, bul
             const sIdx = startSnap.data().kpis.findIndex(k => k.id === kpiId);
             if (sIdx === -1) return;
             const inheritedValue = startSnap.data().kpis[sIdx].value;
+            oldValue = inheritedValue;
 
             const pending = [];
             for (let n = 0; n < snaps.length; n++) {
@@ -648,7 +721,7 @@ export async function updateKpiValueInFirestore(quarterKey, kpiId, newValue, bul
             pending.forEach(([ref, data]) =>
                 t.update(ref, { kpis: data.kpis, footerDate: nowFooterDate() }));
         });
-        await writeAuditLog('UPDATE_VALUE', { kpiId, quarterKey, newValue, bulan });
+        await writeAuditLog('UPDATE_VALUE', { kpiId, quarterKey, oldValue, newValue, bulan });
         showToastNotification('Nilai dikemaskini!', 'success');
     } catch (e) {
         console.error(e);
@@ -800,6 +873,7 @@ export async function updateKpiBreakdownList(quarterKey, kpiId, payload, action)
             ? { ...payload, id: payload.id || genItemId() }
             : null;
 
+        let auditItem = null;   // the row deleted / as it was before an edit
         await db.runTransaction(async (t) => {
             const refs = quarterNums.map(n => db.collection(basePath).doc(`q${n}`));
             const snaps = await Promise.all(refs.map(ref => t.get(ref)));   // ALL reads first
@@ -846,6 +920,7 @@ export async function updateKpiBreakdownList(quarterKey, kpiId, payload, action)
                         candidate = startItems.find(it => sameItem(it, expected)) || null;
                     }
                     targetIdentity = candidate;
+                    auditItem = candidate;
                 }
                 if (!targetIdentity) {
                     const missing = new Error('Item not found');
@@ -909,7 +984,12 @@ export async function updateKpiBreakdownList(quarterKey, kpiId, payload, action)
             pending.forEach(([ref, data]) =>
                 t.update(ref, { kpis: data.kpis, footerDate: nowFooterDate() }));
         });
-        await writeAuditLog('UPDATE_BREAKDOWN_ITEM', { kpiId, quarterKey, action });
+        await writeAuditLog('UPDATE_BREAKDOWN_ITEM', {
+            kpiId, quarterKey, action,
+            ...(action === 'delete' ? { deleted: auditItem } : {}),
+            ...(action === 'edit' ? { before: auditItem, after: payload && payload.data } : {}),
+            ...(action === 'add' ? { added: addPayload } : {})
+        });
         showToastNotification('Butiran dikemaskini!', 'success');
         const btn = document.querySelector(`.show-details-btn[data-kpi-id="${kpiId}"]`);
         closeModal(document.getElementById('details-modal'));
@@ -1154,6 +1234,7 @@ export async function updateTakwimEvent(year, eventId, updatedData) {
         return;
     }
     showLoading("Mengemaskini aktiviti...");
+    let before = null;   // the event as it was, for the audit log
     try {
         const ref = takwimDocRef(year);
         await db.runTransaction(async (t) => {
@@ -1162,6 +1243,7 @@ export async function updateTakwimEvent(year, eventId, updatedData) {
             const events = Array.isArray(doc.data().events) ? doc.data().events : [];
             const idx = events.findIndex(ev => ev.id === eventId);
             if (idx === -1) throw new Error("Aktiviti tidak dijumpai");
+            before = { ...events[idx] };
             events[idx] = {
                 ...events[idx],
                 title: updatedData.title !== undefined ? updatedData.title : events[idx].title,
@@ -1176,7 +1258,7 @@ export async function updateTakwimEvent(year, eventId, updatedData) {
             };
             t.set(ref, { events }, { merge: true });
         });
-        await writeAuditLog('EDIT_TAKWIM', { year, eventId });
+        await writeAuditLog('EDIT_TAKWIM', { year, eventId, before, after: updatedData });
         showToastNotification("Aktiviti dikemaskini!", "success");
     } catch (e) {
         console.error("updateTakwimEvent error:", e);
@@ -1199,14 +1281,16 @@ export async function deleteTakwimEvent(year, eventId) {
     showLoading("Memadam aktiviti...");
     try {
         const ref = takwimDocRef(year);
+        let deleted = null;
         await db.runTransaction(async (t) => {
             const doc = await t.get(ref);
             if (!doc.exists) throw new Error("Takwim tidak dijumpai");
-            const events = (Array.isArray(doc.data().events) ? doc.data().events : [])
-                .filter(ev => ev.id !== eventId);
+            const all = Array.isArray(doc.data().events) ? doc.data().events : [];
+            deleted = all.find(ev => ev.id === eventId) || null;
+            const events = all.filter(ev => ev.id !== eventId);
             t.set(ref, { events }, { merge: true });
         });
-        await writeAuditLog('DELETE_TAKWIM', { year, eventId });
+        await writeAuditLog('DELETE_TAKWIM', { year, eventId, deleted });
         showToastNotification("Aktiviti dipadam.", "success");
     } catch (e) {
         console.error("deleteTakwimEvent error:", e);
