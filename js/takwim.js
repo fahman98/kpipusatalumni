@@ -26,6 +26,8 @@ let currentYear = null;
 let currentContainer = null;
 let isAdminMode = false;
 let cachedEvents = [];
+let showAllPast = false;      // "Telah Berlangsung" collapsed to the latest few
+const PAST_PREVIEW = 3;
 
 // ---- Helpers ----------------------------------------------------------
 
@@ -416,9 +418,20 @@ function eventCardHtml(ev) {
     </div>`;
 }
 
-function sectionHtml(titleText, iconClass, events) {
+// `limit` (0 = no limit) shows only the first N cards plus a "Tunjuk semua"
+// toggle. Used for past events, which pile up over the year and pushed the
+// postponed / cancelled sections far down the page.
+function sectionHtml(titleText, iconClass, events, { limit = 0, expanded = false, toggleId = '' } = {}) {
     if (!events.length) return '';
-    const cards = events.map(eventCardHtml).join('');
+    const collapsible = limit > 0 && events.length > limit;
+    const shown = collapsible && !expanded ? events.slice(0, limit) : events;
+    const cards = shown.map(eventCardHtml).join('');
+    const toggleHtml = collapsible
+        ? `<button type="button" id="${toggleId}" aria-expanded="${expanded}"
+               class="mt-3 w-full text-sm font-semibold text-brand-primary bg-white border border-gray-200 hover:bg-blue-50 rounded-xl py-2.5 flex items-center justify-center gap-2 transition-colors">
+               <i class="fas ${expanded ? 'fa-chevron-up' : 'fa-chevron-down'} text-xs" aria-hidden="true"></i>
+               ${expanded ? 'Tunjuk 3 terkini sahaja' : `Tunjuk semua (${events.length})`}
+           </button>` : '';
     return `
     <div class="mb-6">
         <h3 class="flex items-center gap-2 text-sm font-bold text-gray-500 uppercase tracking-wide mb-3">
@@ -426,6 +439,7 @@ function sectionHtml(titleText, iconClass, events) {
             <span class="text-xs font-semibold bg-gray-100 text-gray-500 rounded-full px-2 py-0.5">${events.length}</span>
         </h3>
         <div class="space-y-3">${cards}</div>
+        ${toggleHtml}
     </div>`;
 }
 
@@ -465,7 +479,8 @@ function render() {
     } else {
         bodyHtml =
             sectionHtml('Akan Datang', 'ph-clock-countdown', upcoming) +
-            sectionHtml('Telah Berlangsung', 'ph-clock-counter-clockwise', past) +
+            sectionHtml('Telah Berlangsung', 'ph-clock-counter-clockwise', past,
+                { limit: PAST_PREVIEW, expanded: showAllPast, toggleId: 'takwim-past-toggle' }) +
             sectionHtml('Ditangguhkan', 'ph-pause-circle', postponed) +
             sectionHtml('Dibatalkan', 'ph-x-circle', cancelled);
     }
@@ -485,6 +500,13 @@ function render() {
     // Wire up listeners
     const addBtn = currentContainer.querySelector('#takwim-add-btn');
     if (addBtn) addBtn.addEventListener('click', () => openTakwimModal(null));
+
+    const pastToggle = currentContainer.querySelector('#takwim-past-toggle');
+    if (pastToggle) pastToggle.addEventListener('click', () => {
+        showAllPast = !showAllPast;
+        render();
+        currentContainer.querySelector('#takwim-past-toggle')?.focus();
+    });
 
     // Tap any card -> detail popup (full info, untruncated). Available to
     // everyone; clicks on the inline admin buttons are ignored here.
@@ -540,6 +562,7 @@ export function initTakwim(containerEl, isAdmin, year) {
         if (unsubscribe) { unsubscribe(); unsubscribe = null; }
         currentYear = yearStr;
         cachedEvents = [];
+        showAllPast = false;
     } else {
         currentYear = yearStr;
     }

@@ -93,6 +93,22 @@ async function writeAuditLog(action, details) {
     touchLastUpdated();
 }
 
+// Read the audit log newest-first, one page at a time, for the admin's
+// "Sejarah Perubahan" view. Reads only. firestore.rules lets only the admin
+// read audit-logs. `after` is the last document of the previous page.
+export async function fetchAuditLogs({ after = null, limit = 30 } = {}) {
+    let q = db.collection(`artifacts/${getAppId()}/public/data/audit-logs`)
+        .orderBy('timestamp', 'desc')
+        .limit(limit);
+    if (after) q = q.startAfter(after);
+    const snap = await q.get();
+    return {
+        entries: snap.docs.map(d => ({ id: d.id, ...d.data() })),
+        last: snap.docs.length ? snap.docs[snap.docs.length - 1] : null,
+        done: snap.docs.length < limit
+    };
+}
+
 // --- FUNGSI REAL-TIME LISTENER ---
 export function subscribeToQuarterData(quarterKey, onUpdateCallback) {
     // 1. Matikan listener lama jika ada

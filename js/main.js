@@ -45,6 +45,7 @@ import { initTakwim } from './takwim.js';
 import { initPenjanaan } from './penjanaan.js';
 import { statusTier, statusHex, setPaceContext, getPaceFraction, kpiStatusPct, quarterStarted, STATUS_LABEL } from './status.js';
 import { isAdminUser } from './auth.js';
+import { openHistory } from './history.js';
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -1046,6 +1047,9 @@ document.addEventListener('DOMContentLoaded', () => {
             backupBtn.disabled = false;
         }
     });
+
+    const historyBtn = getEl('history-open-btn');
+    if (historyBtn) historyBtn.addEventListener('click', () => openHistory(historyBtn));
 
     // Re-Clone Button with Custom Modal
     const reCloneBtn = document.getElementById('re-clone-btn');
