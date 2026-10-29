@@ -42,7 +42,7 @@ import { renderGaugeChart, showHistoryChart, destroyKpiChart } from './charts.js
 import { handleAdminLogin, resetLoginModal, runLogoutSequence } from './admin.js';
 import { initTakwim } from './takwim.js';
 import { initPenjanaan } from './penjanaan.js';
-import { statusTier, statusHex, setPaceContext, getPaceFraction, kpiStatusPct, STATUS_LABEL } from './status.js';
+import { statusTier, statusHex, setPaceContext, getPaceFraction, kpiStatusPct, quarterStarted, STATUS_LABEL } from './status.js';
 import { isAdminUser } from './auth.js';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -216,6 +216,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentQuarter = quarterKey;
         setPaceContext(selectedYear, quarterKey.replace('q', ''));
         updateCloneLabels();
+        markFutureQuarterTabs();
         // Remember the active quarter so a refresh or SW update restores the
         // user's place instead of snapping back to Suku 1.
         try { sessionStorage.setItem('kpi_active_quarter', quarterKey); } catch (e) {}
@@ -273,6 +274,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (isEmpty) {
                 if (kpiGridContainer) kpiGridContainer.innerHTML = '';
                 if (emptyStateContainer) emptyStateContainer.classList.remove('hidden');
+                updateEmptyStateCopy();
                 if (statsBar) statsBar.classList.add('hidden');
                 updatePaceNote(null);
                 hideTableView();
@@ -729,7 +731,10 @@ document.addEventListener('DOMContentLoaded', () => {
         getEl('focus-kpi-pct').textContent = cappedPct.toFixed(1) + '%';
         getEl('focus-kpi-pct').style.color = color;
         getEl('focus-kpi-value').textContent = valStr;
-        getEl('focus-kpi-target').textContent = kpi.target;
+        // Same format as the value beside it (thousands separator, RM, %)
+        getEl('focus-kpi-target').textContent = typeof kpi.target === 'number'
+            ? (kpi.isCurrency ? 'RM ' : '') + kpi.target.toLocaleString('en-US') + (kpi.isPercentage ? '%' : '')
+            : (kpi.target || '—');
 
         const trendRow = getEl('focus-trend-row');
         if (kpi.trend && trendRow) {
@@ -1222,6 +1227,32 @@ document.addEventListener('DOMContentLoaded', () => {
     // There is no print button any more — the branded PDF export is the
     // supported way to produce a report. These hooks only make the browser's
     // own Ctrl+P output presentable for anyone who reaches for it.
+    // The empty-year panel used to show admin setup text (and a red "log in as
+    // Admin" line) to every visitor. Guests now get a plain notice.
+    function updateEmptyStateCopy() {
+        const y = String(selectedYear);
+        const titleEl = getEl('empty-state-title');
+        const descEl = getEl('empty-state-desc');
+        if (isEditMode) {
+            if (titleEl) titleEl.textContent = `Tiada Data Untuk Tahun ${y}`;
+            if (descEl) descEl.textContent = `Tahun ${y} belum mempunyai sebarang KPI. Salin struktur dari ${cloneSourceYear()} (semua nilai bermula dengan 0) atau mula kosong.`;
+        } else {
+            if (titleEl) titleEl.textContent = `Data KPI ${y} Belum Tersedia`;
+            if (descEl) descEl.textContent = `Data prestasi bagi tahun ${y} belum dimasukkan. Sila pilih tahun lain atau semak semula kemudian.`;
+        }
+    }
+
+    // Quarters that haven't begun still hold figures (values are carried
+    // forward), so mute their tabs and say why on hover / to screen readers.
+    function markFutureQuarterTabs() {
+        document.querySelectorAll('.quarter-btn').forEach(btn => {
+            const future = !quarterStarted(selectedYear, btn.dataset.quarter);
+            btn.classList.toggle('quarter-future', future);
+            if (future) btn.title = 'Suku ini belum bermula';
+            else btn.removeAttribute('title');
+        });
+    }
+
     // Sentence explaining what status is judged against, shared by the line
     // under the stats bar and the PDF. Empty once the whole annual target is
     // due (a finished year's Suku 4), where status already means the plain %.
@@ -1229,6 +1260,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const fraction = getPaceFraction();
         if (fraction >= 1) return '';
         const qNum = parseInt(quarterKey.replace('q', ''), 10);
+        if (!quarterStarted(selectedYear, qNum)) {
+            return `Suku ${qNum} belum bermula. Angka di bawah ialah jumlah terkumpul setakat hari ini (${new Date().toLocaleDateString('en-GB')}), ` +
+                `dinilai berbanding jangkaan ${Math.round(fraction * 100)}% daripada sasaran tahunan.`;
+        }
         const when = fraction < qNum / 4
             ? `setakat hari ini (${new Date().toLocaleDateString('en-GB')})`
             : `pada akhir Suku ${qNum}`;

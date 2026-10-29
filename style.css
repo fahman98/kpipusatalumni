@@ -160,6 +160,12 @@ button:active,
     background: transparent;
 }
 
+/* Quarter not yet begun (its figures are carried forward from earlier ones) */
+.quarter-btn.quarter-future:not(.active) {
+    opacity: 0.55;
+    font-style: italic;
+}
+
 .quarter-btn:not(.active):hover {
     background-color: #f3f4f6;
     color: #1f2937;
@@ -1758,6 +1764,25 @@ body.dark-mode .detail-btn-delete:hover{ background:#5b1414; }
         padding-left: 0.75rem;
         padding-right: 0.75rem;
     }
+}
+
+/* ===== OVERLAY DIALOGS AS BOTTOM SHEETS (PHONE) =====
+   Kemaskini Nilai, the confirm dialog and Edit Semua Suku sat centred on a
+   phone while every other dialog rose from the bottom. Match them. */
+@media (max-width: 639px) {
+    .sheet-panel {
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    .sheet-panel::before {
+        content: "";
+        display: block;
+        width: 40px;
+        height: 4px;
+        border-radius: 2px;
+        background: #d1d5db;
+        margin: 8px auto 0;
+    }
+    body.dark-mode .sheet-panel::before { background: #4b5563; }
 }
 
 /* ===== COMPACT KPI CARDS (PHONE) =====

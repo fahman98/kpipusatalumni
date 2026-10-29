@@ -106,6 +106,16 @@ const FA_TO_PHOSPHOR = {
     'fa-chart-bar':       'ph-chart-bar',
 };
 
+// A labelled form field for the admin add forms. `full` spans both columns
+// of the sm:grid-cols-2 layout; `hint` is a short line under the input.
+function formField(id, label, inputHtml, { full = false, hint = '' } = {}) {
+    return `<div class="${full ? 'sm:col-span-2' : ''}">
+        <label for="${id}" class="block text-xs font-semibold text-gray-600 mb-1">${escapeHtml(label)}</label>
+        ${inputHtml}
+        ${hint ? `<p class="text-[11px] text-gray-400 mt-1">${escapeHtml(hint)}</p>` : ''}
+    </div>`;
+}
+
 // Breakdown rows use the same money format as the card, so a record reads
 // "RM 42,000.00" in the list and on the card rather than a bare "42,000".
 function formatItemValue(kpi, value) {
@@ -137,9 +147,7 @@ export function setEditMode(mode) {
 
     // Toggle Empty State Actions
     const adminActions = document.getElementById('admin-setup-actions');
-    const guestMsg = document.getElementById('guest-empty-msg');
     if (adminActions) adminActions.style.display = mode ? 'flex' : 'none'; // Flex for layout
-    if (guestMsg) guestMsg.style.display = mode ? 'none' : 'block';
 
     // Toggle Card Buttons
     const cards = document.querySelectorAll('.kpi-card');
@@ -646,11 +654,11 @@ export function showDetailsModal(kpiId, triggerElement) {
         if (isEditMode) {
             detailsAddNewWrapper.innerHTML = `
                 <div class="add-new-form-wrapper border-t pt-4 mt-4">
-                    <h4 class="font-semibold text-gray-600 mb-2">Tambah Item Baru</h4>
+                    <label for="new-list-item-name" class="block text-sm font-semibold text-gray-700 mb-2">Tambah Item Baharu</label>
                     <div class="flex gap-2">
-                        <input type="text" id="new-list-item-name" placeholder="Nama Item" class="flex-grow p-2 border rounded-lg">
-                        <button id="save-new-list-item-btn" class="bg-brand-primary text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-800 transition-all">
-                            <i class="fas fa-plus"></i>
+                        <input type="text" id="new-list-item-name" placeholder="Nama item" class="flex-grow p-2 border rounded-lg">
+                        <button id="save-new-list-item-btn" class="bg-brand-primary text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-800 transition-all" aria-label="Tambah item">
+                            <i class="fas fa-plus" aria-hidden="true"></i>
                         </button>
                     </div>
                 </div>
@@ -835,28 +843,41 @@ export function showDetailsModal(kpiId, triggerElement) {
             // value is fixed at 1 and `bulan` is derived from the date.
             const useTarikh = isCountKpi && showMonth;
             const bounds = yearTarikhBounds();
+            // Every field gets a visible label (placeholders vanish as soon as
+            // you type) and the grid stacks to one column on a phone.
+            const inputCls = 'w-full p-2 border rounded-lg bg-white text-sm';
             const valueField = useTarikh
                 ? ''
-                : `<input type="number" id="new-breakdown-value" placeholder="Nilai" class="w-24 p-2 border rounded-lg">`;
+                : formField('new-breakdown-value', kpi.isCurrency ? 'Jumlah (RM)' : 'Nilai',
+                    `<input type="number" id="new-breakdown-value" min="0" step="any" inputmode="decimal" class="${inputCls}">`);
             const addMonthField = !useTarikh && showMonth
-                ? `<select id="new-breakdown-bulan" class="p-2 border rounded-lg bg-white text-sm">${bulanOptionsHTML(qNum, null)}</select>` : '';
+                ? formField('new-breakdown-bulan', 'Bulan',
+                    `<select id="new-breakdown-bulan" class="${inputCls}">${bulanOptionsHTML(qNum, null)}</select>`) : '';
             const tarikhField = useTarikh
-                ? `<input type="date" id="new-breakdown-tarikh" class="p-2 border rounded-lg bg-white text-sm" min="${bounds.min}" max="${bounds.max}" title="Tarikh mula peristiwa — suku ditentukan automatik dari bulan">
-                   <input type="date" id="new-breakdown-tarikh-tamat" class="p-2 border rounded-lg bg-white text-sm" min="${bounds.min}" max="${bounds.max}" title="Tarikh tamat — biar kosong jika sehari sahaja">`
+                ? formField('new-breakdown-tarikh', 'Tarikh mula',
+                    `<input type="date" id="new-breakdown-tarikh" class="${inputCls}" min="${bounds.min}" max="${bounds.max}">`,
+                    { hint: 'Suku ditentukan automatik daripada bulan.' }) +
+                  formField('new-breakdown-tarikh-tamat', 'Tarikh tamat (pilihan)',
+                    `<input type="date" id="new-breakdown-tarikh-tamat" class="${inputCls}" min="${bounds.min}" max="${bounds.max}">`,
+                    { hint: 'Kosongkan jika sehari sahaja.' })
                 : '';
             const hadirField = useTarikh && kpi.id === HADIR_KPI_ID
-                ? `<input type="number" id="new-breakdown-hadir" min="0" step="1" inputmode="numeric" placeholder="Bil. alumni hadir" class="w-36 p-2 border rounded-lg" title="Bilangan alumni yang hadir — biar kosong jika tiada rekod">`
+                ? formField('new-breakdown-hadir', 'Bilangan alumni hadir (pilihan)',
+                    `<input type="number" id="new-breakdown-hadir" min="0" step="1" inputmode="numeric" class="${inputCls}">`,
+                    { hint: 'Kosongkan jika tiada rekod.', full: true })
                 : '';
             detailsAddNewWrapper.innerHTML = `
                 <div class="add-new-form-wrapper border-t pt-4 mt-4">
-                    <div class="flex gap-2 flex-wrap items-stretch">
-                        <input type="text" id="new-breakdown-name" placeholder="Nama Butiran" class="flex-1 min-w-[120px] p-2 border rounded-lg">
+                    <h4 class="text-sm font-semibold text-gray-700 mb-3">Tambah Butiran Baharu</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        ${formField('new-breakdown-name', 'Nama butiran',
+                            `<input type="text" id="new-breakdown-name" class="${inputCls}">`, { full: true })}
                         ${valueField}
                         ${addMonthField}
                         ${tarikhField}
                         ${hadirField}
                     </div>
-                    <button id="save-new-breakdown-btn" class="w-full mt-2 bg-brand-primary text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-800 transition-all">
+                    <button id="save-new-breakdown-btn" class="w-full mt-3 bg-brand-primary text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-800 transition-all">
                         Simpan Butiran
                     </button>
                 </div>
@@ -1021,21 +1042,21 @@ function handleEditBreakdownItem(liElement, kpiId, itemIndex, item) {
     const useTarikh = COUNT_KPI_IDS.has(kpiId) && showMonth;
     const tb = yearTarikhBounds();
     const monthField = showMonth && !useTarikh
-        ? `<select class="edit-bulan p-1 border rounded-lg bg-gray-100 text-sm">${bulanOptionsHTML(qNum, item.bulan || null)}</select>` : '';
+        ? `<select class="edit-bulan p-1 border rounded-lg bg-gray-100 text-sm" aria-label="Bulan">${bulanOptionsHTML(qNum, item.bulan || null)}</select>` : '';
     const tarikhField = useTarikh
-        ? `<input type="date" class="edit-tarikh p-1 border rounded-lg bg-gray-100 text-sm" value="${escapeHtml(item.tarikh || '')}" min="${tb.min}" max="${tb.max}" title="Tarikh mula">
-           <input type="date" class="edit-tarikh-tamat p-1 border rounded-lg bg-gray-100 text-sm" value="${escapeHtml(item.tarikhTamat || '')}" min="${tb.min}" max="${tb.max}" title="Tarikh tamat (kosong jika sehari)">` : '';
+        ? `<input type="date" class="edit-tarikh p-1 border rounded-lg bg-gray-100 text-sm" aria-label="Tarikh mula" value="${escapeHtml(item.tarikh || '')}" min="${tb.min}" max="${tb.max}" title="Tarikh mula">
+           <input type="date" class="edit-tarikh-tamat p-1 border rounded-lg bg-gray-100 text-sm" aria-label="Tarikh tamat (pilihan)" value="${escapeHtml(item.tarikhTamat || '')}" min="${tb.min}" max="${tb.max}" title="Tarikh tamat (kosong jika sehari)">` : '';
     const valueField = useTarikh
         ? ''
-        : `<input type="number" class="w-24 p-1 border rounded-lg bg-gray-100 edit-value text-sm" value="${escapeHtml(item.value)}">`;
+        : `<input type="number" class="w-24 p-1 border rounded-lg bg-gray-100 edit-value text-sm" aria-label="Nilai" value="${escapeHtml(item.value)}">`;
     const hadirField = useTarikh && kpiId === HADIR_KPI_ID
-        ? `<input type="number" class="w-36 p-1 border rounded-lg bg-gray-100 edit-hadir text-sm" min="0" step="1" inputmode="numeric" placeholder="Bil. alumni hadir" value="${item.hadir != null ? escapeHtml(item.hadir) : ''}" title="Bilangan alumni yang hadir">`
+        ? `<input type="number" class="w-36 p-1 border rounded-lg bg-gray-100 edit-hadir text-sm" min="0" step="1" inputmode="numeric" aria-label="Bilangan alumni hadir" placeholder="Bil. alumni hadir" value="${item.hadir != null ? escapeHtml(item.hadir) : ''}" title="Bilangan alumni yang hadir">`
         : '';
 
     liElement.innerHTML = `
         <div class="flex flex-col w-full gap-1">
             <div class="flex flex-wrap gap-1 w-full">
-                <input type="text" class="flex-1 min-w-0 p-1 border rounded-lg bg-gray-100 edit-name text-sm" value="${escapeHtml(item.name)}">
+                <input type="text" class="flex-1 min-w-0 p-1 border rounded-lg bg-gray-100 edit-name text-sm" aria-label="Nama butiran" value="${escapeHtml(item.name)}">
                 ${monthField}
                 ${tarikhField}
             </div>

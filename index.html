@@ -58,8 +58,8 @@
     <link rel="apple-touch-icon" href="./images/apple-touch-icon.png">
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="style.css?v=5.3">
-    <link rel="stylesheet" href="tailwind.css?v=11">
+    <link rel="stylesheet" href="style.css?v=5.4">
+    <link rel="stylesheet" href="tailwind.css?v=12">
 </head>
 
 <body class="bg-gray-100 relative overflow-x-hidden">
@@ -237,9 +237,10 @@
             <div class="bg-gray-100 p-4 rounded-full mb-4">
                 <i class="fas fa-folder-open text-gray-400 text-5xl"></i>
             </div>
-            <h3 class="text-xl font-bold text-gray-700 mb-2">Tiada Data Untuk Tahun Ini</h3>
-            <p class="text-gray-500 mb-6 text-center max-w-md">Pangkalan data untuk tahun yang dipilih belum mempunyai
-                sebarang KPI. Anda boleh menyalin struktur dari tahun lepas atau mula baru.</p>
+            <!-- Copy set in main.js (updateEmptyStateCopy): public wording for
+                 guests, setup instructions for the admin -->
+            <h3 id="empty-state-title" class="text-xl font-bold text-gray-700 mb-2">Tiada Data Untuk Tahun Ini</h3>
+            <p id="empty-state-desc" class="text-gray-500 mb-6 text-center max-w-md"></p>
 
             <div id="admin-setup-actions" class="hidden flex flex-col sm:flex-row gap-4 w-full justify-center">
                 <button id="clone-prev-year-btn"
@@ -251,8 +252,6 @@
                     <i class="fas fa-plus-circle mr-2"></i>Mula Kosong (Manual)
                 </button>
             </div>
-            <p class="mt-4 text-xs text-red-400 italic" id="guest-empty-msg">Sila log masuk sebagai Admin untuk
-                menguruskan data tahun ini.</p>
         </div>
 
         <div id="main-content-wrapper" class="hidden">
@@ -553,6 +552,7 @@
                 <div class="h-[400px] w-full">
                     <canvas id="kpi-history-chart"></canvas>
                 </div>
+                <p id="chart-modal-note" class="hidden text-xs text-gray-500 mt-3 leading-snug"></p>
             </div>
         </div>
 
@@ -880,11 +880,11 @@
         <!-- Custom Confirmation Modal -->
         <div id="confirm-modal" class="fixed inset-0 z-[60] hidden overflow-y-auto" aria-labelledby="modal-title"
             role="dialog" aria-modal="true">
-            <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div class="flex items-end sm:items-center justify-center min-h-screen text-center sm:block sm:p-0">
                 <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
                 <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
                 <div
-                    class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full border-4 border-red-100">
+                    class="inline-block align-bottom bg-white rounded-t-2xl sm:rounded-2xl sheet-panel text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full border-4 border-red-100">
                     <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                         <div class="sm:flex sm:items-start">
                             <div
@@ -927,10 +927,10 @@
 
         <!-- Custom Input Modal -->
         <div id="input-modal" class="fixed inset-0 z-[60] hidden overflow-y-auto" role="dialog" aria-modal="true">
-            <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div class="flex items-end sm:items-center justify-center min-h-screen text-center sm:block sm:p-0">
                 <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
                 <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-                <div class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
+                <div class="inline-block align-bottom bg-white rounded-t-2xl sm:rounded-2xl sheet-panel text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
                     <div class="bg-white px-6 pt-5 pb-4">
                         <h3 class="text-lg font-bold text-gray-900 mb-1" id="input-modal-title">Kemaskini Nilai</h3>
                         <p class="text-sm text-gray-500 mb-3" id="input-modal-message">Masukkan nilai baharu:</p>
@@ -968,10 +968,10 @@
 
         <!-- Bulk Edit Modal: Edit all quarters for a single KPI -->
         <div id="bulk-edit-modal" class="fixed inset-0 z-[60] hidden overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="bulk-edit-modal-title">
-            <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div class="flex items-end sm:items-center justify-center min-h-screen text-center sm:block sm:p-0">
                 <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
                 <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-                <div class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
+                <div class="inline-block align-bottom bg-white rounded-t-2xl sm:rounded-2xl sheet-panel text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
                     <div class="bg-white px-6 pt-5 pb-4">
                         <div class="flex justify-between items-center mb-3">
                             <h3 class="text-lg font-bold text-gray-900" id="bulk-edit-modal-title">Edit Nilai Semua Suku</h3>
@@ -1038,7 +1038,7 @@
         </div>
 
         <!-- Load Main Script as Module -->
-        <script type="module" src="js/main.js?v=5.5"></script>
+        <script type="module" src="js/main.js?v=5.6"></script>
 </body>
 
 </html>

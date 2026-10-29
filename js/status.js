@@ -45,6 +45,15 @@ export function expectedFraction(year, quarterNum, now = new Date()) {
     return Math.min(quarterEnd, (now - start) / (end - start));
 }
 
+// Has quarter `quarterNum` of `year` begun? Values are carried forward into
+// later quarters, so a quarter that hasn't started still shows figures; this
+// lets the UI say so instead of presenting them as that quarter's results.
+export function quarterStarted(year, quarterNum, now = new Date()) {
+    const y = parseInt(year, 10), q = parseInt(quarterNum, 10);
+    if (y !== now.getFullYear()) return y < now.getFullYear();
+    return now.getMonth() >= (q - 1) * 3;
+}
+
 // The dashboard's current year + quarter, set by main.js on every quarter or
 // year switch so cards, stats, table and PDF all judge the same way.
 let paceFraction = 1;
