@@ -389,6 +389,8 @@ export function createKpiCard(kpi) {
     const template = getEl('kpi-card-template');
     const cardClone = template.content.cloneNode(true);
     const cardElement = cardClone.querySelector('.kpi-card');
+    // Lets the phone list's KPI sheet reach this card's buttons
+    cardElement.dataset.kpiId = kpi.id;
     const displayPercentage = getKpiPercentage(kpi);
     // Colours follow the pace-adjusted figure (see status.js); the bar, ring and
     // percentage text still show progress against the full annual target.
@@ -1211,6 +1213,21 @@ export function filterDashboardCards(statusFilter) {
             card.classList.remove('flex');
         }
     });
+
+    // Phone list rows follow the same filter (they carry their tier)
+    const rows = document.querySelectorAll('.kpi-row');
+    let shownRows = 0;
+    rows.forEach(row => {
+        const show = statusFilter === 'all' || row.dataset.tier === statusFilter;
+        row.classList.toggle('hidden', !show);
+        if (show) shownRows++;
+    });
+    const listHeading = document.getElementById('kpi-list-heading');
+    if (listHeading && rows.length) {
+        listHeading.textContent = statusFilter === 'all'
+            ? `${rows.length} petunjuk prestasi`
+            : `${shownRows} daripada ${rows.length} petunjuk prestasi`;
+    }
 
     const emptySearchState = document.getElementById('empty-search-state');
     if (emptySearchState) {

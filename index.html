@@ -58,8 +58,8 @@
     <link rel="apple-touch-icon" href="./images/apple-touch-icon.png">
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="style.css?v=5.6">
-    <link rel="stylesheet" href="tailwind.css?v=15">
+    <link rel="stylesheet" href="style.css?v=5.7">
+    <link rel="stylesheet" href="tailwind.css?v=16">
 </head>
 
 <body class="bg-gray-100 relative overflow-x-hidden">
@@ -265,7 +265,37 @@
             <!-- Gauge Chart Area — Compact Horizontal (#2) -->
             <div id="overall-highlight"
                 class="relative bg-brand-primary text-white px-4 sm:px-6 py-3 rounded-2xl mb-4 shadow-2xl shadow-blue-900/20 overflow-hidden">
-                <div class="flex items-center gap-3 sm:gap-5">
+                <!-- Phone hero (redesign canvas, Phone-Dashboard): overall %, expected
+                     share, a bar with the expectation marker, and the status counts
+                     that filter the list. Filled in main.js; hidden from sm up. -->
+                <div class="hero-mobile">
+                    <div class="flex items-end justify-between gap-2">
+                        <div>
+                            <p class="hero-sub-text">Pencapaian keseluruhan</p>
+                            <p id="hero-value" class="hero-value">0.0%</p>
+                        </div>
+                        <p id="hero-expected-wrap" class="hero-expected hidden">
+                            <span id="hero-expected-label">Jangkaan hari ini</span><br>
+                            <strong id="hero-expected">0%</strong>
+                        </p>
+                    </div>
+                    <div class="hero-bar" aria-hidden="true">
+                        <div id="hero-bar-fill" class="hero-bar-fill" style="width:0%"></div>
+                        <div id="hero-bar-marker" class="hero-bar-marker hidden"></div>
+                    </div>
+                    <div class="hero-counts" role="group" aria-label="Tapis mengikut status">
+                        <button type="button" class="hero-count" data-filter="good" aria-pressed="false">
+                            <span id="hero-good" class="hero-count-num">0</span><span class="hero-count-label">Cemerlang</span>
+                        </button>
+                        <button type="button" class="hero-count" data-filter="ok" aria-pressed="false">
+                            <span id="hero-ok" class="hero-count-num">0</span><span class="hero-count-label">Sederhana</span>
+                        </button>
+                        <button type="button" class="hero-count" data-filter="bad" aria-pressed="false">
+                            <span id="hero-bad" class="hero-count-num">0</span><span class="hero-count-label">Perlu perhatian</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="hero-desktop flex items-center gap-3 sm:gap-5">
                     <!-- Compact half-circle gauge -->
                     <div class="relative flex-shrink-0" style="width:130px;height:72px">
                         <canvas id="overall-gauge-chart"></canvas>
@@ -572,6 +602,10 @@
                 </div>
                 <!-- Trend -->
                 <div id="focus-trend-row" class="flex justify-center"></div>
+                <!-- Description and actions (the phone list opens this sheet, so every
+                     card action has to be reachable from here) -->
+                <p id="focus-kpi-desc" class="hidden text-sm text-gray-600 text-center mt-4 leading-relaxed"></p>
+                <div id="focus-actions" class="focus-actions"></div>
             </div>
         </div>
 
@@ -684,6 +718,10 @@
             <div class="modal-content relative bg-white rounded-2xl shadow-2xl w-full sm:max-w-sm sm:m-4 p-5">
                 <h3 id="actions-sheet-title"
                     class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Tindakan Pantas</h3>
+                <button id="sheet-breakdown-btn"
+                    class="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl bg-blue-50 text-blue-800 hover:bg-blue-100 border border-blue-200 font-bold text-sm mb-2">
+                    <i class="fas fa-chart-bar"></i>Pecahan Pencapaian KPI
+                </button>
                 <button id="sheet-pdf-btn"
                     class="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 font-bold text-sm mb-2">
                     <i class="fas fa-file-pdf"></i>Muat Turun Laporan PDF
@@ -1103,7 +1141,7 @@
         </div>
 
         <!-- Load Main Script as Module -->
-        <script type="module" src="js/main.js?v=6.0"></script>
+        <script type="module" src="js/main.js?v=6.1"></script>
 </body>
 
 </html>
