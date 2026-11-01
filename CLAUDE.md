@@ -18,7 +18,7 @@ descriptions of PR #2 to #8.
 - The owner cannot easily re-enter lost data. Never write to live Firestore
   from a session, and never press reset / delete in a live app.
 - Test with `tests/` (see `tests/README.md`): `cd tests && npm install`
-  once, then `node run.js` (12 scenarios, ~90s) against `mock-firebase.js`,
+  once, then `node run.js` (16 scenarios, ~2 min) against `mock-firebase.js`,
   which records every write instead of sending it. Clock pinned to
   29/10/2026. Add a scenario to `tests/run.js` for each behaviour change;
   extend the mock's seed data rather than touching live data. The proxy
@@ -65,8 +65,20 @@ descriptions of PR #2 to #8.
   reset needs the year typed and downloads a JSON backup first.
 - Admin session: SESSION persistence + idle logout after 30 min (warn at 28).
 - Full backup button reads years from `BACKUP_FIRST_YEAR` (2020) to next year.
-- Logos are 240px-tall 256-colour PNGs. App icons: lossless only (palette
-  reduction showed dithering on the gold gradient, rejected).
+- Logos are 240px-tall 256-colour PNGs. App icon (since 01/11/2026): three
+  rising white bars + gold target line (`#FFC24B`) on `#1747A6`, drawn as SVG
+  and rendered to every PNG size; maskable keeps all marks inside the 80%
+  safe circle, apple-touch-icon is full-bleed.
+- PWA layer: offline notice shows the last server sync time (`getLastServerSync`
+  in api.js); a new service worker shows "Versi baharu tersedia" and still
+  auto-reloads only while the tab is hidden; install sheet / iOS guide once
+  per session; manifest `id` is pinned to `./index.html` (changing
+  `start_url` without it would orphan installed apps); shortcuts open
+  `?tab=takwim|penjanaan`. `theme_color` stays `#0d47a1` until the colour
+  redesign lands.
+- Design source: claude.ai canvas "Redesign KPI Pusat Alumni" (owner's).
+  Phase 1 (PWA layer + icon) is built; phases 2-4 (phone dashboard rows,
+  Takwim/Penjanaan/Butiran, desktop) are not.
 
 ## Before every push
 1. Rebuild Tailwind when any class changes in `index.html` or `js/`:

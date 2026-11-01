@@ -40,15 +40,20 @@ function startServer() {
 //                        fake, advance with page.clock.runFor)
 //   blockFirebase        abort the SDK requests (boot-error path)
 //   dark                 prefers-color-scheme: dark
+//   userAgent            e.g. an iPhone Safari string (iOS install guide)
+//   path                 URL path + query to open (default '/')
 async function openApp(browser, base, opts = {}) {
     const {
         admin = false, with2025 = false, mobile = false, time = DEFAULT_TIME,
-        clock = 'fixed', blockFirebase = false, dark = false
+        clock = 'fixed', blockFirebase = false, dark = false, userAgent = undefined, path: urlPath = '/'
     } = opts;
     const ctx = await browser.newContext({
         viewport: mobile ? { width: 390, height: 844 } : { width: 1366, height: 900 },
         isMobile: mobile, hasTouch: mobile, acceptDownloads: true,
-        colorScheme: dark ? 'dark' : 'light'
+        colorScheme: dark ? 'dark' : 'light',
+        userAgent,
+        // A registered sw.js would serve later requests itself, around these routes
+        serviceWorkers: 'block'
     });
     await ctx.addInitScript(([a, w]) => { window.__ADMIN = a; window.__WITH2025 = w; }, [admin, with2025]);
     await ctx.route('**/*', async (route) => {
@@ -79,7 +84,7 @@ async function openApp(browser, base, opts = {}) {
         if (clock === 'install') await page.clock.install({ time: new Date(time) });
         else await page.clock.setFixedTime(new Date(time));
     }
-    await page.goto(base + '/');
+    await page.goto(base + urlPath);
     if (time && clock === 'install') await page.clock.runFor(4000);
     else await page.waitForTimeout(3000);
     return { ctx, page };

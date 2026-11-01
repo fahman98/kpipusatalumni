@@ -69,6 +69,20 @@ export function subscribeLastUpdated(year, callback) {
     }
 }
 
+// --- LAST SERVER SYNC ---
+// When data last arrived from the server (not the offline cache), so the
+// offline notice can say how old the figures on screen are. Per device.
+const LAST_SYNC_KEY = 'kpi_last_server_sync';
+function markServerSync() {
+    try { localStorage.setItem(LAST_SYNC_KEY, new Date().toISOString()); } catch (_) {}
+}
+export function getLastServerSync() {
+    let iso = null;
+    try { iso = localStorage.getItem(LAST_SYNC_KEY); } catch (_) {}
+    const d = iso ? new Date(iso) : null;
+    return d && !isNaN(d) ? d : null;
+}
+
 // --- AUDIT LOG ---
 // Deletes and edits now record WHAT was removed or replaced (a full copy under
 // `deleted` / `before`), not just an id, so a mistaken delete can be put back
@@ -161,6 +175,7 @@ export function subscribeToQuarterData(quarterKey, onUpdateCallback) {
         activeListener = docRef.onSnapshot((docSnap) => {
             // Abaikan callback dari subscription lama
             if (generation !== listenerGeneration) return;
+            if (!(docSnap.metadata && docSnap.metadata.fromCache)) markServerSync();
 
             hideLoading();
 

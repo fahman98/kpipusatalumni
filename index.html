@@ -58,8 +58,8 @@
     <link rel="apple-touch-icon" href="./images/apple-touch-icon.png">
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="style.css?v=5.5">
-    <link rel="stylesheet" href="tailwind.css?v=14">
+    <link rel="stylesheet" href="style.css?v=5.6">
+    <link rel="stylesheet" href="tailwind.css?v=15">
 </head>
 
 <body class="bg-gray-100 relative overflow-x-hidden">
@@ -70,12 +70,6 @@
         <div class="spinner-ring"></div>
         <p id="loading-text" class="text-white mt-4 font-semibold text-lg tracking-wide animate-pulse">Sedang
             Memproses...</p>
-    </div>
-
-    <!-- Offline Banner -->
-    <div id="offline-banner"
-        class="hidden fixed top-0 left-0 right-0 z-[70] bg-yellow-500 text-white text-sm font-semibold text-center py-2">
-        <i class="fas fa-wifi-slash mr-2" aria-hidden="true"></i>Tiada sambungan internet — paparan data cache
     </div>
 
     <!-- ADMIN LOGIN MODAL -->
@@ -199,6 +193,19 @@
         </header>
         <!-- Premium gradient accent line -->
         <div class="brand-gradient-bar hidden md:block"></div>
+
+        <!-- Offline notice: says how old the data on screen is (set in main.js) -->
+        <div id="offline-banner" role="status" class="hidden offline-banner mb-4">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="flex-shrink-0 mt-px">
+                <path d="M2 8.5a15 15 0 0 1 20 0 M5 12a10 10 0 0 1 14 0 M8.5 15.5a5 5 0 0 1 7 0 M12 19h.01 M3 3l18 18"></path>
+            </svg>
+            <p class="m-0 text-sm leading-snug">
+                <strong>Anda luar talian.</strong>
+                <span id="offline-sync-text">Memaparkan data yang tersimpan dalam peranti ini.</span>
+                Kemas kini data hanya boleh dibuat semasa dalam talian.
+            </p>
+        </div>
 
         <!-- Print-only report meta line (text injected in main.js, shown in @media print) -->
         <p id="print-meta" class="hidden"></p>
@@ -587,60 +594,87 @@
             </div>
         </div>
 
-        <!-- PWA INSTALL PROMPT BANNER -->
-        <div id="install-prompt"
-            class="fixed bottom-0 left-0 w-full bg-white dark:bg-gray-800 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-40 transform translate-y-full transition-transform duration-500 ease-in-out px-6 py-4 flex flex-col sm:flex-row justify-between items-center border-t border-gray-200 dark:border-gray-700 hidden">
-            <div class="flex items-center mb-3 sm:mb-0">
-                <div class="p-3 bg-white rounded-xl mr-4 shadow-sm border border-gray-100">
-                    <img src="./images/icon-192.png" alt="App Icon"
-                        class="w-8 h-8 object-contain">
+        <!-- PWA INSTALL SHEET (Android / desktop Chrome, after beforeinstallprompt).
+             Bottom sheet with a backdrop on phones, a small corner card on desktop. -->
+        <div id="install-prompt" class="install-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="install-title">
+            <div class="install-backdrop" data-install-dismiss></div>
+            <div class="install-panel">
+                <div class="install-handle" aria-hidden="true"></div>
+                <div class="flex items-center gap-3.5">
+                    <img src="./images/icon-192.png" alt="" class="w-14 h-14 rounded-[14px] flex-shrink-0">
+                    <div class="min-w-0">
+                        <h2 id="install-title" class="text-lg font-extrabold text-gray-900 leading-tight">Pasang Dashboard KPI</h2>
+                        <p class="text-sm text-gray-500 font-semibold mt-0.5">kpipusatalumni.vercel.app</p>
+                    </div>
                 </div>
-                <div>
-                    <h4 class="font-bold text-gray-800 dark:text-gray-100 text-sm sm:text-base">Install App KPI
-                        Alumni
-                    </h4>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">Akses lebih pantas & paparan penuh tanpa
-                        browser
-                        bar.</p>
+                <ul class="install-benefits">
+                    <li>
+                        <span class="install-benefit-icon" aria-hidden="true">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 2h10v20H7z M11 18h2"></path></svg>
+                        </span>
+                        <span><strong>Buka terus dari skrin utama</strong><span>Ikon KPI Alumni duduk bersama aplikasi lain, tanpa perlu cari pautan.</span></span>
+                    </li>
+                    <li>
+                        <span class="install-benefit-icon" aria-hidden="true">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8.5a15 15 0 0 1 20 0 M5 12a10 10 0 0 1 14 0 M8.5 15.5a5 5 0 0 1 7 0 M12 19h.01 M3 3l18 18"></path></svg>
+                        </span>
+                        <span><strong>Boleh dibuka tanpa internet</strong><span>Data terakhir yang dimuatkan tetap dipaparkan ketika luar talian.</span></span>
+                    </li>
+                    <li>
+                        <span class="install-benefit-icon" aria-hidden="true">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h18v18H3z M3 9h18"></path></svg>
+                        </span>
+                        <span><strong>Paparan penuh skrin</strong><span>Tiada bar alamat pelayar, lebih ruang untuk data.</span></span>
+                    </li>
+                </ul>
+                <div class="flex flex-col gap-2">
+                    <button id="install-app-btn" type="button" class="install-primary-btn">Pasang aplikasi</button>
+                    <button id="install-close-btn" type="button" class="install-secondary-btn" data-install-dismiss>Bukan sekarang</button>
                 </div>
-            </div>
-            <div class="flex gap-3 w-full sm:w-auto">
-                <button id="install-close-btn"
-                    class="flex-1 sm:flex-none px-4 py-2 text-gray-500 font-semibold hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-sm transition-colors">
-                    Nanti Dulu
-                </button>
-                <button id="install-app-btn"
-                    class="flex-1 sm:flex-none px-6 py-2 bg-brand-primary text-white font-bold rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all text-sm">
-                    Install Sekarang
-                </button>
             </div>
         </div>
 
-        <!-- iOS INSTALL GUIDE MODAL -->
-        <div id="ios-install-modal"
-            class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black bg-opacity-60 hidden pointer-events-auto"
-            style="backdrop-filter: blur(2px);">
-            <div
-                class="bg-white dark:bg-gray-800 w-full sm:w-96 rounded-t-2xl sm:rounded-2xl p-6 pb-8 shadow-2xl transform transition-transform duration-300 translate-y-0">
-                <div class="flex justify-between items-start mb-4">
-                    <h3 class="text-lg font-bold text-gray-900 dark:text-white">Install pada iPhone/iPad</h3>
-                    <button id="close-ios-modal" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
-                        <i class="fas fa-times text-xl"></i>
+        <!-- iOS INSTALL GUIDE (Safari has no install prompt; points at the Share button) -->
+        <div id="ios-install-modal" class="ios-guide-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="ios-guide-title">
+            <div class="install-backdrop" data-ios-dismiss></div>
+            <div class="ios-guide-card">
+                <div class="flex items-start gap-3">
+                    <img src="./images/icon-192.png" alt="" class="w-11 h-11 rounded-[11px] flex-shrink-0">
+                    <div class="flex-1 min-w-0">
+                        <h2 id="ios-guide-title" class="text-lg font-extrabold text-gray-900 leading-tight">Pasang di iPhone atau iPad</h2>
+                        <p class="text-sm text-gray-500 mt-0.5">Tiga langkah dalam Safari.</p>
+                    </div>
+                    <button id="close-ios-modal" type="button" class="ios-guide-close" aria-label="Tutup panduan" data-ios-dismiss>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12 M18 6L6 18"></path></svg>
                     </button>
                 </div>
-
-                <div class="space-y-4 text-sm text-gray-600 dark:text-gray-300">
-                    <p>1. Tekan butang <span class="font-bold text-blue-500"><i class="fas fa-share-square"></i>
-                            Share</span> di bar bawah browser (Safari).</p>
-                    <p>2. Scroll ke bawah dan pilih <span class="font-bold text-gray-800 dark:text-white"><i
-                                class="far fa-plus-square"></i> Add to Home Screen</span>.</p>
-                    <p>3. Tekan <span class="font-bold text-blue-500">Add</span> di bucu atas kanan.</p>
-                </div>
-
-                <div class="mt-6 flex justify-center">
-                    <i class="fas fa-arrow-down text-blue-500 animate-bounce text-2xl"></i>
-                </div>
+                <ol class="ios-guide-steps">
+                    <li>
+                        <span class="ios-step-num">1</span>
+                        <span class="flex-1">Tekan butang <strong>Kongsi</strong> di bar bawah Safari.</span>
+                        <span class="ios-step-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12 M8 7l4-4 4 4 M6 11H5v10h14V11h-1"></path></svg></span>
+                    </li>
+                    <li>
+                        <span class="ios-step-num">2</span>
+                        <span class="flex-1">Pilih <strong>Tambah ke Skrin Utama</strong> (Add to Home Screen).</span>
+                        <span class="ios-step-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z M12 8v8 M8 12h8"></path></svg></span>
+                    </li>
+                    <li>
+                        <span class="ios-step-num">3</span>
+                        <span class="flex-1">Tekan <strong>Tambah</strong> (Add) di penjuru kanan atas.</span>
+                        <span class="ios-step-icon ios-step-word" aria-hidden="true">Tambah</span>
+                    </li>
+                </ol>
+                <button id="ios-guide-ok" type="button" class="ios-guide-ok" data-ios-dismiss>Faham</button>
+                <div class="ios-guide-arrow" aria-hidden="true"></div>
             </div>
+        </div>
+
+        <!-- New version notice (service worker update), see main.js -->
+        <div id="update-toast" class="update-toast hidden" role="status">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8AB0FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="flex-shrink-0"><path d="M21 12a9 9 0 1 1-3-6.7 M21 3v6h-6"></path></svg>
+            <p class="flex-1 m-0 text-sm leading-snug"><strong class="block text-[15px]">Versi baharu tersedia</strong>Muat semula untuk guna versi terkini.</p>
+            <button id="update-reload-btn" type="button" class="update-reload-btn">Muat semula</button>
         </div>
 
         <!-- MOBILE QUICK ACTIONS SHEET (opened from the app-bar kebab) -->
@@ -1069,7 +1103,7 @@
         </div>
 
         <!-- Load Main Script as Module -->
-        <script type="module" src="js/main.js?v=5.9"></script>
+        <script type="module" src="js/main.js?v=6.0"></script>
 </body>
 
 </html>
