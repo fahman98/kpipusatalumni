@@ -36,7 +36,8 @@ import {
     getKpiDataFromFirestore,
     saveBulkKpiValues,
     subscribeLastUpdated,
-    downloadFullBackup
+    downloadFullBackup,
+    getLastServerSync
 } from './api.js';
 
 import { renderGaugeChart, showHistoryChart, destroyKpiChart } from './charts.js';
@@ -1150,23 +1151,69 @@ document.addEventListener('DOMContentLoaded', () => {
     let deferredPrompt;
     const installPrompt = getEl('install-prompt');
     const installBtn = getEl('install-app-btn');
-    const closeInstallBtn = getEl('install-close-btn');
     const iosModal = getEl('ios-install-modal');
-    const closeIosBtn = getEl('close-ios-modal');
+    const updateToast = getEl('update-toast');
+    const INSTALL_DISMISSED = 'pwa_banner_dismissed';
 
-    // Helper: Detect iOS
-    const isIOS = () => {
-        return /iPhone|iPad|iPod/.test(navigator.userAgent) && !window.MSStream;
-    };
+    // iPadOS 13+ reports itself as a Mac, so also check for a touch screen
+    const isIPad = () => /iPad/.test(navigator.userAgent)
+        || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const isIOS = () => (/iPhone|iPod/.test(navigator.userAgent) || isIPad()) && !window.MSStream;
 
     // Helper: Detect Standalone (Already Installed)
     const isInStandaloneMode = () => {
         return ('standalone' in window.navigator) && (window.navigator.standalone);
     };
 
+    const installDismissed = () => {
+        try { return !!sessionStorage.getItem(INSTALL_DISMISSED); } catch (_) { return false; }
+    };
+    const rememberInstallDismissed = () => {
+        try { sessionStorage.setItem(INSTALL_DISMISSED, '1'); } catch (_) {}
+    };
+
+    // Install sheet (Chrome/Edge/Android): bottom sheet on phones, corner card
+    // on desktop. Offered once per session.
+    function showInstallSheet() {
+        if (!installPrompt || installDismissed()) return;
+        installPrompt.classList.remove('hidden');
+    }
+    function hideInstallSheet() {
+        if (installPrompt) installPrompt.classList.add('hidden');
+    }
+
+    // iOS Safari has no install prompt, so show the three-step guide instead.
+    // The arrow points at Share in the iPhone toolbar; on iPad Share is at the
+    // top, so the card is centred without the arrow.
+    function showIosGuide() {
+        if (!iosModal || installDismissed()) return;
+        iosModal.classList.toggle('is-ipad', isIPad());
+        iosModal.classList.remove('hidden');
+        syncBodyScrollLock();
+    }
+    function hideIosGuide() {
+        if (!iosModal) return;
+        iosModal.classList.add('hidden');
+        syncBodyScrollLock();
+    }
+
+    document.addEventListener('click', (e) => {
+        if (e.target.closest('[data-install-dismiss]')) { rememberInstallDismissed(); hideInstallSheet(); }
+        if (e.target.closest('[data-ios-dismiss]')) { rememberInstallDismissed(); hideIosGuide(); }
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && installPrompt && !installPrompt.classList.contains('hidden')) {
+            rememberInstallDismissed();
+            hideInstallSheet();
+        }
+    });
+
     if ('serviceWorker' in navigator) {
-        // Reload once when a new SW takes control (a fresh deploy activated).
-        // Guarded so it never loops and never fires on the very first install.
+        // A new version took control (a fresh deploy activated). Never reload
+        // out from under the user mid-action: that used to snap them back to
+        // Suku 1 when it landed while a modal was open. Offer "Muat semula"
+        // instead, and apply it by itself once the tab is hidden. The active
+        // quarter is kept in sessionStorage, so the reload restores their place.
         let swRefreshing = false;
         const applySwUpdate = () => {
             if (swRefreshing) return;
@@ -1176,22 +1223,18 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         if (navigator.serviceWorker.controller) {
             navigator.serviceWorker.addEventListener('controllerchange', () => {
-                // A new version activated. DON'T reload out from under the user
-                // mid-action — that was snapping them back to Suku 1 whenever the
-                // activation happened to land while they were reading/closing a
-                // modal. Apply it only while the tab is hidden; if it's currently
-                // visible, wait until they navigate away. The active quarter is
-                // persisted (sessionStorage), so the reloaded page restores their
-                // place regardless.
                 if (document.visibilityState === 'hidden') {
                     applySwUpdate();
-                } else {
-                    document.addEventListener('visibilitychange', () => {
-                        if (document.visibilityState === 'hidden') applySwUpdate();
-                    }, { once: true });
+                    return;
                 }
+                if (updateToast) updateToast.classList.remove('hidden');
+                document.addEventListener('visibilitychange', () => {
+                    if (document.visibilityState === 'hidden') applySwUpdate();
+                }, { once: true });
             });
         }
+        const updateReloadBtn = getEl('update-reload-btn');
+        if (updateReloadBtn) updateReloadBtn.addEventListener('click', applySwUpdate);
 
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('./sw.js')
@@ -1203,77 +1246,25 @@ document.addEventListener('DOMContentLoaded', () => {
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
-            showInstallBanner();
+            showInstallSheet();
+        });
+        window.addEventListener('appinstalled', () => {
+            deferredPrompt = null;
+            hideInstallSheet();
         });
 
-        // 2. iOS - Manual Trigger
+        // 2. iOS - Manual guide after a short pause
         if (isIOS() && !isInStandaloneMode()) {
-            // Wait a bit to emulate "app-like" delay
-            setTimeout(() => {
-                showInstallBanner(true); // true = isIOS
-            }, 3000);
-        }
-
-        function showInstallBanner(isIOSDevice = false) {
-            if (sessionStorage.getItem('pwa_banner_dismissed')) return;
-            if (installPrompt) {
-                installPrompt.classList.remove('hidden');
-
-                // Customize text for iOS
-                if (isIOSDevice) {
-                    installBtn.textContent = "Cara Install";
-                    const titleText = installPrompt.querySelector('h4');
-                    if (titleText) titleText.textContent = "Install App KPI (iOS)";
-                }
-
-                setTimeout(() => installPrompt.classList.add('slide-up-show'), 100);
-            }
+            setTimeout(showIosGuide, 3000);
         }
 
         if (installBtn) {
             installBtn.addEventListener('click', async () => {
-                // Scenario A: Android/Chrome (Auto)
-                if (deferredPrompt) {
-                    deferredPrompt.prompt();
-                    const { outcome } = await deferredPrompt.userChoice;
-                    console.log(`User response: ${outcome}`);
-                    deferredPrompt = null;
-                    hideInstallBanner();
-                }
-                // Scenario B: iOS (Manual Guide)
-                else if (isIOS()) {
-                    if (iosModal) {
-                        iosModal.classList.remove('hidden');
-                        syncBodyScrollLock();
-                        hideInstallBanner(); // Hide banner to clear view
-                    }
-                }
-            });
-        }
-
-        function hideInstallBanner() {
-            if (installPrompt) installPrompt.classList.remove('slide-up-show');
-        }
-
-        if (closeInstallBtn && installPrompt) {
-            closeInstallBtn.addEventListener('click', () => {
-                sessionStorage.setItem('pwa_banner_dismissed', '1');
-                hideInstallBanner();
-            });
-        }
-
-        // Close iOS Modal
-        if (closeIosBtn) {
-            closeIosBtn.addEventListener('click', () => {
-                iosModal.classList.add('hidden');
-                syncBodyScrollLock();
-            });
-        }
-
-        // Close iOS Modal on BG click
-        if (iosModal) {
-            iosModal.addEventListener('click', (e) => {
-                if (e.target === iosModal) { iosModal.classList.add('hidden'); syncBodyScrollLock(); }
+                if (!deferredPrompt) { hideInstallSheet(); return; }
+                deferredPrompt.prompt();
+                try { await deferredPrompt.userChoice; } catch (_) {}
+                deferredPrompt = null;
+                hideInstallSheet();
             });
         }
     }
@@ -1738,12 +1729,23 @@ document.addEventListener('DOMContentLoaded', () => {
         console.error('Persistence unavailable:', err);
     }
 
-    window.addEventListener('online', () => {
-        if (offlineBanner) offlineBanner.classList.add('hidden');
-    });
-    window.addEventListener('offline', () => {
-        if (offlineBanner) offlineBanner.classList.remove('hidden');
-    });
+    // Offline notice. Says how old the data on screen is, using the time of
+    // the last snapshot that came from the server (stamped in api.js). Also
+    // checked at start-up: the app opened offline used to show no notice.
+    function renderOfflineBanner() {
+        if (!offlineBanner) return;
+        const offline = !navigator.onLine;
+        offlineBanner.classList.toggle('hidden', !offline);
+        if (!offline) return;
+        const textEl = getEl('offline-sync-text');
+        const d = getLastServerSync();
+        if (textEl) textEl.textContent = d
+            ? `Memaparkan data terakhir yang disimpan pada ${d.toLocaleDateString('en-GB')}, ${d.toLocaleTimeString('ms-MY', { hour: 'numeric', minute: '2-digit' })}.`
+            : 'Memaparkan data yang tersimpan dalam peranti ini.';
+    }
+    window.addEventListener('online', renderOfflineBanner);
+    window.addEventListener('offline', renderOfflineBanner);
+    renderOfflineBanner();
 
     // Set dynamic copyright year
     const footerYearEl = getEl('footer-year');
@@ -1985,6 +1987,10 @@ document.addEventListener('DOMContentLoaded', () => {
             throw new Error('Firebase SDK not loaded');
         }
         initializeApp();
+
+        // Manifest shortcuts open a tab directly (./index.html?tab=takwim)
+        const startTab = new URLSearchParams(window.location.search).get('tab');
+        if (startTab === 'takwim' || startTab === 'penjanaan') switchView(startTab);
     } catch (err) {
         console.error('Firebase init failed:', err);
         showBootError();

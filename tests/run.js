@@ -251,6 +251,65 @@ const scenarios = {
         await ctx.close();
     },
 
+    // Offline: the notice says when the data on screen was last fetched
+    async 'offline notice'() {
+        const { ctx, page } = await open({ mobile: true });
+        assert.equal(await page.isVisible('#offline-banner'), false);
+        await ctx.setOffline(true); await page.waitForTimeout(300);
+        assert.equal(await page.isVisible('#offline-banner'), true);
+        assert.match(await page.textContent('#offline-sync-text'), /29\/10\/2026, 10:00 PG/);
+        await shot(page, 'offline');
+        await ctx.setOffline(false); await page.waitForTimeout(300);
+        assert.equal(await page.isVisible('#offline-banner'), false);
+        await ctx.close();
+    },
+
+    // Install sheet on beforeinstallprompt; "Bukan sekarang" holds for the session
+    async 'install sheet'() {
+        const { ctx, page } = await open({ mobile: true });
+        const fire = () => page.evaluate(() => {
+            const e = new Event('beforeinstallprompt');
+            e.prompt = () => { window.__prompted = true; };
+            e.userChoice = Promise.resolve({ outcome: 'accepted' });
+            window.dispatchEvent(e);
+        });
+        await fire(); await page.waitForTimeout(400);
+        assert.equal(await page.isVisible('#install-prompt'), true);
+        await shot(page, 'install-sheet');
+        await page.click('#install-app-btn'); await page.waitForTimeout(300);
+        assert.equal(await page.evaluate(() => window.__prompted), true);
+        assert.equal(await page.isVisible('#install-prompt'), false);
+        await fire(); await page.waitForTimeout(300);
+        await page.click('#install-close-btn'); await page.waitForTimeout(200);
+        await fire(); await page.waitForTimeout(300);
+        assert.equal(await page.isVisible('#install-prompt'), false, 'dismissed sheet must not come back this session');
+        await ctx.close();
+    },
+
+    // iPhone Safari gets the three-step guide, arrow pointing at Share
+    async 'ios install guide'() {
+        const { ctx, page } = await open({
+            mobile: true,
+            userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1'
+        });
+        await page.waitForTimeout(800);
+        assert.equal(await page.isVisible('#ios-install-modal'), true);
+        assert.equal(await page.isVisible('.ios-guide-arrow'), true);
+        await shot(page, 'ios-guide');
+        await page.click('#ios-guide-ok'); await page.waitForTimeout(200);
+        assert.equal(await page.isVisible('#ios-install-modal'), false);
+        await ctx.close();
+    },
+
+    // Manifest shortcut ?tab=takwim opens straight on Takwim
+    async 'shortcut deep link'() {
+        const { ctx, page } = await open({ mobile: true, path: '/index.html?tab=takwim' });
+        assert.equal(await page.isVisible('#view-takwim'), true);
+        assert.equal(await page.isVisible('#view-dashboard'), false);
+        assert.equal(await page.getAttribute('#bottom-nav [data-view=takwim]', 'aria-selected'), 'true');
+        await ctx.close();
+    },
+
     // PDF report is produced
     async 'pdf report'() {
         const { ctx, page } = await open({});

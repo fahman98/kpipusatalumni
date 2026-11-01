@@ -853,10 +853,6 @@ body.dark-mode .theme-toggle-btn:hover {
 
 
 
-/* Install Banner Slide Up */
-.slide-up-show {
-    transform: translateY(0) !important;
-}
 
 /* ===== MOBILE BOTTOM SHEET ===== */
 /* Show modals as bottom sheets on mobile devices */
@@ -1018,6 +1014,7 @@ body.dark-mode .theme-toggle-btn:hover {
     #toast-notification,
     #install-prompt,
     #ios-install-modal,
+    #update-toast,
     #password-modal,
     #confirm-modal,
     #input-modal,
@@ -1766,6 +1763,167 @@ body.dark-mode .detail-btn-delete:hover{ background:#5b1414; }
     }
 }
 
+/* ===== PWA: OFFLINE NOTICE, INSTALL SHEET, iOS GUIDE, UPDATE NOTICE =====
+   From the "Redesign KPI Pusat Alumni" canvas (PWA-LuarTalian, PWA-Pasang,
+   PWA-iOS). */
+.offline-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    background: #FFF3DF;
+    border: 1px solid #F2D7A6;
+    color: #6B3E00;
+}
+.offline-banner.hidden { display: none; }
+body.dark-mode .offline-banner { background: #3A2606; border-color: #6B4A12; color: #FCD9A0; }
+
+.install-overlay, .ios-guide-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 65;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+}
+.install-overlay.hidden, .ios-guide-overlay.hidden { display: none; }
+.install-backdrop { position: absolute; inset: 0; background: rgba(14, 26, 43, 0.55); }
+
+.install-panel {
+    position: relative;
+    width: 100%;
+    background: #fff;
+    border-radius: 22px 22px 0 0;
+    padding: 10px 20px calc(24px + env(safe-area-inset-bottom, 0px));
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    animation: sheet-rise 0.28s ease-out;
+}
+.install-handle { width: 40px; height: 4px; border-radius: 999px; background: #D3DAE5; align-self: center; }
+.install-benefits { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 14px; }
+.install-benefits li { display: flex; gap: 12px; align-items: flex-start; }
+.install-benefits li > span:last-child > strong { display: block; font-size: 14px; color: #0E1A2B; }
+.install-benefits li > span:last-child > span { display: block; font-size: 13px; color: #5B6779; }
+.install-benefit-icon {
+    width: 36px; height: 36px; flex-shrink: 0; border-radius: 10px;
+    background: #E8EEFA; color: #1747A6;
+    display: flex; align-items: center; justify-content: center;
+}
+.install-primary-btn {
+    min-height: 52px; border: 0; border-radius: 12px;
+    background: #1747A6; color: #fff; font-size: 16px; font-weight: 800;
+}
+.install-primary-btn:hover { background: #0F2F6E; }
+.install-secondary-btn {
+    min-height: 48px; border: 0; border-radius: 12px;
+    background: transparent; color: #3A4658; font-size: 15px; font-weight: 700;
+}
+.install-secondary-btn:hover { background: #F3F5F9; }
+
+/* Desktop: a corner card, no backdrop, so it doesn't block the dashboard */
+@media (min-width: 768px) {
+    .install-overlay { inset: auto 24px 24px auto; display: block; }
+    .install-overlay .install-backdrop { display: none; }
+    .install-panel {
+        width: 360px;
+        border-radius: 18px;
+        padding: 20px;
+        box-shadow: 0 20px 40px -12px rgba(14, 26, 43, 0.35);
+        border: 1px solid #E2E7EF;
+    }
+    .install-handle { display: none; }
+}
+
+.ios-guide-card {
+    position: relative;
+    margin: 0 12px calc(96px + env(safe-area-inset-bottom, 0px));
+    width: 100%;
+    max-width: 420px;
+    background: #fff;
+    border-radius: 20px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    animation: sheet-rise 0.28s ease-out;
+}
+.ios-guide-close {
+    width: 44px; height: 44px; margin: -8px -8px 0 0; border: 0; border-radius: 10px;
+    background: transparent; color: #5B6779;
+    display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.ios-guide-close:hover { background: #F3F5F9; }
+.ios-guide-steps { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px; font-size: 14px; color: #0E1A2B; }
+.ios-guide-steps li { display: flex; gap: 12px; align-items: center; }
+.ios-step-num {
+    width: 28px; height: 28px; flex-shrink: 0; border-radius: 999px;
+    background: #1747A6; color: #fff; font-size: 13px; font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+}
+.ios-step-icon {
+    width: 40px; height: 40px; flex-shrink: 0; border-radius: 10px;
+    background: #F3F5F9; color: #1747A6;
+    display: flex; align-items: center; justify-content: center;
+}
+.ios-step-word { width: auto; padding: 0 12px; font-size: 14px; font-weight: 800; }
+.ios-guide-ok {
+    min-height: 48px; border: 0; border-radius: 12px;
+    background: #E8EEFA; color: #1747A6; font-size: 15px; font-weight: 800;
+}
+/* Points down at Safari's Share button on iPhone; hidden on iPad (Share is at the top) */
+.ios-guide-arrow {
+    position: absolute; left: 50%; bottom: -10px; margin-left: -8px;
+    width: 0; height: 0;
+    border-left: 8px solid transparent; border-right: 8px solid transparent; border-top: 10px solid #fff;
+}
+.ios-guide-overlay.is-ipad { align-items: center; }
+.ios-guide-overlay.is-ipad .ios-guide-card { margin-bottom: 0; }
+.ios-guide-overlay.is-ipad .ios-guide-arrow { display: none; }
+
+.update-toast {
+    position: fixed;
+    left: 12px; right: 12px;
+    bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+    z-index: 64;   /* under the install sheet / iOS guide if both are up */
+    max-width: 420px;
+    margin: 0 auto;
+    background: #0E1A2B;
+    color: #fff;
+    border-radius: 14px;
+    padding: 12px 12px 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 16px 32px -12px rgba(14, 26, 43, 0.5);
+    animation: sheet-rise 0.28s ease-out;
+}
+.update-toast.hidden { display: none; }
+@media (min-width: 768px) { .update-toast { bottom: 24px; } }
+.update-reload-btn {
+    min-height: 44px; padding: 0 14px; border: 0; border-radius: 10px;
+    background: #fff; color: #0E1A2B; font-size: 14px; font-weight: 800; white-space: nowrap;
+}
+
+@keyframes sheet-rise {
+    from { transform: translateY(24px); opacity: 0; }
+    to   { transform: translateY(0); opacity: 1; }
+}
+
+body.dark-mode .install-panel,
+body.dark-mode .ios-guide-card { background: #1f2937; }
+body.dark-mode .ios-guide-arrow { border-top-color: #1f2937; }
+body.dark-mode .install-benefits li > span:last-child > strong { color: #f3f4f6; }
+body.dark-mode .install-benefits li > span:last-child > span { color: #9ca3af; }
+body.dark-mode .install-benefit-icon,
+body.dark-mode .ios-guide-ok { background: #1e3a8a; color: #bfdbfe; }
+body.dark-mode .ios-step-icon { background: #111827; color: #93c5fd; }
+body.dark-mode .ios-guide-steps { color: #f3f4f6; }
+body.dark-mode .install-secondary-btn { color: #d1d5db; }
+body.dark-mode .install-secondary-btn:hover,
+body.dark-mode .ios-guide-close:hover { background: #374151; }
+
 /* ===== SEJARAH PERUBAHAN (audit log viewer) ===== */
 .history-tone-add    { background: #dcfce7; color: #15803d; }
 .history-tone-edit   { background: #dbeafe; color: #1d4ed8; }
@@ -1909,15 +2067,6 @@ body.dark-mode .quarter-btn:not(.active):hover {
 
     #dashboard-container {
         padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
-    }
-
-    #install-prompt {
-        bottom: calc(3.5rem + env(safe-area-inset-bottom, 0px)) !important;
-        transform: translateY(200%);
-    }
-
-    #install-prompt.slide-up-show {
-        transform: translateY(0);
     }
 
     #stats-bar {
