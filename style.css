@@ -1924,6 +1924,133 @@ body.dark-mode .install-secondary-btn { color: #d1d5db; }
 body.dark-mode .install-secondary-btn:hover,
 body.dark-mode .ios-guide-close:hover { background: #374151; }
 
+/* ===== PHONE DASHBOARD (redesign canvas, Phone-Dashboard) =====
+   Below 640px: quarter tabs move above the hero, the hero carries the status
+   counts, and the KPI cards give way to compact rows. Cards stay in the DOM
+   (hidden) because the KPI sheet reuses their buttons. */
+.hero-mobile,
+.kpi-mobile-list { display: none; }
+
+@media (max-width: 639px) {
+    /* :not(.hidden): an id selector would otherwise beat .hidden and keep the
+       dashboard on screen behind the Takwim / Penjanaan tabs */
+    #view-dashboard:not(.hidden) { display: flex; flex-direction: column; }
+    #quarter-toolbar { order: -1; }
+
+    #overall-highlight { padding: 18px !important; border-radius: 16px; }
+    #overall-highlight .hero-desktop { display: none !important; }
+    .hero-mobile { display: flex; flex-direction: column; gap: 14px; }
+    #stats-bar { display: none !important; }
+
+    #kpi-grid-container { gap: 0; }
+    #kpi-grid-container > .kpi-card:not(.animate-pulse) { display: none !important; }
+    .kpi-mobile-list { display: block; }
+}
+
+.hero-sub-text { margin: 0 0 4px; font-size: 13px; font-weight: 600; color: rgba(255, 255, 255, 0.82); }
+.hero-value {
+    margin: 0; font-size: 44px; line-height: 1; font-weight: 800;
+    letter-spacing: -0.03em; font-variant-numeric: tabular-nums; color: #fff;
+}
+.hero-expected { margin: 0; font-size: 12px; color: rgba(255, 255, 255, 0.82); text-align: right; line-height: 1.35; }
+.hero-expected.hidden { display: none; }
+.hero-expected strong { font-size: 15px; color: #fff; font-variant-numeric: tabular-nums; }
+.hero-bar { position: relative; height: 10px; border-radius: 999px; background: rgba(255, 255, 255, 0.22); }
+.hero-bar-fill { height: 10px; border-radius: 999px; background: #fff; transition: width 0.8s ease; }
+.hero-bar-marker {
+    position: absolute; top: -4px; width: 3px; height: 18px; margin-left: -1.5px;
+    border-radius: 2px; background: #FFC24B;
+}
+.hero-bar-marker.hidden { display: none; }
+.hero-counts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.hero-count {
+    min-height: 52px; border: 0; border-radius: 10px; padding: 8px 10px;
+    background: rgba(255, 255, 255, 0.12); color: #fff; text-align: left;
+    transition: background-color 0.15s ease;
+}
+.hero-count-num { display: block; font-size: 18px; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.hero-count-label { display: block; font-size: 11px; font-weight: 600; color: rgba(255, 255, 255, 0.82); }
+.hero-count[aria-pressed="true"] { background: #fff; color: #0d47a1; }
+.hero-count[aria-pressed="true"] .hero-count-label { color: #1e3a8a; }
+.hero-count:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+.kpi-mobile-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 2px 2px 10px; }
+.kpi-mobile-head h2 { margin: 0; font-size: 16px; font-weight: 800; color: #0E1A2B; }
+.kpi-mobile-head span { font-size: 12px; font-weight: 600; color: #5B6779; }
+.kpi-mobile-rows { background: #fff; border: 1px solid #E2E7EF; border-radius: 16px; overflow: hidden; }
+.kpi-row {
+    display: flex; flex-direction: column; gap: 10px; width: 100%;
+    padding: 14px 16px; border: 0; border-bottom: 1px solid #E2E7EF;
+    background: transparent; text-align: left; color: #0E1A2B; cursor: pointer;
+}
+.kpi-row:last-child { border-bottom: 0; }
+.kpi-row.hidden { display: none; }
+.kpi-row:active { background: #F3F5F9; }
+.kpi-row:focus-visible { outline: 2px solid #0d47a1; outline-offset: -2px; }
+.kpi-row-top { display: flex; align-items: center; gap: 12px; }
+.kpi-row-icon {
+    width: 36px; height: 36px; flex-shrink: 0; border-radius: 10px;
+    background: #E8EEFA; color: #0d47a1; font-size: 18px; --ph-fill-opacity: 0.25;
+    display: flex; align-items: center; justify-content: center;
+}
+.kpi-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+/* Two lines rather than an ellipsis: long KPI names must stay readable */
+.kpi-row-name {
+    font-size: 14px; font-weight: 700; line-height: 1.3;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.kpi-row-sub { font-size: 13px; font-weight: 600; color: #5B6779; font-variant-numeric: tabular-nums; }
+.kpi-row-end { flex-shrink: 0; display: flex; flex-direction: column; text-align: right; }
+.kpi-row-pct { font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.kpi-row-status { font-size: 11px; font-weight: 700; }
+.kpi-row-status-good { color: #12703F; }
+.kpi-row-status-ok   { color: #8F5300; }
+.kpi-row-status-bad  { color: #B42E24; }
+.kpi-row-bar { position: relative; display: block; height: 6px; border-radius: 999px; background: #EDF0F5; }
+.kpi-row-fill { display: block; height: 6px; border-radius: 999px; }
+.kpi-row-marker {
+    position: absolute; top: -3px; width: 2px; height: 12px; margin-left: -1px;
+    border-radius: 2px; background: #0E1A2B; opacity: 0.7;
+}
+
+body.dark-mode .kpi-mobile-head h2 { color: #f3f4f6; }
+body.dark-mode .kpi-mobile-head span { color: #9ca3af; }
+body.dark-mode .kpi-mobile-rows { background: #1f2937; border-color: #374151; }
+body.dark-mode .kpi-row { color: #f3f4f6; border-color: #374151; }
+body.dark-mode .kpi-row:active { background: #111827; }
+body.dark-mode .kpi-row-icon { background: #1e3a8a; color: #93c5fd; }
+body.dark-mode .kpi-row-sub { color: #9ca3af; }
+body.dark-mode .kpi-row-status-good { color: #6FD39B; }
+body.dark-mode .kpi-row-status-ok   { color: #F2B54A; }
+body.dark-mode .kpi-row-status-bad  { color: #f87171; }
+body.dark-mode .kpi-row-bar { background: #374151; }
+body.dark-mode .kpi-row-marker { background: #e5e7eb; }
+
+/* KPI sheet actions (focus mode) */
+.focus-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 16px; }
+.focus-actions:empty { display: none; }
+.focus-action {
+    min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 0 10px; border-radius: 12px; border: 1px solid #E2E7EF;
+    background: #fff; color: #0E1A2B; font-size: 13px; font-weight: 700;
+}
+.focus-action:hover { background: #F3F5F9; }
+.focus-action-primary { background: #0d47a1; border-color: #0d47a1; color: #fff; }
+.focus-action-primary:hover { background: #0a3880; }
+body.dark-mode .focus-action { background: #111827; border-color: #374151; color: #f3f4f6; }
+body.dark-mode .focus-action:hover { background: #1f2937; }
+body.dark-mode .focus-action-primary { background: #1d4ed8; border-color: #1d4ed8; color: #fff; }
+body.dark-mode #focus-kpi-desc { color: #9ca3af; }
+
+/* Bottom nav: active tab gets a pill behind its icon */
+.bottom-nav-tab i {
+    padding: 4px 17px;
+    border-radius: 999px;
+    transition: background-color 0.18s;
+}
+.bottom-nav-tab.active i { background: #E8EEFA; }
+body.dark-mode .bottom-nav-tab.active i { background: #1e3a8a; }
+
 /* ===== SEJARAH PERUBAHAN (audit log viewer) ===== */
 .history-tone-add    { background: #dcfce7; color: #15803d; }
 .history-tone-edit   { background: #dbeafe; color: #1d4ed8; }

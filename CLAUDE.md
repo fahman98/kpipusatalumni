@@ -18,7 +18,7 @@ descriptions of PR #2 to #8.
 - The owner cannot easily re-enter lost data. Never write to live Firestore
   from a session, and never press reset / delete in a live app.
 - Test with `tests/` (see `tests/README.md`): `cd tests && npm install`
-  once, then `node run.js` (16 scenarios, ~2 min) against `mock-firebase.js`,
+  once, then `node run.js` (17 scenarios, ~2 min) against `mock-firebase.js`,
   which records every write instead of sending it. Clock pinned to
   29/10/2026. Add a scenario to `tests/run.js` for each behaviour change;
   extend the mock's seed data rather than touching live data. The proxy
@@ -77,8 +77,17 @@ descriptions of PR #2 to #8.
   `?tab=takwim|penjanaan`. `theme_color` stays `#0d47a1` until the colour
   redesign lands.
 - Design source: claude.ai canvas "Redesign KPI Pusat Alumni" (owner's).
-  Phase 1 (PWA layer + icon) is built; phases 2-4 (phone dashboard rows,
-  Takwim/Penjanaan/Butiran, desktop) are not.
+  Built: phase 1 (PWA layer + icon), phase 2 (phone dashboard). Not yet:
+  phase 3 (Takwim filters, Penjanaan balance, Butiran as a page), phase 4
+  (desktop + global colour #1747A6 / white phone header).
+- Phone dashboard (<640px): quarter tabs above the hero, hero holds the
+  status counts (they click the hidden `.stat-card`s, one filter path),
+  KPI cards hidden and replaced by `.kpi-row`s built in `mobileListHtml()`.
+  A row opens the focus modal as a "KPI sheet" whose actions click the
+  hidden card's own buttons (details, chart, admin edit / settings /
+  description), so every handler keeps one implementation. Cards carry
+  `data-kpi-id`. Kept the blue app bar (design's white header waits for
+  phase 4 so the status-bar colour stays matched).
 
 ## Before every push
 1. Rebuild Tailwind when any class changes in `index.html` or `js/`:

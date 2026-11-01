@@ -44,7 +44,7 @@ import { renderGaugeChart, showHistoryChart, destroyKpiChart } from './charts.js
 import { handleAdminLogin, resetLoginModal, runLogoutSequence, startIdleLogout, stopIdleLogout, IDLE_LOGOUT_FLAG } from './admin.js';
 import { initTakwim } from './takwim.js';
 import { initPenjanaan } from './penjanaan.js';
-import { statusTier, statusHex, setPaceContext, getPaceFraction, kpiStatusPct, quarterStarted, STATUS_LABEL } from './status.js';
+import { statusTier, statusHex, setPaceContext, getPaceFraction, kpiStatusPct, isPacedKpi, quarterStarted, STATUS_LABEL } from './status.js';
 import { isAdminUser } from './auth.js';
 import { openHistory } from './history.js';
 
@@ -430,8 +430,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 else badCount++;
             });
 
+            if (kpiGridContainer) kpiGridContainer.insertAdjacentHTML('afterbegin', mobileListHtml(processedKpis));
+
             const overall = count > 0 ? totalPct / count : 0;
             const overallStatus = count > 0 ? totalStatusPct / count : 0;
+            updateMobileHero(overall, goodCount, okCount, badCount, quarterKey);
             renderGaugeChart(overall, overallStatus);
             updateFavicon(overall, overallStatus);
             document.title = `KPI ${overall.toFixed(0)}% · Pusat Alumni UPSI`;
@@ -460,6 +463,7 @@ document.addEventListener('DOMContentLoaded', () => {
             setEditMode(isEditMode);
 
             filterDashboardCards(activeStatusFilter);
+            syncHeroCounts();
 
             // Quarter transition: fade in new grid
             if (kpiGridContainer) {
@@ -731,7 +735,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const focusModal = getEl('focus-modal');
     const focusModalClose = getEl('focus-modal-close');
 
-    function openFocusMode(kpiId) {
+    function openFocusMode(kpiId, triggerEl) {
         const data = kpiDataCache[currentQuarter];
         if (!data || !data.processedKpis) return;
         const kpi = data.processedKpis.find(k => k.id === kpiId);
@@ -750,9 +754,8 @@ document.addEventListener('DOMContentLoaded', () => {
         getEl('focus-kpi-pct').style.color = color;
         getEl('focus-kpi-value').textContent = valStr;
         // Same format as the value beside it (thousands separator, RM, %)
-        getEl('focus-kpi-target').textContent = typeof kpi.target === 'number'
-            ? (kpi.isCurrency ? 'RM ' : '') + kpi.target.toLocaleString('en-US') + (kpi.isPercentage ? '%' : '')
-            : (kpi.target || '—');
+        getEl('focus-kpi-target').textContent = kpiTargetText(kpi);
+        renderFocusExtras(kpi);
 
         const trendRow = getEl('focus-trend-row');
         if (kpi.trend && trendRow) {
@@ -777,7 +780,48 @@ document.addEventListener('DOMContentLoaded', () => {
                     animation: { duration: 700, easing: 'easeOutQuart' } }
             });
         }
-        openModal(focusModal);
+        openModal(focusModal, triggerEl);
+    }
+
+    // Description and actions in the KPI sheet. On phones the cards are hidden
+    // and this sheet is the only way in, so each action reuses the (hidden)
+    // card's own button: one implementation for every handler.
+    function renderFocusExtras(kpi) {
+        const descEl = getEl('focus-kpi-desc');
+        if (descEl) {
+            descEl.textContent = kpi.description || '';
+            descEl.classList.toggle('hidden', !kpi.description);
+        }
+        const actionsEl = getEl('focus-actions');
+        if (!actionsEl) return;
+        actionsEl.innerHTML = '';
+        const card = kpiGridContainer
+            ? kpiGridContainer.querySelector(`.kpi-card[data-kpi-id="${CSS.escape(kpi.id)}"]`)
+            : null;
+        if (!card) return;
+        const add = (selector, label, icon, primary = false) => {
+            const target = card.querySelector(selector);
+            // The button's own computed display, not its class: the settings
+            // button keeps .hidden but is shown with an inline style in admin mode
+            if (!target || getComputedStyle(target).display === 'none') return;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = `focus-action${primary ? ' focus-action-primary' : ''}`;
+            btn.innerHTML = `<i class="fas ${icon}" aria-hidden="true"></i><span>${escapeHtml(label)}</span>`;
+            btn.addEventListener('click', () => {
+                closeModal(focusModal);
+                setTimeout(() => target.click(), 50);
+            });
+            actionsEl.appendChild(btn);
+        };
+        const detailsLabel = card.querySelector('.kpi-details-label');
+        add('.show-details-btn', detailsLabel ? detailsLabel.textContent : 'Butiran', 'fa-list-ul', true);
+        add('.show-chart-btn', 'Sejarah prestasi', 'fa-chart-line');
+        if (isEditMode) {
+            add('.edit-kpi-btn', 'Kemaskini nilai', 'fa-pencil-alt', true);
+            add('.settings-btn', 'Tetapan KPI', 'fa-cog');
+            add('.info-btn', 'Edit deskripsi', 'fa-align-left');
+        }
     }
 
     if (focusModalClose) focusModalClose.addEventListener('click', () => closeModal(focusModal));
@@ -869,6 +913,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Grid Interaction
     if (kpiGridContainer) {
         kpiGridContainer.addEventListener('click', (e) => {
+            const row = e.target.closest('.kpi-row');
+            if (row) { openFocusMode(row.dataset.kpiId, row); return; }
             const chartBtn = e.target.closest('.show-chart-btn');
             const detailsBtn = e.target.closest('.show-details-btn');
             const kpiNameEl = e.target.closest('.kpi-name');
@@ -1763,6 +1809,98 @@ document.addEventListener('DOMContentLoaded', () => {
     const viewToggleBtn = getEl('view-toggle-btn');
     const kpiTableContainer = getEl('kpi-table-container');
 
+    // --- PHONE DASHBOARD (redesign canvas, Phone-Dashboard) ---------------
+    // Below 640px the cards give way to compact rows (name, value / target,
+    // %, status word, a thin bar with the expectation marker) and the hero
+    // carries the status counts. Wider screens keep the cards; CSS switches.
+    function kpiValueText(kpi) {
+        const v = calculateKpiValue(kpi);
+        if (kpi.isPercentage) return `${v.toFixed(1)}%`;
+        if (kpi.isCurrency) return `RM ${v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        return Math.floor(v).toLocaleString('en-US');
+    }
+
+    function kpiTargetText(kpi) {
+        return typeof kpi.target === 'number'
+            ? (kpi.isCurrency ? 'RM ' : '') + kpi.target.toLocaleString('en-US') + (kpi.isPercentage ? '%' : '')
+            : (kpi.target || '-');
+    }
+
+    function mobileListHtml(kpis) {
+        const fraction = getPaceFraction();
+        const rows = kpis.map(kpi => {
+            const pct = getKpiPercentage(kpi);
+            const sPct = kpiStatusPct(kpi, pct);
+            const tier = statusTier(sPct);
+            const marker = isPacedKpi(kpi) && fraction < 1
+                ? `<span class="kpi-row-marker" style="left:${(fraction * 100).toFixed(2)}%"></span>` : '';
+            return `
+            <button type="button" class="kpi-row" data-kpi-id="${escapeHtml(kpi.id)}" data-tier="${tier}">
+                <span class="kpi-row-top">
+                    <span class="kpi-row-icon" aria-hidden="true"><i class="ph-duotone ${getPhosphorIcon(kpi.icon)}"></i></span>
+                    <span class="kpi-row-main">
+                        <span class="kpi-row-name">${escapeHtml(kpi.name)}</span>
+                        <span class="kpi-row-sub">${escapeHtml(kpiValueText(kpi))} / ${escapeHtml(kpiTargetText(kpi))}</span>
+                    </span>
+                    <span class="kpi-row-end">
+                        <span class="kpi-row-pct">${Math.min(pct, 999).toFixed(1)}%</span>
+                        <span class="kpi-row-status kpi-row-status-${tier}">${STATUS_LABEL[tier]}</span>
+                    </span>
+                </span>
+                <span class="kpi-row-bar" aria-hidden="true">
+                    <span class="kpi-row-fill" style="width:${Math.min(pct, 100).toFixed(2)}%;background:${statusHex(sPct)}"></span>
+                    ${marker}
+                </span>
+            </button>`;
+        }).join('');
+        return `
+        <div class="kpi-mobile-list col-span-full">
+            <div class="kpi-mobile-head">
+                <h2 id="kpi-list-heading">${kpis.length} petunjuk prestasi</h2>
+                <span>Tekan untuk butiran</span>
+            </div>
+            <div class="kpi-mobile-rows">${rows}</div>
+        </div>`;
+    }
+
+    function updateMobileHero(overall, good, ok, bad, quarterKey) {
+        const set = (id, text) => { const el = getEl(id); if (el) el.textContent = text; };
+        set('hero-value', `${overall.toFixed(1)}%`);
+        set('hero-good', good); set('hero-ok', ok); set('hero-bad', bad);
+        const fill = getEl('hero-bar-fill');
+        if (fill) fill.style.width = `${Math.min(overall, 100)}%`;
+        const fraction = getPaceFraction();
+        const qNum = parseInt(String(quarterKey).replace('q', ''), 10);
+        const marker = getEl('hero-bar-marker');
+        const wrap = getEl('hero-expected-wrap');
+        const showExpected = fraction < 1;
+        if (marker) {
+            marker.classList.toggle('hidden', !showExpected);
+            marker.style.left = `${fraction * 100}%`;
+        }
+        if (wrap) wrap.classList.toggle('hidden', !showExpected);
+        if (showExpected) {
+            set('hero-expected-label', fraction < qNum / 4 ? 'Jangkaan hari ini' : `Jangkaan akhir Suku ${qNum}`);
+            set('hero-expected', `${Math.round(fraction * 100)}%`);
+        }
+    }
+
+    // The hero's counts drive the existing (hidden on phones) stat cards, so
+    // filtering keeps one implementation; mirror their pressed state back.
+    function syncHeroCounts() {
+        document.querySelectorAll('.hero-count').forEach(btn => {
+            const card = document.querySelector(`.stat-card[data-filter="${btn.dataset.filter}"]`);
+            btn.setAttribute('aria-pressed', card && card.classList.contains('stat-card-active') ? 'true' : 'false');
+        });
+    }
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest('.hero-count');
+        if (!btn) return;
+        const card = document.querySelector(`.stat-card[data-filter="${btn.dataset.filter}"]`);
+        if (card) card.click();
+        syncHeroCounts();
+    });
+
     // An empty or failed load must not leave the previous year's rows on
     // screen under the "Tiada Data" panel. Table mode itself stays on, so the
     // next year with data comes back as a table.
@@ -1883,6 +2021,15 @@ document.addEventListener('DOMContentLoaded', () => {
         actionsSheet.addEventListener('click', (e) => {
             if (e.target === actionsSheet) closeModal(actionsSheet);
         });
+
+        const sheetBreakdownBtn = getEl('sheet-breakdown-btn');
+        if (sheetBreakdownBtn) {
+            sheetBreakdownBtn.addEventListener('click', () => {
+                closeModal(actionsSheet);
+                // The hero's Pecahan button is hidden on phones; reuse its handler
+                if (overallChartBtn) setTimeout(() => overallChartBtn.click(), 50);
+            });
+        }
 
         const sheetPdfBtn = getEl('sheet-pdf-btn');
         if (sheetPdfBtn) {

@@ -52,6 +52,42 @@ const scenarios = {
         await ctx.close();
     },
 
+    // Phone: compact rows instead of cards, hero counts filter, row opens the KPI sheet
+    async 'phone dashboard'() {
+        let { ctx, page } = await open({ mobile: true });
+        const visibleRows = () => page.$$eval('.kpi-row', r => r.filter(x => x.offsetParent !== null).length);
+        assert.equal(await visibleRows(), 6);
+        assert.equal(await page.$$eval('#kpi-grid-container > .kpi-card', c => c.filter(x => x.offsetParent !== null).length), 0);
+        assert.deepEqual(await page.$$eval('.hero-count-num', n => n.map(x => x.textContent)), ['4', '2', '0']);
+        assert.equal(await page.textContent('#hero-expected'), '25%');
+        await shot(page, 'phone-dashboard', true);
+        await page.click('.hero-count[data-filter="ok"]'); await page.waitForTimeout(200);
+        assert.equal(await visibleRows(), 2);
+        assert.equal(await page.textContent('#kpi-list-heading'), '2 daripada 6 petunjuk prestasi');
+        assert.equal(await page.getAttribute('.hero-count[data-filter="ok"]', 'aria-pressed'), 'true');
+        await page.click('.hero-count[data-filter="ok"]'); await page.waitForTimeout(200);
+        assert.equal(await visibleRows(), 6);
+        await page.locator('.kpi-row').nth(2).click(); await page.waitForTimeout(500);
+        const actions = await page.$$eval('#focus-actions .focus-action', b => b.map(x => x.textContent.trim()));
+        assert.deepEqual(actions, ['Butiran (1)', 'Sejarah prestasi']);
+        await shot(page, 'phone-kpi-sheet');
+        await page.click('#focus-actions .focus-action'); await page.waitForTimeout(600);
+        assert.equal(await page.isVisible('#details-modal'), true, 'Butiran action opens the details modal');
+        await ctx.close();
+
+        ({ ctx, page } = await open({ mobile: true, admin: true }));
+        await page.locator('.kpi-row').first().click(); await page.waitForTimeout(500);
+        const adminActions = await page.$$eval('#focus-actions .focus-action', b => b.map(x => x.textContent.trim()));
+        assert.ok(adminActions.includes('Kemaskini nilai') && adminActions.includes('Tetapan KPI'), adminActions.join(', '));
+        await page.locator('#focus-actions .focus-action', { hasText: 'Kemaskini nilai' }).click(); await page.waitForTimeout(500);
+        assert.equal(await page.isVisible('#input-modal'), true, 'Kemaskini nilai opens the value editor');
+        await ctx.close();
+
+        ({ ctx, page } = await open({}));
+        assert.equal(await visibleRows(), 0, 'desktop keeps the cards');
+        await ctx.close();
+    },
+
     // Reset / copy write only to the selected year, from the year before it
     async 'reset safety'() {
         let { ctx, page } = await open({ admin: true, with2025: true });
