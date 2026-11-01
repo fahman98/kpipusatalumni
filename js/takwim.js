@@ -27,6 +27,7 @@ let currentContainer = null;
 let isAdminMode = false;
 let cachedEvents = [];
 let showAllPast = false;      // "Telah Berlangsung" collapsed to the latest few
+let takwimFilter = 'semua';   // filter chip: semua | akan-datang | berlangsung | ditangguhkan | dibatalkan
 const PAST_PREVIEW = 3;
 
 // ---- Helpers ----------------------------------------------------------
@@ -456,10 +457,39 @@ function render() {
         const s = eventStatus(ev);
         return s !== 'Dibatalkan' && s !== 'Ditangguhkan';
     });
-    // An event counts as "past" only once its LAST day is over, so multi-day
-    // programmes still in progress stay under "Akan Datang".
-    const upcoming   = active.filter(ev => endDateKey(ev) >= tKey);
+    // An event counts as "past" only once its LAST day is over. Events running
+    // today get their own "Hari ini" section (redesign canvas, Phone-Takwim).
+    const today      = active.filter(ev => String(ev.date) <= tKey && endDateKey(ev) >= tKey);
+    const upcoming   = active.filter(ev => String(ev.date) > tKey);
     const past       = active.filter(ev => endDateKey(ev) < tKey).reverse(); // most recent first
+
+    // Filter chips; a chip appears only when it has something to show
+    const chips = [
+        ['semua', 'Semua', sorted.length],
+        ['akan-datang', 'Akan datang', today.length + upcoming.length],
+        ['berlangsung', 'Telah berlangsung', past.length],
+        ['ditangguhkan', 'Ditangguhkan', postponed.length],
+        ['dibatalkan', 'Dibatalkan', cancelled.length]
+    ].filter(([key, , n]) => key === 'semua' || n > 0);
+    if (!chips.some(([key]) => key === takwimFilter)) takwimFilter = 'semua';
+    const show = (key) => takwimFilter === 'semua' || takwimFilter === key;
+    const chipsHtml = cachedEvents.length ? `
+        <div class="takwim-chips" role="group" aria-label="Tapis aktiviti">
+            ${chips.map(([key, label, n]) => `
+            <button type="button" class="takwim-chip" data-filter="${key}" aria-pressed="${takwimFilter === key}">
+                ${escapeHtml(label)} <span>${n}</span>
+            </button>`).join('')}
+        </div>` : '';
+    const noUpcomingHtml = `
+        <div class="mb-6">
+            <h3 class="flex items-center gap-2 text-sm font-bold text-gray-500 uppercase tracking-wide mb-3">
+                <i class="ph-duotone ph-clock-countdown text-base text-brand-primary"></i>Akan Datang
+            </h3>
+            <div class="takwim-empty-upcoming">
+                <p class="font-bold text-gray-700">Belum ada aktiviti akan datang.</p>
+                <p class="text-sm text-gray-500 mt-0.5">Aktiviti baharu akan dipaparkan di sini sebaik direkodkan oleh Pusat Alumni.</p>
+            </div>
+        </div>`;
 
     const addBtnHtml = isAdminMode
         ? `<button id="takwim-add-btn" class="bg-brand-primary text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-800 shadow-md transition-all text-sm flex items-center gap-2 flex-shrink-0">
@@ -478,28 +508,42 @@ function render() {
         </div>`;
     } else {
         bodyHtml =
-            sectionHtml('Akan Datang', 'ph-clock-countdown', upcoming) +
-            sectionHtml('Telah Berlangsung', 'ph-clock-counter-clockwise', past,
-                { limit: PAST_PREVIEW, expanded: showAllPast, toggleId: 'takwim-past-toggle' }) +
-            sectionHtml('Ditangguhkan', 'ph-pause-circle', postponed) +
-            sectionHtml('Dibatalkan', 'ph-x-circle', cancelled);
+            (show('akan-datang') ? sectionHtml('Hari Ini', 'ph-calendar-check', today) : '') +
+            (show('akan-datang') ? (upcoming.length ? sectionHtml('Akan Datang', 'ph-clock-countdown', upcoming) : noUpcomingHtml) : '') +
+            // Collapsed to the latest few under "Semua"; the chip shows them all
+            (show('berlangsung') ? sectionHtml('Telah Berlangsung', 'ph-clock-counter-clockwise', past,
+                { limit: takwimFilter === 'berlangsung' ? 0 : PAST_PREVIEW, expanded: showAllPast, toggleId: 'takwim-past-toggle' }) : '') +
+            (show('ditangguhkan') ? sectionHtml('Ditangguhkan', 'ph-pause-circle', postponed) : '') +
+            (show('dibatalkan') ? sectionHtml('Dibatalkan', 'ph-x-circle', cancelled) : '');
     }
 
     currentContainer.innerHTML = `
     <div class="takwim-wrapper">
         <div class="flex items-center justify-between gap-3 mb-5">
-            <h2 class="text-lg sm:text-xl font-bold text-brand-primary flex items-center gap-2 min-w-0">
-                <i class="ph-duotone ph-calendar-dots flex-shrink-0"></i>
-                <span class="truncate">Takwim Aktiviti ${escapeHtml(currentYear)}</span>
-            </h2>
+            <div class="min-w-0">
+                <h2 class="text-lg sm:text-xl font-bold text-brand-primary flex items-center gap-2 min-w-0">
+                    <i class="ph-duotone ph-calendar-dots flex-shrink-0"></i>
+                    <span class="truncate">Takwim Aktiviti ${escapeHtml(currentYear)}</span>
+                </h2>
+                <p class="text-xs text-gray-500 font-semibold mt-0.5">${cachedEvents.length} aktiviti direkodkan bagi ${escapeHtml(currentYear)}</p>
+            </div>
             ${addBtnHtml}
         </div>
+        ${chipsHtml}
         ${bodyHtml}
     </div>`;
 
     // Wire up listeners
     const addBtn = currentContainer.querySelector('#takwim-add-btn');
     if (addBtn) addBtn.addEventListener('click', () => openTakwimModal(null));
+
+    currentContainer.querySelectorAll('.takwim-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            takwimFilter = chip.dataset.filter;
+            render();
+            currentContainer.querySelector(`.takwim-chip[data-filter="${takwimFilter}"]`)?.focus();
+        });
+    });
 
     const pastToggle = currentContainer.querySelector('#takwim-past-toggle');
     if (pastToggle) pastToggle.addEventListener('click', () => {
@@ -563,6 +607,7 @@ export function initTakwim(containerEl, isAdmin, year) {
         currentYear = yearStr;
         cachedEvents = [];
         showAllPast = false;
+        takwimFilter = 'semua';
     } else {
         currentYear = yearStr;
     }

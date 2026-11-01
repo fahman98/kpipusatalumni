@@ -18,7 +18,7 @@ descriptions of PR #2 to #8.
 - The owner cannot easily re-enter lost data. Never write to live Firestore
   from a session, and never press reset / delete in a live app.
 - Test with `tests/` (see `tests/README.md`): `cd tests && npm install`
-  once, then `node run.js` (17 scenarios, ~2 min) against `mock-firebase.js`,
+  once, then `node run.js` (20 scenarios, ~2.5 min) against `mock-firebase.js`,
   which records every write instead of sending it. Clock pinned to
   29/10/2026. Add a scenario to `tests/run.js` for each behaviour change;
   extend the mock's seed data rather than touching live data. The proxy
@@ -77,9 +77,14 @@ descriptions of PR #2 to #8.
   `?tab=takwim|penjanaan`. `theme_color` stays `#0d47a1` until the colour
   redesign lands.
 - Design source: claude.ai canvas "Redesign KPI Pusat Alumni" (owner's).
-  Built: phase 1 (PWA layer + icon), phase 2 (phone dashboard). Not yet:
-  phase 3 (Takwim filters, Penjanaan balance, Butiran as a page), phase 4
-  (desktop + global colour #1747A6 / white phone header).
+  Built: phase 1 (PWA layer + icon), phase 2 (phone dashboard), phase 3
+  (Takwim chips + "Hari ini", Penjanaan balance + quarter summary, Butiran
+  overview + full page on phones). Not yet: phase 4 (desktop + global
+  colour #1747A6 / white phone header).
+- Butiran on phones is the same details modal styled as a full page (all
+  admin add/edit/delete logic untouched). Opening it pushes one history
+  entry so Android Back closes it; close/back/backdrop/Escape go through
+  `dismissDetails()`. `openModal` fires a `modal-opened` event for this.
 - Phone dashboard (<640px): quarter tabs above the hero, hero holds the
   status counts (they click the hidden `.stat-card`s, one filter path),
   KPI cards hidden and replaced by `.kpi-row`s built in `mobileListHtml()`.
