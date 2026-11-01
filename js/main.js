@@ -1006,20 +1006,48 @@ document.addEventListener('DOMContentLoaded', () => {
     if (overallChartBtn) overallChartBtn.addEventListener('click', (e) => showHistoryChart('overall', e.currentTarget));
     if (toastCloseBtn) toastCloseBtn.addEventListener('click', () => getEl('toast-notification').classList.remove('show'));
 
+    // Butiran on a phone is a full page, so the phone's Back gesture should
+    // close it rather than leave the app: opening it pushes one history
+    // entry, and every way of closing it goes back through that entry.
+    // Programmatic close-and-reopen (after an edit) keeps the same entry.
+    const phoneQuery = window.matchMedia('(max-width: 639px)');
+    let detailsHistory = false;
+    document.addEventListener('modal-opened', (e) => {
+        if (e.detail.modalId !== 'details-modal' || !phoneQuery.matches || detailsHistory) return;
+        history.pushState({ kpiDetails: true }, '');
+        detailsHistory = true;
+    });
+    window.addEventListener('popstate', () => {
+        if (!detailsHistory) return;
+        detailsHistory = false;
+        if (detailsModal && detailsModal.classList.contains('is-open')) closeModal(detailsModal);
+    });
+    function dismissDetails() {
+        if (detailsHistory) history.back();   // popstate above closes it
+        else closeModal(detailsModal);
+    }
+    const detailsBackBtn = getEl('details-back-btn');
+    if (detailsBackBtn) detailsBackBtn.addEventListener('click', dismissDetails);
+    const detailsChartBtn = getEl('details-chart-btn');
+    if (detailsChartBtn) detailsChartBtn.addEventListener('click', () => {
+        const kpiId = detailsChartBtn.dataset.kpiId;
+        dismissDetails();
+        if (kpiId) setTimeout(() => showHistoryChart(kpiId), 150);
+    });
+
     // Modals — klik luar untuk tutup, dan destroy chart bila chartModal ditutup
     [chartModal, detailsModal, editDescModal, addKpiModal, editStructureModal, inputModal].forEach(modal => {
         if (!modal) return;
         const closeBtn = modal.querySelector('button[aria-label="Tutup modal"]') || modal.querySelector('.text-2xl');
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                if (modal === chartModal) destroyKpiChart();
-                closeModal(modal);
-            }
-        });
-        if (closeBtn) closeBtn.addEventListener('click', () => {
+        const close = () => {
             if (modal === chartModal) destroyKpiChart();
-            closeModal(modal);
+            if (modal === detailsModal) dismissDetails();
+            else closeModal(modal);
+        };
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) close();
         });
+        if (closeBtn) closeBtn.addEventListener('click', close);
     });
 
     // confirmModal — klik luar tutup (guna hidden class, bukan is-open)

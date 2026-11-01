@@ -2051,6 +2051,121 @@ body.dark-mode #focus-kpi-desc { color: #9ca3af; }
 .bottom-nav-tab.active i { background: #E8EEFA; }
 body.dark-mode .bottom-nav-tab.active i { background: #1e3a8a; }
 
+/* ===== BUTIRAN (redesign canvas, Phone-Butiran) =====
+   Overview at the top of the details modal (all widths) and, on phones,
+   the modal turned into a full page with a back arrow. */
+.details-overview:empty { display: none; }
+.details-overview { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
+.details-summary-card {
+    background: #fff; border: 1px solid #E2E7EF; border-radius: 16px; padding: 16px;
+    display: flex; flex-direction: column; gap: 12px;
+}
+.details-big { margin: 0; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; font-variant-numeric: tabular-nums; }
+.details-big > span:first-child { font-size: 30px; line-height: 1; font-weight: 800; color: #0E1A2B; }
+.details-big-target { font-size: 14px; font-weight: 600; color: #5B6779; }
+.details-status { flex-shrink: 0; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+.details-status-good { background: #E6F4EC; color: #12703F; }
+.details-status-ok   { background: #FFF3DF; color: #8F5300; }
+.details-status-bad  { background: #FDECEA; color: #B42E24; }
+.details-bar { position: relative; height: 8px; border-radius: 999px; background: #EDF0F5; }
+.details-bar-fill { display: block; height: 8px; border-radius: 999px; }
+.details-bar-marker {
+    position: absolute; top: -3px; width: 2px; height: 14px; margin-left: -1px;
+    border-radius: 2px; background: #0E1A2B; opacity: 0.7;
+}
+.details-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.details-tiles-single { grid-template-columns: 1fr; }
+.details-tile { background: #F3F5F9; border-radius: 10px; padding: 10px 12px; }
+.details-tile p { margin: 0; }
+.details-tile p:first-child { font-size: 12px; font-weight: 600; color: #5B6779; }
+.details-tile p:last-child { font-size: 17px; font-weight: 800; color: #0E1A2B; font-variant-numeric: tabular-nums; }
+.details-quarters { background: #fff; border: 1px solid #E2E7EF; border-radius: 16px; padding: 16px; }
+.details-quarters-title { margin: 0 0 12px; font-size: 14px; font-weight: 800; color: #0E1A2B; }
+.details-quarters-bars { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; align-items: end; height: 104px; }
+.details-quarter { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 4px; height: 104px; }
+.details-quarter-num { font-size: 12px; font-weight: 800; color: #0E1A2B; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.details-quarter-bar { width: 100%; border-radius: 6px 6px 2px 2px; background: #B9C9EA; }
+.details-quarter-bar.is-active { background: #0d47a1; }
+.details-quarter-label { font-size: 12px; font-weight: 600; color: #5B6779; }
+.details-quarter.is-later .details-quarter-num { color: #9AA3B2; }
+
+body.dark-mode .details-summary-card,
+body.dark-mode .details-quarters { background: #111827; border-color: #374151; }
+body.dark-mode .details-big > span:first-child,
+body.dark-mode .details-tile p:last-child,
+body.dark-mode .details-quarters-title,
+body.dark-mode .details-quarter-num { color: #f3f4f6; }
+body.dark-mode .details-big-target,
+body.dark-mode .details-tile p:first-child,
+body.dark-mode .details-quarter-label { color: #9ca3af; }
+body.dark-mode .details-tile { background: #1f2937; }
+body.dark-mode .details-bar { background: #374151; }
+body.dark-mode .details-bar-marker { background: #e5e7eb; }
+body.dark-mode .details-status-good { background: #052e16; color: #6FD39B; }
+body.dark-mode .details-status-ok   { background: #3A2606; color: #F2B54A; }
+body.dark-mode .details-status-bad  { background: #450a0a; color: #f87171; }
+body.dark-mode .details-quarter-bar { background: #334155; }
+body.dark-mode .details-quarter-bar.is-active { background: #60a5fa; }
+
+.details-topbar { display: none; }
+
+@media (max-width: 639px) {
+    #details-modal { padding: 0 !important; align-items: stretch !important; }
+    #details-modal .modal-content {
+        width: 100% !important; max-width: none !important;
+        height: 100dvh; max-height: 100dvh !important;
+        border-radius: 0 !important; padding: 0 !important;
+        background: #F3F5F9 !important;
+    }
+    #details-modal .modal-content::before { display: none !important; }
+    .details-topbar {
+        display: flex; align-items: center; gap: 4px; flex-shrink: 0;
+        padding: calc(8px + env(safe-area-inset-top, 0px)) 8px 8px 4px;
+        background: #fff; border-bottom: 1px solid #E2E7EF;
+    }
+    .details-topbar-btn {
+        width: 44px; height: 44px; flex-shrink: 0; border: 0; border-radius: 10px;
+        background: transparent; color: #0E1A2B;
+        display: inline-flex; align-items: center; justify-content: center;
+    }
+    .details-topbar-btn:active { background: #F3F5F9; }
+    .details-topbar-title { margin: 0; flex: 1; min-width: 0; font-size: 15px; font-weight: 700; color: #0E1A2B; }
+    #details-title-row { padding: 16px 16px 0; margin-bottom: 12px; }
+    #details-modal-title { font-size: 21px; line-height: 1.25; font-weight: 800; color: #0E1A2B; letter-spacing: -0.01em; }
+    #details-modal-close { display: none; }
+    #details-modal-content-area { flex: 1; min-height: 0; padding: 0 16px calc(24px + env(safe-area-inset-bottom, 0px)); }
+    #details-list:not(:empty) {
+        background: #fff; border: 1px solid #E2E7EF; border-radius: 16px; padding: 4px 0;
+    }
+
+    body.dark-mode #details-modal .modal-content { background: #0b1220 !important; }
+    body.dark-mode .details-topbar { background: #1f2937; border-color: #374151; }
+    body.dark-mode .details-topbar-btn,
+    body.dark-mode .details-topbar-title,
+    body.dark-mode #details-modal-title { color: #f3f4f6; }
+    body.dark-mode #details-list:not(:empty) { background: #1f2937; border-color: #374151; }
+}
+
+/* ===== TAKWIM CHIPS / PENJANAAN QUARTERS (redesign canvas) ===== */
+.takwim-chips { display: flex; gap: 8px; overflow-x: auto; margin: -4px 0 18px; padding-bottom: 2px; scrollbar-width: none; }
+.takwim-chips::-webkit-scrollbar { display: none; }
+.takwim-chip {
+    flex-shrink: 0; min-height: 36px; padding: 0 14px; border-radius: 999px;
+    border: 1px solid #D3DAE5; background: #fff; color: #3A4658;
+    font-size: 13px; font-weight: 600; white-space: nowrap;
+}
+.takwim-chip span { font-variant-numeric: tabular-nums; opacity: 0.8; }
+.takwim-chip[aria-pressed="true"] { background: #0E1A2B; border-color: #0E1A2B; color: #fff; font-weight: 700; }
+.takwim-chip:focus-visible { outline: 2px solid #0d47a1; outline-offset: 2px; }
+.takwim-empty-upcoming { background: #fff; border: 1px dashed #D3DAE5; border-radius: 12px; padding: 14px 16px; }
+.penjanaan-quarter-track { height: 6px; border-radius: 999px; background: #EDF0F5; }
+.penjanaan-quarter-fill { height: 6px; border-radius: 999px; background: #0d47a1; }
+body.dark-mode .takwim-chip { background: #1f2937; border-color: #374151; color: #d1d5db; }
+body.dark-mode .takwim-chip[aria-pressed="true"] { background: #f3f4f6; border-color: #f3f4f6; color: #111827; }
+body.dark-mode .takwim-empty-upcoming { background: #1f2937; border-color: #374151; }
+body.dark-mode .penjanaan-quarter-track { background: #374151; }
+body.dark-mode .penjanaan-quarter-fill { background: #60a5fa; }
+
 /* ===== SEJARAH PERUBAHAN (audit log viewer) ===== */
 .history-tone-add    { background: #dcfce7; color: #15803d; }
 .history-tone-edit   { background: #dbeafe; color: #1d4ed8; }

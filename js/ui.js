@@ -8,7 +8,7 @@ import {
     selectedYear
 } from './api.js';
 
-import { statusTier, statusHex, statusBarClass, kpiStatusPct, isPacedKpi, getPaceFraction } from './status.js';
+import { statusTier, statusHex, statusBarClass, kpiStatusPct, isPacedKpi, getPaceFraction, STATUS_LABEL } from './status.js';
 
 const BULAN_MY = ['', 'Jan', 'Feb', 'Mac', 'Apr', 'Mei', 'Jun', 'Jul', 'Ogos', 'Sep', 'Okt', 'Nov', 'Dis'];
 const BULAN_FULL = ['', 'Januari', 'Februari', 'Mac', 'April', 'Mei', 'Jun', 'Julai', 'Ogos', 'September', 'Oktober', 'November', 'Disember'];
@@ -623,6 +623,12 @@ export function showDetailsModal(kpiId, triggerElement) {
 
     const { type, title, description, achieved, targetList, items } = kpi.details;
     detailsModalTitle.textContent = title || kpi.name;
+    const topbarTitle = getEl('details-topbar-title');
+    if (topbarTitle) topbarTitle.textContent = `Butiran KPI · Suku ${activeQuarter.replace('q', '')}`;
+    const chartBtn = getEl('details-chart-btn');
+    if (chartBtn) chartBtn.dataset.kpiId = kpi.id;
+    const overview = getEl('details-overview');
+    if (overview) overview.innerHTML = detailsOverviewHtml(kpi, activeQuarter);
     detailsModalDescription.textContent = description;
     detailsList.innerHTML = '';
     detailsAddNewWrapper.innerHTML = '';
@@ -971,18 +977,91 @@ export function showDetailsModal(kpiId, triggerElement) {
             };
         }
     }
-    // Cumulative attendance across the events shown for the current quarter.
-    if (detailsSummary && type === 'breakdownList' && kpi.id === HADIR_KPI_ID) {
-        const totalHadir = (items || []).reduce((sum, it) => sum + (Number(it.hadir) || 0), 0);
-        if (totalHadir > 0) {
-            detailsSummary.innerHTML = `
-                <i class="fas fa-users"></i>
-                <span>Jumlah kehadiran alumni</span>
-                <strong>${totalHadir.toLocaleString()} alumni</strong>`;
-            detailsSummary.classList.remove('hidden');
+    openModal(detailsModal, triggerElement);
+}
+
+// Summary at the top of Butiran (redesign canvas, Phone-Butiran): value /
+// target, status, bar with the expectation marker, two figures, and for
+// breakdown lists a small chart of the records per quarter.
+function detailsOverviewHtml(kpi, activeQuarter) {
+    const value = calculateKpiValue(kpi);
+    const pct = getKpiPercentage(kpi);
+    const sPct = kpiStatusPct(kpi, pct);
+    const tier = statusTier(sPct);
+    const money = (n) => `RM ${Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const valueText = kpi.isPercentage ? `${value.toFixed(1)}%`
+        : kpi.isCurrency ? money(value) : Math.floor(value).toLocaleString('en-US');
+    const targetText = typeof kpi.target !== 'number' ? ''
+        : kpi.isCurrency ? money(kpi.target)
+        : kpi.target.toLocaleString('en-US') + (kpi.isPercentage ? '%' : '');
+    const fraction = getPaceFraction();
+    const marker = isPacedKpi(kpi) && fraction < 1
+        ? `<span class="details-bar-marker" style="left:${(fraction * 100).toFixed(2)}%"></span>` : '';
+    const items = (kpi.details && Array.isArray(kpi.details.items)) ? kpi.details.items : [];
+
+    // Second figure: attendance for Kembara, the remaining amount for money
+    // KPIs, else the number of records
+    let tile2 = null;
+    if (kpi.id === HADIR_KPI_ID) {
+        const hadir = items.reduce((sum, it) => sum + (Number(it.hadir) || 0), 0);
+        tile2 = ['Jumlah kehadiran', `${hadir.toLocaleString('en-US')} alumni`];
+    } else if (kpi.isCurrency && typeof kpi.target === 'number') {
+        const baki = kpi.target - value;
+        tile2 = baki > 0 ? ['Baki untuk capai sasaran', money(baki)] : ['Melebihi sasaran', money(-baki)];
+    } else if (items.length) {
+        tile2 = ['Bilangan rekod', items.length.toLocaleString('en-US')];
+    }
+
+    // Records per quarter, from each item's month (or its date)
+    let chart = '';
+    if (kpi.details && kpi.details.type === 'breakdownList') {
+        const perQ = [0, 0, 0, 0];
+        let dated = 0;
+        items.forEach(it => {
+            const bulan = Number(it.bulan) || bulanFromTarikh(it.tarikh);
+            if (!bulan) return;
+            perQ[Math.ceil(bulan / 3) - 1] += Number(it.value) || 0;
+            dated++;
+        });
+        if (dated) {
+            const max = Math.max(...perQ, 1);
+            const activeQ = parseInt(activeQuarter.replace('q', ''), 10);
+            const label = (n) => kpi.isCurrency
+                ? (n >= 1000 ? `RM ${(n / 1000).toFixed(1)}k` : `RM ${n.toLocaleString('en-US')}`)
+                : n.toLocaleString('en-US');
+            chart = `
+            <div class="details-quarters">
+                <p class="details-quarters-title">${kpi.isCurrency ? 'Kutipan ikut suku' : 'Rekod ikut suku'}</p>
+                <div class="details-quarters-bars">
+                    ${perQ.map((n, i) => {
+                        // Quarters after the one on screen aren't in this data, so
+                        // say "-" rather than a misleading 0
+                        const later = i + 1 > activeQ;
+                        return `
+                    <div class="details-quarter${later ? ' is-later' : ''}">
+                        <span class="details-quarter-num">${later ? '-' : escapeHtml(label(n))}</span>
+                        <span class="details-quarter-bar${i + 1 === activeQ ? ' is-active' : ''}" style="height:${later ? 2 : Math.max(Math.round(n / max * 64), n ? 4 : 2)}px"></span>
+                        <span class="details-quarter-label">Suku ${i + 1}</span>
+                    </div>`;
+                    }).join('')}
+                </div>
+            </div>`;
         }
     }
-    openModal(detailsModal, triggerElement);
+
+    return `
+    <div class="details-summary-card">
+        <div class="flex items-end justify-between gap-2">
+            <p class="details-big"><span>${escapeHtml(valueText)}</span>${targetText ? `<span class="details-big-target">/ ${escapeHtml(targetText)}</span>` : ''}</p>
+            <span class="details-status details-status-${tier}">${STATUS_LABEL[tier]}</span>
+        </div>
+        <div class="details-bar"><span class="details-bar-fill" style="width:${Math.min(pct, 100).toFixed(2)}%;background:${statusHex(sPct)}"></span>${marker}</div>
+        <div class="details-tiles${tile2 ? '' : ' details-tiles-single'}">
+            <div class="details-tile"><p>Pencapaian</p><p>${Math.min(pct, 999).toFixed(1)}%</p></div>
+            ${tile2 ? `<div class="details-tile"><p>${escapeHtml(tile2[0])}</p><p>${escapeHtml(tile2[1])}</p></div>` : ''}
+        </div>
+    </div>
+    ${chart}`;
 }
 
 function handleEditListItem(liElement, kpiId, oldItemName) {
@@ -1356,6 +1435,7 @@ export function openModal(modalElement, triggerElement) {
     lastFocusedElement = triggerElement || document.activeElement;
     modalElement.classList.add('is-open');
     syncBodyScrollLock();
+    document.dispatchEvent(new CustomEvent('modal-opened', { detail: { modalId: modalElement.id } }));
     const firstFocusableElement = modalElement.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
     if (firstFocusableElement) firstFocusableElement.focus();
 

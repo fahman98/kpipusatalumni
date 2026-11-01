@@ -88,6 +88,62 @@ const scenarios = {
         await ctx.close();
     },
 
+    // Takwim filter chips and the "Hari ini" section
+    async 'takwim filters'() {
+        const { ctx, page } = await open({ mobile: true });
+        await page.click('#bottom-nav [data-view=takwim]'); await page.waitForTimeout(1200);
+        const chips = await page.$$eval('.takwim-chip', c => c.map(x => x.textContent.replace(/\s+/g, ' ').trim()));
+        assert.deepEqual(chips, ['Semua 9', 'Akan datang 2', 'Telah berlangsung 5', 'Ditangguhkan 1', 'Dibatalkan 1']);
+        const headings = await page.$$eval('#view-takwim h3', h => h.map(x => x.textContent.replace(/\s+/g, ' ').trim()));
+        assert.match(headings[0], /^Hari Ini 1/);
+        await shot(page, 'takwim-chips');
+        const cards = () => page.$$eval('#view-takwim .takwim-card', c => c.length);
+        await page.click('.takwim-chip[data-filter="berlangsung"]'); await page.waitForTimeout(200);
+        assert.equal(await cards(), 5, 'the chip shows every past event, no collapse');
+        assert.equal(await page.$('#takwim-past-toggle'), null);
+        await page.click('.takwim-chip[data-filter="dibatalkan"]'); await page.waitForTimeout(200);
+        assert.equal(await cards(), 1);
+        await ctx.close();
+    },
+
+    // Penjanaan: balance to target and collection per quarter
+    async 'penjanaan summary'() {
+        const { ctx, page } = await open({ mobile: true });
+        await page.click('#bottom-nav [data-view=penjanaan]'); await page.waitForTimeout(1500);
+        const text = await page.textContent('#view-penjanaan');
+        assert.match(text, /Baki untuk capai sasaran\s*RM 71,700\.00/);
+        assert.match(text, /4 rekod bagi 2026/);
+        const rows = await page.$$eval('.penjanaan-quarters .flex.justify-between', r => r.map(x => x.textContent.replace(/\s+/g, ' ').trim()));
+        assert.deepEqual(rows, ['Suku 1 · Jan - Mac RM 42,000.00', 'Suku 2 · Apr - Jun RM 15,000.00', 'Suku 3 · Jul - Sep RM 12,500.00', 'Suku 4 · Okt - Dis RM 8,800.00']);
+        await shot(page, 'penjanaan-summary', true);
+        await ctx.close();
+    },
+
+    // Butiran: full page on phones, overview on top, Back closes it
+    async 'butiran page'() {
+        const { ctx, page } = await open({ mobile: true });
+        const openKembara = async () => {
+            await page.locator('.kpi-row[data-kpi-id="kembara"]').click(); await page.waitForTimeout(400);
+            await page.locator('#focus-actions .focus-action').first().click(); await page.waitForTimeout(600);
+        };
+        await openKembara();
+        assert.equal(await page.isVisible('#details-modal'), true);
+        const h = await page.$eval('#details-modal .modal-content', el => el.getBoundingClientRect().height);
+        assert.ok(h >= 840, `full page expected, got ${h}px`);
+        assert.equal(await page.textContent('#details-topbar-title'), 'Butiran KPI · Suku 1');
+        const overview = await page.textContent('#details-overview');
+        assert.match(overview, /Jumlah kehadiran\s*120 alumni/);
+        assert.match(overview, /Rekod ikut suku/);
+        await shot(page, 'butiran-page');
+        await page.click('#details-back-btn'); await page.waitForTimeout(500);
+        assert.equal(await page.evaluate(() => document.getElementById('details-modal').classList.contains('is-open')), false);
+        await openKembara();
+        await page.goBack(); await page.waitForTimeout(500);   // Android back gesture
+        assert.equal(await page.evaluate(() => document.getElementById('details-modal').classList.contains('is-open')), false);
+        assert.equal(await page.isVisible('#view-dashboard'), true, 'Back must stay in the app');
+        await ctx.close();
+    },
+
     // Reset / copy write only to the selected year, from the year before it
     async 'reset safety'() {
         let { ctx, page } = await open({ admin: true, with2025: true });

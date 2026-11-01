@@ -503,6 +503,14 @@ function render() {
     const paceTitle = paceFraction < 1
         ? ` title="Jangkaan setakat ini: ${Math.round(paceFraction * 100)}% daripada sasaran tahunan"` : '';
 
+    // How far from the target, in money (redesign canvas, Phone-Penjanaan)
+    const balance = cachedTarget - total;
+    const balanceHtml = cachedTarget > 0 ? `
+            <div class="flex justify-between items-center gap-3 mt-3 pt-3 border-t border-white/20 text-sm">
+                <span class="text-white/80 font-semibold">${balance > 0 ? 'Baki untuk capai sasaran' : 'Melebihi sasaran'}</span>
+                <span class="font-extrabold">${escapeHtml(formatRM(Math.abs(balance)))}</span>
+            </div>` : '';
+
     const addBtnHtml = isAdminMode
         ? `<button id="penjanaan-add-btn" class="bg-brand-primary text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-800 shadow-md transition-all text-sm flex items-center gap-2 flex-shrink-0">
                <i class="fas fa-plus-circle"></i><span>Tambah Rekod</span>
@@ -515,6 +523,25 @@ function render() {
         if (qk) buckets[qk].push(it);
         else buckets.none.push(it);
     });
+
+    // Collection per quarter at a glance, before the full grouped list
+    const quarterTotals = SUKU.map(sk => (buckets[sk.key] || []).reduce((sum, it) => sum + (Number(it.value) || 0), 0));
+    const maxQuarter = Math.max(...quarterTotals, 1);
+    const quarterSummaryHtml = itemsIndexed.length ? `
+        <section class="penjanaan-quarters bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-3" aria-labelledby="penjanaan-quarters-title">
+            <h3 id="penjanaan-quarters-title" class="text-sm font-extrabold text-gray-800 mb-3">Kutipan ikut suku</h3>
+            <div class="flex flex-col gap-3">
+                ${SUKU.map((sk, i) => `
+                <div class="flex flex-col gap-1.5">
+                    <div class="flex justify-between gap-3 text-sm">
+                        <span class="font-bold text-gray-800">${escapeHtml(sk.label)} <span class="text-gray-500 font-semibold">· ${escapeHtml(sk.range)}</span></span>
+                        <span class="font-extrabold ${quarterTotals[i] ? 'text-gray-900' : 'text-gray-500'}">${quarterTotals[i] ? escapeHtml(formatRM(quarterTotals[i])) : 'Belum ada rekod'}</span>
+                    </div>
+                    <div class="penjanaan-quarter-track"><div class="penjanaan-quarter-fill" style="width:${Math.round(quarterTotals[i] / maxQuarter * 100)}%"></div></div>
+                </div>`).join('')}
+            </div>
+        </section>` : '';
+
 
     let groupsHtml;
     if (!itemsIndexed.length) {
@@ -536,10 +563,13 @@ function render() {
     currentContainer.innerHTML = `
     <div class="penjanaan-wrapper">
         <div class="flex items-center justify-between gap-3 mb-5">
-            <h2 class="text-lg sm:text-xl font-bold text-brand-primary flex items-center gap-2 min-w-0">
-                <i class="ph-duotone ph-currency-circle-dollar flex-shrink-0"></i>
-                <span class="truncate">Penjanaan Dana ${escapeHtml(currentYear)}</span>
-            </h2>
+            <div class="min-w-0">
+                <h2 class="text-lg sm:text-xl font-bold text-brand-primary flex items-center gap-2 min-w-0">
+                    <i class="ph-duotone ph-currency-circle-dollar flex-shrink-0"></i>
+                    <span class="truncate">Penjanaan Dana ${escapeHtml(currentYear)}</span>
+                </h2>
+                <p class="text-xs text-gray-500 font-semibold mt-0.5">${itemsIndexed.length} rekod bagi ${escapeHtml(currentYear)}</p>
+            </div>
             ${addBtnHtml}
         </div>
 
@@ -558,8 +588,14 @@ function render() {
                 <div class="${barColor} h-3 rounded-full transition-all duration-700" style="width:${pct}%"></div>
                 ${paceMarkerHtml}
             </div>
-            <p class="text-right text-white/90 text-sm font-bold mt-1.5">${pctRaw.toFixed(1)}%</p>
+            <div class="flex justify-between gap-3 mt-2 text-xs font-semibold text-white/80">
+                <span><strong class="text-white">${pctRaw.toFixed(1)}%</strong> daripada ${escapeHtml(formatRM(cachedTarget))}</span>
+                ${paceFraction < 1 ? `<span>Jangkaan ${Math.round(paceFraction * 100)}%</span>` : ''}
+            </div>
+            ${balanceHtml}
         </div>
+
+        ${quarterSummaryHtml}
 
         ${groupsHtml}
     </div>`;

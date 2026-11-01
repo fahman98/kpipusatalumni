@@ -58,8 +58,8 @@
     <link rel="apple-touch-icon" href="./images/apple-touch-icon.png">
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="style.css?v=5.7">
-    <link rel="stylesheet" href="tailwind.css?v=16">
+    <link rel="stylesheet" href="style.css?v=5.8">
+    <link rel="stylesheet" href="tailwind.css?v=17">
 </head>
 
 <body class="bg-gray-100 relative overflow-x-hidden">
@@ -737,12 +737,24 @@
             class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
             <div class="modal-content bg-white rounded-lg shadow-2xl w-full max-w-md p-6 flex flex-col max-h-[85vh]"
                 role="dialog" aria-modal="true" aria-labelledby="details-modal-title">
-                <div class="flex justify-between items-center mb-4 flex-shrink-0">
+                <!-- Phone only: the modal becomes a full page (redesign canvas,
+                     Phone-Butiran) with a back arrow; Android back closes it too -->
+                <div class="details-topbar">
+                    <button type="button" id="details-back-btn" class="details-topbar-btn" aria-label="Kembali">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>
+                    </button>
+                    <p id="details-topbar-title" class="details-topbar-title">Butiran KPI</p>
+                    <button type="button" id="details-chart-btn" class="details-topbar-btn" aria-label="Sejarah prestasi">
+                        <i class="fas fa-chart-line" aria-hidden="true"></i>
+                    </button>
+                </div>
+                <div id="details-title-row" class="flex justify-between items-center mb-4 flex-shrink-0">
                     <h3 id="details-modal-title" class="text-xl font-bold text-brand-primary">Butiran</h3>
                     <button id="details-modal-close" class="text-gray-500 hover:text-red-600 text-2xl font-bold"
                         aria-label="Tutup modal">&times;</button>
                 </div>
                 <div id="details-modal-content-area" class="overflow-y-auto">
+                    <div id="details-overview" class="details-overview"></div>
                     <p id="details-modal-description" class="mb-3 text-gray-700"></p>
                     <ul id="details-list" class="space-y-3 text-gray-800">
                     </ul>
@@ -1141,7 +1153,7 @@
         </div>
 
         <!-- Load Main Script as Module -->
-        <script type="module" src="js/main.js?v=6.1"></script>
+        <script type="module" src="js/main.js?v=6.2"></script>
 </body>
 
 </html>
