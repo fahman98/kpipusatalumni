@@ -207,12 +207,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const PRINT_QUARTER_LABELS = { q1: 'Suku Pertama', q2: 'Suku Kedua', q3: 'Suku Ketiga', q4: 'Suku Keempat' };
 
-    // Header: one line on every screen. The quarter goes in the sub-title
-    // (shown from md up); on phones the quarter tabs already say which one is
-    // active, and a two-line title crowded the app bar.
+    // Phones: app bar title + the quarter underneath. md+: the same goes to
+    // the page heading above the dashboard (the app bar holds the logos).
     function setHeaderTitle(sub) {
         if (mainTitle) mainTitle.textContent = `Dashboard KPI ${selectedYear}`;
         if (subTitle) subTitle.textContent = sub || '';
+        const eyebrow = getEl('page-eyebrow');
+        const pageTitle = getEl('page-title');
+        if (eyebrow) eyebrow.textContent = sub || '';
+        if (pageTitle) pageTitle.textContent = `Prestasi KPI Pusat Alumni ${selectedYear}`;
     }
 
     // --- MAIN FUNCTION: UPDATE DASHBOARD ---
@@ -1223,15 +1226,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const savedTheme = localStorage.getItem('theme');
     const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 
+    // The phone's status bar takes the app bar's colour (white, or the dark
+    // surface in dark mode)
+    const syncThemeColor = () => {
+        const meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute('content', document.body.classList.contains('dark-mode') ? '#1F2937' : '#FFFFFF');
+    };
+
     if (savedTheme === 'dark' || (!savedTheme && systemDark)) {
         document.body.classList.add('dark-mode');
         themeIcon.classList.remove('fa-moon');
         themeIcon.classList.add('fa-sun');
     }
+    syncThemeColor();
 
     themeToggleBtn.addEventListener('click', () => {
         document.body.classList.toggle('dark-mode');
         const isDark = document.body.classList.contains('dark-mode');
+        syncThemeColor();
 
         // Update Icon
         if (isDark) {
@@ -1545,7 +1557,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // ── MASTHEAD ──
             const bandH = 34;
-            doc.setFillColor(13, 71, 161);
+            doc.setFillColor(23, 71, 166);
             doc.rect(0, 0, pageW, bandH, 'F');
             doc.setFillColor(66, 165, 245);
             doc.rect(0, bandH, pageW, 1.2, 'F');
@@ -1598,11 +1610,11 @@ document.addEventListener('DOMContentLoaded', () => {
             y += 3.4;
 
             const stats = [
-                { label: 'Jumlah KPI', value: String(kpiCount), rgb: [13, 71, 161] },
+                { label: 'Jumlah KPI', value: String(kpiCount), rgb: [23, 71, 166] },
                 { label: 'Cemerlang', value: String(goodCount), rgb: [22, 163, 74] },
                 { label: 'Sederhana', value: String(okCount), rgb: [161, 98, 7] },
                 { label: 'Perlu Perhatian', value: String(badCount), rgb: [185, 28, 28] },
-                { label: 'Pencapaian', value: `${overall.toFixed(1)}%`, rgb: [13, 71, 161] },
+                { label: 'Pencapaian', value: `${overall.toFixed(1)}%`, rgb: [23, 71, 166] },
             ];
             const statGap = 3;
             const statW = (contentW - statGap * (stats.length - 1)) / stats.length;
@@ -1675,7 +1687,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     cellPadding: { top: 3.2, bottom: 3.2, left: 2.5, right: 2.5 },
                 },
                 headStyles: {
-                    fillColor: [13, 71, 161],
+                    fillColor: [23, 71, 166],
                     textColor: [255, 255, 255],
                     fontStyle: 'bold',
                     fontSize: 8,

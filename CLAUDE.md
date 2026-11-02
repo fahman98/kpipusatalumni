@@ -75,16 +75,25 @@ descriptions of PR #2 to #8.
   auto-reloads only while the tab is hidden; install sheet / iOS guide once
   per session; manifest `id` is pinned to `./index.html` (changing
   `start_url` without it would orphan installed apps); shortcuts open
-  `?tab=takwim|penjanaan`. `theme_color` stays `#0d47a1` until the colour
-  redesign lands.
+  `?tab=takwim|penjanaan`. Since phase 4a `theme_color` / meta theme-color
+  are `#FFFFFF` (main.js `syncThemeColor` sets `#1F2937` in dark mode) and
+  the iOS status bar style is `default`, to match the white app bar.
 - Design source: claude.ai canvas "Redesign KPI Pusat Alumni" (owner's).
   Built: phase 1 (PWA layer + icon), phase 2 (phone dashboard), phase 3
   (Takwim chips + "Hari ini", Penjanaan balance + quarter summary, Butiran
   overview + full page on phones), phase 5 stage 1 (admin: value editor,
   delete preview, "Perlu tindakan", Takwim chip/section "Selesai"), phase 5
-  stage 2 (full-screen add forms). Not yet: phase 4 (desktop + global
-  colour #1747A6 / white phone header) and phase 5 stage 3 (admin desktop
-  table, with phase 4). Agreed for admin: "Salin struktur" stays on the empty-year
+  stage 2 (full-screen add forms), phase 4a (brand colour #1747A6 everywhere
+  incl. the PDF, white app header). Not yet: phase 4b (desktop dashboard
+  body: segmented quarter control, summary + stat cards, new KPI cards) and
+  4c = phase 5 stage 3 (admin desktop table with "Perlu tindakan" aside).
+- App header (`#app-header`, outside `#dashboard-container`, sticky): phones
+  show app icon, `#main-title` + `#sub-title` (quarter), year, actions;
+  md+ show logos, `#main-nav` (moved into the header), "Tahun" + year,
+  theme, mode badge, and the title moves to `#page-heading` in the
+  dashboard view (`setHeaderTitle` fills both). Print shows logos + title.
+  Admin login stays in the footer on purpose (the design's big header
+  button would invite the public to click it). Agreed for admin: "Salin struktur" stays on the empty-year
   screen only; native date pickers stay; the design's "Akan datang (Lalai)"
   status = empty status (follows the date); Sandaran / Sejarah / Zon Bahaya
   blocks stay; "Tambah ke takwim" from Kembara deferred.
@@ -121,8 +130,7 @@ descriptions of PR #2 to #8.
   A row opens the focus modal as a "KPI sheet" whose actions click the
   hidden card's own buttons (details, chart, admin edit / settings /
   description), so every handler keeps one implementation. Cards carry
-  `data-kpi-id`. Kept the blue app bar (design's white header waits for
-  phase 4 so the status-bar colour stays matched).
+  `data-kpi-id`.
 
 ## Before every push
 1. Rebuild Tailwind when any class changes in `index.html` or `js/`:
