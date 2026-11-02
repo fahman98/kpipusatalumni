@@ -861,7 +861,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!card) return;
             const name  = card.querySelector('.kpi-name')?.textContent || '';
             const value = card.querySelector('.animated-value')?.textContent || '—';
-            const target = card.querySelector('.kpi-target-display')?.textContent?.replace(/\D*$/,'').trim() || '—';
+            const target = card.querySelector('.kpi-target-display')?.textContent?.replace(/^\/\s*/, '').trim() || '-';
             const pct   = card.querySelector('.kpi-percentage-display')?.textContent || '—';
             const trend = card.querySelector('.kpi-trend');
             const trendTxt = trend ? trend.textContent.trim() : '—';
@@ -1930,6 +1930,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateMobileHero(overall, good, ok, bad, quarterKey) {
         const set = (id, text) => { const el = getEl(id); if (el) el.textContent = text; };
         set('hero-value', `${overall.toFixed(1)}%`);
+        const n = good + ok + bad;
+        set('hero-caption', n ? `Purata ${n} KPI berbanding sasaran tahunan` : '');
         set('hero-good', good); set('hero-ok', ok); set('hero-bad', bad);
         const fill = getEl('hero-bar-fill');
         if (fill) fill.style.width = `${Math.min(overall, 100)}%`;
@@ -2052,7 +2054,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (isTableView) {
                 kpiGridContainer.classList.add('hidden');
                 if (kpiTableContainer) kpiTableContainer.classList.remove('hidden');
-                viewToggleBtn.innerHTML = '<i class="fas fa-th-large mr-1.5"></i>Grid';
+                viewToggleBtn.innerHTML = '<i class="fas fa-th-large mr-1.5"></i>Kad';
                 renderTableView();
             } else {
                 kpiGridContainer.classList.remove('hidden');
@@ -2072,7 +2074,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateSheetViewLabel() {
         const label = getEl('sheet-view-label');
         const icon = getEl('sheet-view-icon');
-        if (label) label.textContent = isTableView ? 'Papar sebagai Grid' : 'Papar sebagai Jadual';
+        if (label) label.textContent = isTableView ? 'Papar sebagai Kad' : 'Papar sebagai Jadual';
         if (icon) icon.className = isTableView ? 'fas fa-th-large' : 'fas fa-list';
     }
 

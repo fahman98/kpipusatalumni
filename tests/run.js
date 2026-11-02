@@ -52,6 +52,44 @@ const scenarios = {
         await ctx.close();
     },
 
+    // Phase 4 desktop: page heading, hero, status cards, new KPI cards, header fit
+    async 'desktop dashboard'() {
+        const { ctx, page } = await open({});
+        assert.equal(await page.textContent('#page-title'), 'Prestasi KPI Pusat Alumni 2026');
+        assert.equal(await page.textContent('#page-eyebrow'), 'Suku Pertama');
+        assert.equal(await page.textContent('#hero-caption'), 'Purata 6 KPI berbanding sasaran tahunan');
+        const card = (id) => `.kpi-card[data-kpi-id="${id}"]`;
+        assert.equal(await page.textContent(card('pendaftaran') + ' .kpi-status-chip'), 'Cemerlang');
+        assert.equal(await page.textContent(card('pendaftaran') + ' .kpi-target-display'), '/ 5,000');
+        assert.equal(await page.textContent(card('pendanaan') + ' .kpi-target-display'), '/ RM 150,000');
+        assert.equal(await page.textContent(card('kepuasan') + ' .kpi-target-display'), '/ 100%');
+        // A card with Butiran shows the history button as an icon only
+        assert.equal(await page.isVisible(card('pendanaan') + ' .kpi-v2-chart-label'), false);
+        assert.equal(await page.isVisible(card('pendaftaran') + ' .kpi-v2-chart-label'), true);
+        // Status cards filter the grid and toggle off again
+        const visible = () => page.$$eval('#kpi-grid-container > .kpi-card', c => c.filter(x => x.offsetParent !== null).length);
+        await page.click('.stat-card[data-filter="ok"]'); await page.waitForTimeout(200);
+        assert.equal(await visible(), 2);
+        await page.click('.stat-card[data-filter="ok"]'); await page.waitForTimeout(200);
+        assert.equal(await visible(), 6);
+        await shot(page, 'desktop-dashboard', true);
+        // Tablet width: the header row fits without overlap or page scroll
+        for (const width of [1366, 900, 768]) {
+            await page.setViewportSize({ width, height: 900 }); await page.waitForTimeout(300);
+            const fit = await page.evaluate(() => ({
+                overflow: document.documentElement.scrollWidth - innerWidth,
+                gap: document.getElementById('header-controls').getBoundingClientRect().left
+                    - document.getElementById('main-nav').getBoundingClientRect().right,
+                navSpill: document.getElementById('main-nav').scrollWidth - document.getElementById('main-nav').clientWidth
+            }));
+            assert.ok(fit.navSpill <= 0, `navigation tabs spill out at ${width}px`);
+            assert.equal(fit.overflow, 0, `page wider than ${width}px`);
+            assert.ok(fit.gap >= 0, `navigation overlaps the controls at ${width}px`);
+        }
+        assert.deepEqual(page.__errors, []);
+        await ctx.close();
+    },
+
     // Phone: compact rows instead of cards, hero counts filter, row opens the KPI sheet
     async 'phone dashboard'() {
         let { ctx, page } = await open({ mobile: true });

@@ -1219,7 +1219,7 @@ body.dark-mode .stat-card {
 }
 
 body.dark-mode #overall-highlight {
-    background-color: #1f2937;
+    background-color: #1B3B7A;
     border-color: #374151;
 }
 
@@ -1890,14 +1890,13 @@ body.dark-mode .ios-guide-close:hover { background: #374151; }
    Below 640px: quarter tabs move above the hero, the hero carries the status
    counts, and the KPI cards give way to compact rows. Cards stay in the DOM
    (hidden) because the KPI sheet reuses their buttons. */
-.hero-mobile,
 .kpi-mobile-list { display: none; }
 
 @media (max-width: 639px) {
     /* :not(.hidden): an id selector would otherwise beat .hidden and keep the
        dashboard on screen behind the Takwim / Penjanaan tabs */
     #view-dashboard:not(.hidden) { display: flex; flex-direction: column; }
-    #quarter-toolbar { order: -1; }
+    #dash-top { order: -1; }
 
     #overall-highlight { padding: 18px !important; border-radius: 16px; }
     #overall-highlight .hero-desktop { display: none !important; }
@@ -2211,9 +2210,6 @@ body.dark-mode .text-gray-300 {
 
 /* Amber on white is 2.0:1 — below even the large-text threshold. The bar fills
    keep the brighter tone; only the text is darkened. */
-body #stat-ok {
-    color: #b45309;
-}
 
 /* The quarter tabs are the primary mobile navigation and had no dark-mode
    colour at all, leaving #6b7280 on #1f2937 — about 3.04:1. */
@@ -2230,36 +2226,6 @@ body.dark-mode .quarter-btn:not(.active):hover {
 @media (max-width: 767px) {
     #dashboard-container {
         padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
-    }
-
-    #stats-bar {
-        grid-template-columns: repeat(4, 1fr);
-        gap: 0.375rem;
-    }
-
-    #stats-bar .stat-card {
-        padding: 0.5rem 0.25rem;
-        text-align: center;
-    }
-
-    #stats-bar .stat-card > div:first-child {
-        flex-direction: column;
-        gap: 0.125rem;
-    }
-
-    #stats-bar .stat-card > div:first-child > div:first-child,
-    #stats-bar .stat-card > div:last-child {
-        display: none;
-    }
-
-    #stats-bar .stat-card > div:first-child p:first-child {
-        font-size: 0.625rem;
-        line-height: 1.1;
-    }
-
-    #stats-bar .stat-card > div:first-child p:last-child {
-        font-size: 1.1rem;
-        line-height: 1;
     }
 
     #theme-toggle {
@@ -2607,6 +2573,186 @@ body.dark-mode #app-header .theme-toggle-btn:hover { background: #374151; }
 .page-title { margin: 0; font-size: 30px; line-height: 1.15; font-weight: 800; letter-spacing: -0.02em; color: #0E1A2B; }
 body.dark-mode .page-eyebrow { color: #93c5fd; }
 body.dark-mode .page-title { color: #f3f4f6; }
+
+/* ===== DASHBOARD BODY (redesign canvas phase 4b, Main) =====
+   Heading row with the quarter control; hero + status cards; KPI cards. */
+.quarter-btn i { display: none; }
+.dash-top { display: flex; flex-direction: column; gap: 16px; margin-bottom: 16px; }
+.dash-top #quarter-toolbar { margin-bottom: 0; }
+@media (min-width: 768px) {
+    .dash-top { flex-direction: row; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; margin-bottom: 24px; }
+    body:not(.dark-mode) #quarter-toolbar,
+    #quarter-toolbar {
+        background: transparent; border: 0; box-shadow: none; padding: 0;
+        backdrop-filter: none; -webkit-backdrop-filter: none;
+        flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px;
+    }
+    #quarter-toolbar > .w-px { display: none; }
+    #pagination {
+        display: flex; flex: 0 0 auto; gap: 4px; padding: 4px;
+        background: #fff; border: 1px solid #E2E7EF; border-radius: 10px;
+    }
+    #pagination .quarter-btn {
+        flex: 0 0 auto; min-height: 40px; padding: 0 16px; border-radius: 7px;
+        font-size: 14px; color: #3A4658; box-shadow: none;
+    }
+    #pagination .quarter-btn.active { background: #1747A6; color: #fff; font-weight: 700; }
+    #export-actions { gap: 8px; padding: 0; }
+    #export-actions .footer-action-btn {
+        min-height: 50px; padding: 0 16px; border-radius: 10px;
+        background: #fff; border: 1px solid #D3DAE5; color: #0E1A2B; font-size: 14px; font-weight: 700;
+    }
+    #export-actions .footer-action-btn:hover { background: #F3F5F9; }
+    body.dark-mode #pagination { background: #1f2937; border-color: #374151; }
+    body.dark-mode #pagination .quarter-btn:not(.active) { color: #d1d5db; }
+    body.dark-mode #export-actions .footer-action-btn { background: #1f2937; border-color: #4b5563; color: #f3f4f6; }
+}
+
+/* Hero: one layout for every width; phones add the status counts */
+.hero-mobile { display: flex; flex-direction: column; gap: 14px; }
+.hero-side { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; flex-shrink: 0; }
+.hero-caption { display: none; margin: 8px 0 0; font-size: 13px; color: #D5DEF2; }
+.hero-caption:empty { display: none !important; }
+.hero-breakdown-btn { display: none; }
+#overall-highlight { border-radius: 16px; padding: 18px; margin-bottom: 16px; box-shadow: none; }
+@media (min-width: 640px) {
+    #overall-highlight { padding: 24px 28px; }
+    .hero-mobile { gap: 18px; }
+    .hero-counts { display: none; }
+    .hero-value { font-size: 56px; }
+    .hero-caption { display: block; }
+    .hero-bar, .hero-bar-fill { height: 12px; }
+    .hero-bar-marker { top: -5px; height: 22px; }
+    .hero-breakdown-btn {
+        display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px;
+        border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 10px;
+        background: rgba(255, 255, 255, 0.12); color: #fff; font-size: 13px; font-weight: 700;
+    }
+    .hero-breakdown-btn:hover { background: rgba(255, 255, 255, 0.22); }
+}
+
+/* Summary row: hero beside the three status cards from lg */
+.dash-summary { display: flex; flex-direction: column; }
+#stats-bar:not(.hidden) { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 16px; }
+@media (min-width: 1024px) {
+    .dash-summary { flex-direction: row; gap: 16px; margin-bottom: 16px; }
+    #main-content-wrapper { flex: 2 1 0; min-width: 0; }
+    #main-content-wrapper #overall-highlight { margin-bottom: 0; height: 100%; }
+    #stats-bar:not(.hidden) { flex: 3 1 0; margin-bottom: 0; }
+}
+body:not(.dark-mode) #stats-bar .stat-card.stat-v2,
+.stat-v2 {
+    background: #fff; border: 1px solid #E2E7EF; border-radius: 16px; padding: 20px;
+    backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: none;
+    display: flex; flex-direction: column; justify-content: space-between; gap: 12px;
+    cursor: pointer; color: #0E1A2B; text-align: left;
+}
+.stat-v2:hover { border-color: #C7D0DD; }
+.stat-v2-chip {
+    align-self: flex-start; display: inline-flex; align-items: center; gap: 8px;
+    padding: 4px 10px; border-radius: 999px; font-size: 13px; font-weight: 700;
+}
+.stat-v2-good { background: #E6F4EC; color: #12703F; }
+.stat-v2-ok   { background: #FFF3DF; color: #8F5300; }
+.stat-v2-bad  { background: #FDECEA; color: #B42E24; }
+.stat-v2-num { font-size: 40px; line-height: 1; font-weight: 800; font-variant-numeric: tabular-nums; }
+/* Tablet widths: the header row must fit (logos + navigation + controls) */
+@media (min-width: 768px) and (max-width: 1023px) {
+    #main-nav .main-nav-tab { padding: 0 10px; }
+    #main-nav .main-nav-tab i,
+    #header-controls label[for="year-selector"],
+    #mode-indicator { display: none !important; }
+}
+.stat-v2-desc { font-size: 13px; color: #5B6779; }
+body.dark-mode .stat-v2 { background: #1f2937; border-color: #374151; color: #f3f4f6; }
+body.dark-mode .stat-v2-desc { color: #9ca3af; }
+body.dark-mode .stat-v2-good { background: #0f2e1d; color: #6FD39B; }
+body.dark-mode .stat-v2-ok   { background: #3A2606; color: #F2B54A; }
+body.dark-mode .stat-v2-bad  { background: #450a0a; color: #f87171; }
+
+/* KPI cards */
+.kpi-card.kpi-card-v2 {
+    background: #fff !important; border: 1px solid #E2E7EF !important; border-radius: 16px;
+    padding: 20px; gap: 16px; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+.kpi-card.kpi-card-v2:hover { transform: none; box-shadow: 0 10px 24px -14px rgba(14, 26, 43, 0.25); }
+.kpi-card-v2 .kpi-v2-head { display: flex; align-items: flex-start; gap: 12px; position: relative; padding: 0; }
+.kpi-card-v2 .kpi-ring-wrap,
+body.dark-mode .kpi-card-v2 .kpi-ring-wrap { width: 40px; height: 40px; border-radius: 10px; background: #E8EEFA; }
+.kpi-card-v2 .kpi-ring-inner.kpi-icon-container {
+    width: 40px !important; height: 40px !important; border-radius: 10px !important; background: transparent !important;
+}
+.kpi-card-v2 .kpi-icon { color: #1747A6; font-size: 20px; --ph-fill-opacity: 0.25; }
+.kpi-card-v2:hover .kpi-icon { transform: none; }
+.kpi-v2-name { margin: 0; flex: 1; min-width: 0; font-size: 15px; line-height: 1.35; font-weight: 700; padding-top: 2px; color: #0E1A2B; cursor: pointer; }
+.kpi-status-chip { flex-shrink: 0; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.kpi-status-chip-good { background: #E6F4EC; color: #12703F; }
+.kpi-status-chip-ok   { background: #FFF3DF; color: #8F5300; }
+.kpi-status-chip-bad  { background: #FDECEA; color: #B42E24; }
+.kpi-v2-value { margin: auto 0 0; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; font-variant-numeric: tabular-nums; }
+.kpi-card-v2 .animated-value { font-size: 30px; line-height: 1; font-weight: 800; letter-spacing: -0.02em; color: #0E1A2B; }
+.kpi-card-v2 .kpi-target-display { font-size: 14px; font-weight: 600; color: #5B6779; }
+.kpi-card-v2 .edit-kpi-btn {
+    display: inline-flex !important; align-items: center; justify-content: center; align-self: center;
+    width: 36px; height: 36px; margin-left: auto; border: 0; border-radius: 10px;
+    background: #E8EEFA; color: #1747A6; font-size: 14px;
+}
+.kpi-v2-track { position: relative; height: 8px; border-radius: 999px; background: #EDF0F5; }
+.kpi-v2-track .progress-bar { height: 8px; border-radius: 999px; }
+.kpi-card-v2 .kpi-pace-marker { top: -4px; height: 16px; width: 3px; border-radius: 2px; background: #0E1A2B; opacity: 0.85; }
+.kpi-v2-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 13px; font-weight: 700; color: #0E1A2B; font-variant-numeric: tabular-nums; }
+.kpi-card-v2 .kpi-percentage-display { font-size: inherit; color: inherit; }
+.kpi-v2-actions { display: flex; gap: 8px; margin-top: -4px; }
+.kpi-v2-details,
+.kpi-v2-chart {
+    flex: 1; min-width: 0; display: inline-flex; align-items: center; justify-content: space-between; gap: 8px;
+    min-height: 44px; padding: 0 14px; border: 0; border-radius: 10px;
+    background: #F3F5F9; color: #0E1A2B; font-size: 14px; font-weight: 700; cursor: pointer;
+}
+.kpi-v2-details.hidden { display: none; }
+.kpi-v2-details i { font-size: 12px; color: #5B6779; }
+.admin-todo-action i { font-size: 11px; }
+.kpi-v2-chart { flex-direction: row-reverse; color: #1747A6; }
+.kpi-v2-details:hover, .kpi-v2-chart:hover, .kpi-v2-icon-btn:hover { background: #E8EEFA; }
+.kpi-card-v2.has-details .kpi-v2-chart { flex: 0 0 44px; width: 44px; padding: 0; justify-content: center; }
+.kpi-card-v2.has-details .kpi-v2-chart-label { display: none; }
+.kpi-v2-icon-btn {
+    width: 44px; height: 44px; flex-shrink: 0; border: 0; border-radius: 10px;
+    background: #F3F5F9; color: #5B6779; display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.kpi-card-v2 .status-dot { display: none !important; }
+.kpi-v2-updated { margin: -8px 0 0; font-size: 12px; color: #8A96A8; }
+.kpi-v2-updated:empty { display: none; }
+body.dark-mode .kpi-card.kpi-card-v2 { background: #1f2937 !important; border-color: #374151 !important; }
+body.dark-mode .kpi-card-v2 .kpi-ring-wrap { background: #1e3a8a; }
+body.dark-mode .kpi-card-v2 .kpi-icon { color: #93c5fd; }
+body.dark-mode .kpi-v2-name,
+body.dark-mode .kpi-card-v2 .animated-value,
+body.dark-mode .kpi-v2-meta { color: #f3f4f6; }
+body.dark-mode .kpi-card-v2 .kpi-target-display,
+body.dark-mode .kpi-v2-updated { color: #9ca3af; }
+body.dark-mode .kpi-v2-track { background: #374151; }
+body.dark-mode .kpi-card-v2 .kpi-pace-marker { background: #fff; }
+body.dark-mode .kpi-v2-details,
+body.dark-mode .kpi-v2-chart,
+body.dark-mode .kpi-v2-icon-btn { background: #111827; color: #f3f4f6; }
+body.dark-mode .kpi-v2-chart { color: #93c5fd; }
+body.dark-mode .kpi-card-v2 .edit-kpi-btn { background: #1e3a8a; color: #dbeafe; }
+body.dark-mode .kpi-status-chip-good { background: #0f2e1d; color: #6FD39B; }
+body.dark-mode .kpi-status-chip-ok   { background: #3A2606; color: #F2B54A; }
+body.dark-mode .kpi-status-chip-bad  { background: #450a0a; color: #f87171; }
+@media print {
+    .kpi-card.kpi-card-v2 { padding: 10px !important; gap: 6px !important; border-radius: 10px !important; }
+    .kpi-v2-actions, .kpi-v2-updated, .kpi-card-v2 .edit-kpi-btn, .hero-breakdown-btn { display: none !important; }
+    .kpi-card-v2 .animated-value { font-size: 1.1rem !important; }
+    .kpi-card-v2 .kpi-v2-name { font-size: 0.75rem !important; }
+    .kpi-card-v2 .kpi-ring-wrap { width: 26px !important; height: 26px !important; }
+    .kpi-card-v2 .kpi-ring-inner.kpi-icon-container { width: 26px !important; height: 26px !important; }
+    .kpi-card-v2 .kpi-icon { font-size: 0.8rem !important; }
+    .kpi-status-chip { font-size: 0.6rem !important; padding: 2px 6px !important; }
+    .hero-value { font-size: 28px !important; }
+    #stats-bar { display: none !important; }
+}
 
 /* ===== PRINT: LAST-WORD OVERRIDES =====
    The glassmorphism rules for `#header-inner` and `.kpi-card` are declared

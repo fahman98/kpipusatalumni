@@ -18,7 +18,7 @@ descriptions of PR #2 to #8.
 - The owner cannot easily re-enter lost data. Never write to live Firestore
   from a session, and never press reset / delete in a live app.
 - Test with `tests/` (see `tests/README.md`): `cd tests && npm install`
-  once, then `node run.js` (22 scenarios, ~3 min) against `mock-firebase.js`,
+  once, then `node run.js` (23 scenarios, ~3 min) against `mock-firebase.js`,
   which records every write instead of sending it. Clock pinned to
   29/10/2026. Add a scenario to `tests/run.js` for each behaviour change;
   extend the mock's seed data rather than touching live data. The proxy
@@ -84,9 +84,25 @@ descriptions of PR #2 to #8.
   overview + full page on phones), phase 5 stage 1 (admin: value editor,
   delete preview, "Perlu tindakan", Takwim chip/section "Selesai"), phase 5
   stage 2 (full-screen add forms), phase 4a (brand colour #1747A6 everywhere
-  incl. the PDF, white app header). Not yet: phase 4b (desktop dashboard
-  body: segmented quarter control, summary + stat cards, new KPI cards) and
-  4c = phase 5 stage 3 (admin desktop table with "Perlu tindakan" aside).
+  incl. the PDF, white app header), phase 4b (desktop dashboard body). Not
+  yet: 4c = phase 5 stage 3 (admin desktop table with "Perlu tindakan"
+  aside).
+- Dashboard body (4b): `#dash-top` = page heading + `#quarter-toolbar`
+  (segmented quarters, "Laporan PDF", Jadual/Kad toggle); on phones it
+  moves above the hero (order -1). `#dash-summary` = hero + `#stats-bar`
+  (three status cards; the old "Jumlah KPI" card is gone, clicking an
+  active card again clears the filter), side by side from lg. One hero for
+  all widths (`.hero-mobile`, filled by `updateMobileHero`; phones add the
+  count buttons, sm+ adds `#hero-caption` and the Pecahan button); the
+  gauge canvas is gone (`renderGaugeChart` returns early without it).
+- KPI card template = `.kpi-card-v2`: status chip, value / target, bar
+  with pace marker, "% daripada sasaran" + trend, Butiran + history
+  (`.has-details` shrinks history to an icon), info / settings buttons.
+  Hook classes (show-details-btn, show-chart-btn, edit-kpi-btn,
+  settings-btn, info-btn, progress-bar, kpi-percentage-display, ...) are
+  used by main.js, the phone KPI sheet and filterDashboardCards: keep them.
+- Icons: only the Phosphor DUOTONE stylesheet loads (`ph-duotone ph-*`);
+  `ph`, `ph-bold` classes render nothing. Otherwise use Font Awesome.
 - App header (`#app-header`, outside `#dashboard-container`, sticky): phones
   show app icon, `#main-title` + `#sub-title` (quarter), year, actions;
   md+ show logos, `#main-nav` (moved into the header), "Tahun" + year,

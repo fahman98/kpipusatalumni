@@ -196,7 +196,7 @@ export function setEditMode(mode) {
 
         // Update Info Icon
         if (mode) {
-            infoBtn.innerHTML = '<i class="fas fa-pencil-alt"></i>';
+            infoBtn.innerHTML = '<i class="fas fa-align-left"></i>';
             infoBtn.title = "Edit Deskripsi";
         } else {
             infoBtn.innerHTML = '<i class="fas fa-info-circle"></i>';
@@ -500,8 +500,18 @@ export function createKpiCard(kpi) {
     cardElement.querySelector('.show-chart-btn').dataset.kpiId = kpi.id;
     const detailsBtn = cardElement.querySelector('.show-details-btn');
 
-    // Details chip — names what it opens and how many records sit behind it
+    // Status chip (same tier and words as the phone rows)
+    const tier = statusTier(statusPct);
+    const chip = cardElement.querySelector('.kpi-status-chip');
+    if (chip) {
+        chip.textContent = STATUS_LABEL[tier] || '';
+        chip.classList.add(`kpi-status-chip-${tier}`);
+    }
+
+    // Details chip: names what it opens and how many records sit behind it.
+    // With a Butiran button the history button shrinks to an icon.
     if (kpi.details) {
+        cardElement.classList.add('has-details');
         detailsBtn.dataset.kpiId = kpi.id;
         detailsBtn.classList.remove('hidden');
         const records = kpi.details.items || kpi.details.achieved;
@@ -545,12 +555,6 @@ export function createKpiCard(kpi) {
         iconContainer.classList.add('icon-bg-' + statusTier(statusPct));
     }
 
-    // Gradient text on KPI value
-    const animatedValueEl = cardElement.querySelector('.animated-value');
-    if (animatedValueEl) {
-        animatedValueEl.classList.add('value-gradient-' + statusTier(statusPct));
-    }
-
     // Ring progress: set CSS vars for conic-gradient
     const ringWrap = cardElement.querySelector('.kpi-ring-wrap');
     if (ringWrap) {
@@ -577,7 +581,7 @@ export function createKpiCard(kpi) {
     popoverText.textContent = kpi.description || "Tiada maklumat lanjut disediakan oleh admin.";
 
     if (isEditMode) {
-        infoBtn.innerHTML = '<i class="fas fa-pencil-alt"></i>';
+        infoBtn.innerHTML = '<i class="fas fa-align-left"></i>';
         infoBtn.title = "Edit Deskripsi KPI";
         infoBtn.onclick = (e) => {
             e.stopPropagation();
@@ -614,10 +618,7 @@ export function createKpiCard(kpi) {
                           kpi.trendColor.includes('red')   ? 'kpi-trend-chip-down' : 'kpi-trend-chip-flat';
         trendElement.innerHTML = `<i class="fas ${escapeHtml(kpi.trendIcon)} text-xs mr-1"></i>${escapeHtml(kpi.trend)}`;
         trendElement.className = `kpi-trend inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${chipClass}`;
-        trendElement.title = 'vs suku lepas';
-        if (isComplete) {
-            cardElement.querySelector('.trend-wrapper-complete').appendChild(trendElement);
-        }
+        trendElement.title = 'Berbanding suku lepas';
     } else {
         trendElement.remove();
     }
@@ -625,18 +626,14 @@ export function createKpiCard(kpi) {
     cardElement.querySelector('.progress-bar').classList.add(getStatusColor(statusPct));
     cardElement.querySelector('.progress-bar').dataset.targetWidth = `${Math.min(displayPercentage, 100)}%`;
 
+    // "value / target" (redesign): full figures, RM for money, % for scores
     const targetDisplay = cardElement.querySelector('.kpi-target-display');
     if (kpi.isPercentage) {
-        targetDisplay.remove();
+        targetDisplay.textContent = '/ 100%';
+    } else if (typeof kpi.target === 'number') {
+        targetDisplay.textContent = `/ ${kpi.isCurrency ? 'RM ' : ''}${kpi.target.toLocaleString('en-US')}`;
     } else {
-        const displayTarget = kpi.target;
-        if (typeof displayTarget === 'number') {
-            const formattedTarget = displayTarget > 9999 ? `${(displayTarget / 1000).toLocaleString()}k` : displayTarget.toLocaleString();
-            // #6: Target on own line below value, formatted as "Sasaran: X"
-            targetDisplay.textContent = `Sasaran: ${kpi.isCurrency ? 'RM ' : ''}${formattedTarget}`;
-        } else {
-            targetDisplay.remove();
-        }
+        targetDisplay.remove();
     }
 
     // #4: Tarikh nilai terakhir dikemaskini
@@ -644,8 +641,7 @@ export function createKpiCard(kpi) {
     if (updatedAtEl) {
         if (kpi.updatedAt) {
             const d = new Date(kpi.updatedAt);
-            const formatted = d.toLocaleDateString('ms-MY', { day: 'numeric', month: 'short', year: 'numeric' });
-            updatedAtEl.textContent = `Kemaskini: ${formatted}`;
+            updatedAtEl.textContent = isNaN(d) ? '' : `Dikemas kini ${d.toLocaleDateString('en-GB')}`;
         } else {
             updatedAtEl.remove();
         }
@@ -967,7 +963,7 @@ export function showDetailsModal(kpiId, triggerElement) {
                 detailsAddNewWrapper.innerHTML = `
                     <div class="add-new-form-wrapper border-t pt-4 mt-4">
                         <button type="button" id="add-program-btn" class="w-full bg-brand-primary text-white font-bold py-3 px-4 rounded-xl hover:bg-blue-800 transition-all flex items-center justify-center gap-2">
-                            <i class="ph-bold ph-plus" aria-hidden="true"></i> Tambah program
+                            <i class="fas fa-plus" aria-hidden="true"></i> Tambah program
                         </button>
                     </div>`;
                 document.getElementById('add-program-btn').onclick = () => openProgramForm(kpi);
