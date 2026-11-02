@@ -20,7 +20,7 @@ descriptions of PR #2 to #8.
 - The owner cannot easily re-enter lost data. Never write to live Firestore
   from a session, and never press reset / delete in a live app.
 - Test with `tests/` (see `tests/README.md`): `cd tests && npm install`
-  once, then `node run.js` (24 scenarios, ~3 min) against `mock-firebase.js`,
+  once, then `node run.js` (25 scenarios, ~3 min) against `mock-firebase.js`,
   which records every write instead of sending it. Clock pinned to
   29/10/2026. Add a scenario to `tests/run.js` for each behaviour change;
   extend the mock's seed data rather than touching live data. The proxy
@@ -111,6 +111,9 @@ descriptions of PR #2 to #8.
   Hook classes (show-details-btn, show-chart-btn, edit-kpi-btn,
   settings-btn, info-btn, progress-bar, kpi-percentage-display, ...) are
   used by main.js, the phone KPI sheet and filterDashboardCards: keep them.
+- Phones: no text cut off with an ellipsis (owner: looks unprofessional).
+  Let headings wrap, shorten button labels below sm (keep the full one in
+  aria-label); scenario "phone text not cut off" scans every view at 360px.
 - Icons: only the Phosphor DUOTONE stylesheet loads (`ph-duotone ph-*`);
   `ph`, `ph-bold` classes render nothing. Otherwise use Font Awesome.
 - App header (`#app-header`, outside `#dashboard-container`, sticky): phones

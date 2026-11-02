@@ -532,7 +532,7 @@ function recordRowHtml(item, globalIndex) {
 
     return `
     <div class="penjanaan-record-row flex items-center gap-2 py-2 px-1.5 border-b border-gray-50 last:border-0 cursor-pointer hover:bg-gray-50 rounded-lg transition-colors" data-idx="${globalIndex}" role="button" tabindex="0" title="Lihat butiran">
-        <span class="flex-1 min-w-0 text-sm text-gray-700 leading-snug line-clamp-2 break-words">${escapeHtml(item.name)}</span>
+        <span class="flex-1 min-w-0 text-sm text-gray-700 leading-snug break-words">${escapeHtml(item.name)}</span>
         <span class="text-sm font-bold text-brand-primary flex-shrink-0">${escapeHtml(formatRM(item.value))}</span>
         ${adminHtml}
     </div>`;
@@ -623,8 +623,8 @@ function render() {
             </div>` : '';
 
     const addBtnHtml = isAdminMode
-        ? `<button id="penjanaan-add-btn" class="bg-brand-primary text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-800 shadow-md transition-all text-sm flex items-center gap-2 flex-shrink-0">
-               <i class="fas fa-plus-circle"></i><span>Tambah Rekod</span>
+        ? `<button id="penjanaan-add-btn" aria-label="Tambah Rekod" class="bg-brand-primary text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-800 shadow-md transition-all text-sm flex items-center gap-2 flex-shrink-0">
+               <i class="fas fa-plus-circle" aria-hidden="true"></i><span class="sm:hidden">Tambah</span><span class="hidden sm:inline">Tambah Rekod</span>
            </button>` : '';
 
     // Group items into Suku buckets; null/invalid bulan -> "Tidak Dinyatakan".
@@ -677,7 +677,7 @@ function render() {
             <div class="min-w-0">
                 <h2 class="text-lg sm:text-xl font-bold text-brand-primary flex items-center gap-2 min-w-0">
                     <i class="ph-duotone ph-currency-circle-dollar flex-shrink-0"></i>
-                    <span class="truncate">Penjanaan Dana ${escapeHtml(currentYear)}</span>
+                    <span class="min-w-0 leading-tight">Penjanaan Dana ${escapeHtml(currentYear)}</span>
                 </h2>
                 <p class="text-xs text-gray-500 font-semibold mt-0.5">${itemsIndexed.length} rekod bagi ${escapeHtml(currentYear)}</p>
             </div>
