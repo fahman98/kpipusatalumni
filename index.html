@@ -51,15 +51,15 @@
 
     <!-- PWA Manifest & Meta -->
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#0d47a1">
+    <meta name="theme-color" content="#FFFFFF">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <link rel="apple-touch-icon" href="./images/apple-touch-icon.png">
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="style.css?v=6.0">
-    <link rel="stylesheet" href="tailwind.css?v=19">
+    <link rel="stylesheet" href="style.css?v=6.1">
+    <link rel="stylesheet" href="tailwind.css?v=20">
 </head>
 
 <body class="bg-gray-100 relative overflow-x-hidden">
@@ -140,59 +140,65 @@
         </div>
     </div>
 
-    <div id="dashboard-container" class="container mx-auto p-4 sm:p-6 lg:p-8">
-        <!-- Header -->
-        <header class="mb-4 md:mb-0 sticky top-0 md:top-4 z-20 -mx-4 -mt-4 sm:-mx-6 sm:-mt-6 md:mx-0 md:mt-0">
-            <div id="header-inner" class="bg-white rounded-2xl shadow-sm border border-gray-100 px-4 md:px-6 py-2.5 sm:py-3 flex flex-wrap items-center gap-x-3 md:gap-5 gap-y-2">
+    <!-- App header (redesign canvas phase 4): a full-width white bar. Phones:
+         app icon, title + quarter, year, theme, actions. md+: logos, the
+         main navigation, year, theme. On md+ the title moves to the page
+         heading in the dashboard view. -->
+    <header id="app-header" class="sticky top-0 z-30">
+        <div id="header-inner" class="flex items-center gap-x-3 md:gap-x-6 gap-y-2">
+            <img src="./images/icon-192.png" alt="" class="app-bar-icon md:hidden" width="34" height="34" decoding="async">
+            <div class="hidden md:flex items-center gap-3 flex-shrink-0">
+                <img src="./images/logo-1.png" alt="Logo Universiti Pendidikan Sultan Idris"
+                    decoding="async" class="h-10 max-w-none object-contain">
+                <div class="w-px h-8 bg-gray-200 flex-shrink-0" aria-hidden="true"></div>
+                <!-- loading="lazy": phones never show it, so never download it -->
+                <img src="./images/logo-2.png" alt="Logo Pusat Alumni UPSI"
+                    decoding="async" loading="lazy" class="h-8 object-contain">
+            </div>
 
-                <!-- Left: Logos
-                     <768px (mobile)   : no logo, title only
-                     768px+ (md+)      : both logos at h-14 -->
-                <div class="flex items-center gap-2 md:gap-3 flex-shrink-0">
-                    <img src="./images/logo-1.png" alt="Logo Universiti Pendidikan Sultan Idris"
-                        decoding="async"
-                        class="hidden md:block h-14 max-w-none object-contain transition-transform hover:scale-105 duration-300">
-                    <div class="hidden md:block w-px h-10 bg-gray-200 flex-shrink-0" aria-hidden="true"></div>
-                    <!-- Hidden below md. loading="lazy" keeps phones from downloading
-                         it at all, since a display:none image is never in viewport. -->
-                    <img src="./images/logo-2.png" alt="Logo Pusat Alumni UPSI"
-                        decoding="async" loading="lazy"
-                        class="hidden md:block h-14 object-contain transition-transform hover:scale-105 duration-300">
-                </div>
+            <div id="header-title-block" class="min-w-0 flex-1 md:hidden">
+                <h1 id="main-title" class="app-bar-title">Dashboard KPI</h1>
+                <p id="sub-title" class="app-bar-sub"></p>
+            </div>
 
-                <!-- Center: Dynamic Title -->
-                <div class="min-w-0 flex-1 text-left md:text-center md:px-2">
-                    <h1 id="main-title" class="text-base md:text-lg lg:text-xl font-bold text-brand-primary leading-tight">
-                        Dashboard KPI</h1>
-                    <p id="sub-title" class="text-xs sm:text-sm text-gray-400 mt-0.5 hidden md:block">Papan Pemuka
-                        Prestasi</p>
-                </div>
+            <!-- MAIN NAVIGATION (Dashboard / Takwim / Penjanaan); phones use #bottom-nav -->
+            <nav id="main-nav" class="hidden md:flex flex-1 gap-1 min-w-0" role="tablist" aria-label="Navigasi utama">
+                <button class="main-nav-tab active" data-view="dashboard" role="tab" aria-selected="true">
+                    <i class="ph-duotone ph-gauge" aria-hidden="true"></i>Dashboard
+                </button>
+                <button class="main-nav-tab" data-view="takwim" role="tab" aria-selected="false">
+                    <i class="ph-duotone ph-calendar-dots" aria-hidden="true"></i>Takwim
+                </button>
+                <button class="main-nav-tab" data-view="penjanaan" role="tab" aria-selected="false">
+                    <i class="ph-duotone ph-currency-circle-dollar" aria-hidden="true"></i>Penjanaan
+                </button>
+            </nav>
 
-                <!-- Right: Controls -->
-                <div class="ml-auto flex items-center gap-2 md:gap-3 flex-shrink-0">
-                    <select id="year-selector"
-                        class="bg-white/15 md:bg-white border border-white/25 md:border-gray-200 text-white md:text-gray-700 font-bold text-xs md:text-sm py-1.5 px-2 md:px-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary cursor-pointer shadow-sm">
-                        <!-- Options populated dynamically in main.js -->
-                    </select>
-                    <button id="theme-toggle" class="theme-toggle-btn" aria-label="Tukar Tema Gelap/Cerah">
-                        <i class="fas fa-moon"></i>
-                    </button>
-                    <!-- Mobile-only: opens the quick actions bottom sheet (PDF / view toggle) -->
-                    <button id="actions-menu-btn" class="theme-toggle-btn md:hidden" aria-label="Tindakan pantas"
-                        aria-haspopup="dialog" title="Tindakan pantas">
-                        <i class="fas fa-ellipsis-v"></i>
-                    </button>
-                    <div id="mode-indicator" class="hidden md:block flex-shrink-0">
-                        <span
-                            class="inline-flex items-center bg-blue-100 text-blue-800 text-xs font-semibold px-2 md:px-2.5 py-1 rounded-full border border-blue-200 whitespace-nowrap">
-                            <i class="fas fa-eye md:mr-1"></i><span class="hidden md:inline">Paparan Awam</span>
-                        </span>
-                    </div>
+            <!-- Controls (hidden in print) -->
+            <div id="header-controls" class="ml-auto flex items-center gap-2 flex-shrink-0">
+                <label for="year-selector" class="hidden md:inline text-[13px] font-semibold text-gray-500">Tahun</label>
+                <select id="year-selector" class="app-bar-select" aria-label="Pilih tahun">
+                    <!-- Options populated dynamically in main.js -->
+                </select>
+                <button id="theme-toggle" class="theme-toggle-btn" aria-label="Tukar Tema Gelap/Cerah">
+                    <i class="fas fa-moon"></i>
+                </button>
+                <!-- Mobile-only: opens the quick actions bottom sheet (PDF / view toggle) -->
+                <button id="actions-menu-btn" class="theme-toggle-btn md:hidden" aria-label="Tindakan pantas"
+                    aria-haspopup="dialog" title="Tindakan pantas">
+                    <i class="fas fa-ellipsis-v"></i>
+                </button>
+                <div id="mode-indicator" class="hidden md:block flex-shrink-0">
+                    <span
+                        class="inline-flex items-center bg-blue-100 text-blue-800 text-xs font-semibold px-2 md:px-2.5 py-1 rounded-full border border-blue-200 whitespace-nowrap">
+                        <i class="fas fa-eye md:mr-1"></i><span class="hidden md:inline">Paparan Awam</span>
+                    </span>
                 </div>
             </div>
-        </header>
-        <!-- Premium gradient accent line -->
-        <div class="brand-gradient-bar hidden md:block"></div>
+        </div>
+    </header>
+
+    <div id="dashboard-container" class="container mx-auto p-4 sm:p-6 lg:p-8">
 
         <!-- Offline notice: says how old the data on screen is (set in main.js) -->
         <div id="offline-banner" role="status" class="hidden offline-banner mb-4">
@@ -220,23 +226,14 @@
             </div>
         </div>
 
-        <!-- MAIN NAVIGATION TABS (Dashboard / Takwim / Penjanaan) -->
-        <div id="main-nav"
-            class="bg-white rounded-xl shadow-sm border border-gray-100 p-1 hidden md:flex gap-1 mb-4"
-            role="tablist" aria-label="Navigasi utama">
-            <button class="main-nav-tab active" data-view="dashboard" role="tab" aria-selected="true">
-                <i class="ph-duotone ph-gauge mr-1.5 align-middle"></i>Dashboard
-            </button>
-            <button class="main-nav-tab" data-view="takwim" role="tab" aria-selected="false">
-                <i class="ph-duotone ph-calendar-dots mr-1.5 align-middle"></i>Takwim
-            </button>
-            <button class="main-nav-tab" data-view="penjanaan" role="tab" aria-selected="false">
-                <i class="ph-duotone ph-currency-circle-dollar mr-1.5 align-middle"></i>Penjanaan
-            </button>
-        </div>
-
         <!-- ===================== VIEW: DASHBOARD ===================== -->
         <div id="view-dashboard">
+
+        <!-- Page heading (md+; phones show the title in the app bar) -->
+        <div id="page-heading" class="hidden md:block mb-5">
+            <p id="page-eyebrow" class="page-eyebrow"></p>
+            <h2 id="page-title" class="page-title">Prestasi KPI Pusat Alumni</h2>
+        </div>
 
         <!-- Admin "Perlu tindakan" (redesign canvas, Admin-Main). Read-only
              reminders filled by js/todo.js; hidden for guests and when empty -->
@@ -1198,7 +1195,7 @@
         </div>
 
         <!-- Load Main Script as Module -->
-        <script type="module" src="js/main.js?v=6.4"></script>
+        <script type="module" src="js/main.js?v=6.5"></script>
 </body>
 
 </html>
