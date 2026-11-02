@@ -7,6 +7,8 @@ import {
     showToastNotification,
     openModal,
     closeModal,
+    closeFormSheet,
+    formSheetHtml,
     showConfirmModal,
     escapeHtml
 } from './ui.js';
@@ -62,6 +64,26 @@ function genId() {
 
 // ---- Modal (dynamically created, reuses .modal / .is-open CSS) ---------
 
+// "Sumber kerap": sources used more than once first, then the most recent,
+// so a monthly source is one tap away. At most 5.
+function frequentSources() {
+    const byName = new Map();
+    cachedItems.forEach(it => {
+        const name = String(it.name || '').trim();
+        if (!name) return;
+        const e = byName.get(name) || { name, count: 0, last: 0 };
+        e.count++;
+        e.last = Math.max(e.last, parseInt(it.bulan, 10) || 0);
+        byName.set(name, e);
+    });
+    return [...byName.values()]
+        .sort((a, b) => (Math.min(b.count, 2) - Math.min(a.count, 2)) || (b.last - a.last) || (b.count - a.count))
+        .slice(0, 5)
+        .map(e => e.name);
+}
+
+// Add / edit form (redesign canvas, Admin-Penjanaan). Saving goes through the
+// same addRecord / editRecord as before; only the form changed.
 function ensureModal() {
     let modal = document.getElementById('penjanaan-modal');
     if (modal) return modal;
@@ -72,57 +94,66 @@ function ensureModal() {
 
     modal = document.createElement('div');
     modal.id = 'penjanaan-modal';
-    modal.className = 'modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50';
-    modal.innerHTML = `
-        <div class="modal-content bg-white rounded-lg shadow-2xl w-full max-w-md p-6" role="dialog" aria-modal="true" aria-labelledby="penjanaan-modal-title">
-            <div class="flex justify-between items-center mb-4">
-                <h3 id="penjanaan-modal-title" class="text-xl font-bold text-brand-primary">Tambah Rekod</h3>
-                <button type="button" id="penjanaan-modal-close" class="text-gray-500 hover:text-red-600 text-2xl font-bold" aria-label="Tutup modal">&times;</button>
+    modal.className = 'modal form-sheet fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50';
+    modal.innerHTML = formSheetHtml({
+        prefix: 'penjanaan-modal', formId: 'penjanaan-form', title: 'Tambah rekod',
+        body: `
+            <input type="hidden" id="penjanaan-orig-index">
+            <input type="hidden" id="penjanaan-orig-bulan">
+            <input type="hidden" id="penjanaan-orig-name">
+            <input type="hidden" id="penjanaan-orig-value">
+            <input type="hidden" id="penjanaan-orig-id">
+            <div class="fs-field">
+                <label for="penjanaan-sumber" class="fs-label">Sumber <span class="fs-req">*</span></label>
+                <input type="text" id="penjanaan-sumber" class="fs-input" autocomplete="off" placeholder="Contoh: Sumbangan korporat">
+                <div id="penjanaan-sources" class="fs-chips-wrap hidden">
+                    <p class="fs-sublabel">Sumber kerap</p>
+                    <div id="penjanaan-source-chips" class="fs-chips"></div>
+                </div>
             </div>
-            <form id="penjanaan-form" class="space-y-4">
-                <input type="hidden" id="penjanaan-orig-index">
-                <input type="hidden" id="penjanaan-orig-bulan">
-                <input type="hidden" id="penjanaan-orig-name">
-                <input type="hidden" id="penjanaan-orig-value">
-                <input type="hidden" id="penjanaan-orig-id">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Sumber <span class="text-red-500">*</span></label>
-                    <input type="text" id="penjanaan-sumber" required placeholder="Contoh: Sumbangan Korporat"
-                        class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-brand-primary focus:border-brand-primary">
+            <div class="fs-field">
+                <label for="penjanaan-jumlah" class="fs-label">Jumlah <span class="fs-req">*</span></label>
+                <div class="fs-money">
+                    <span aria-hidden="true">RM</span>
+                    <input type="number" id="penjanaan-jumlah" min="0" step="0.01" inputmode="decimal" placeholder="0.00">
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Jumlah (RM) <span class="text-red-500">*</span></label>
-                    <input type="number" id="penjanaan-jumlah" required min="0" step="0.01" placeholder="0.00"
-                        class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-brand-primary focus:border-brand-primary">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Bulan <span class="text-red-500">*</span></label>
-                    <select id="penjanaan-bulan" required
-                        class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-brand-primary focus:border-brand-primary bg-white">
-                        <option value="">— Pilih Bulan —</option>
-                        ${monthOptions}
-                    </select>
-                </div>
-                <div class="flex gap-2 pt-2">
-                    <button type="button" id="penjanaan-cancel-btn"
-                        class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-semibold">Batal</button>
-                    <button type="submit"
-                        class="flex-1 bg-brand-primary text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-800 transition-all">Simpan</button>
-                </div>
-            </form>
-        </div>`;
+            </div>
+            <div class="fs-field">
+                <label for="penjanaan-bulan" class="fs-label">Bulan diterima <span class="fs-req">*</span></label>
+                <select id="penjanaan-bulan" class="fs-input fs-select">
+                    <option value="">Pilih bulan</option>
+                    ${monthOptions}
+                </select>
+                <p id="penjanaan-quarter-hint" class="fs-hint hidden"></p>
+            </div>
+            <div id="penjanaan-summary" class="fs-summary"></div>
+            <p id="penjanaan-dup-note" class="fs-foot">Sumber yang sama boleh direkod untuk bulan berlainan. Rekod dengan sumber dan bulan yang sama tidak dibenarkan supaya tiada pendua.</p>`
+    });
     document.body.appendChild(modal);
 
-    const close = () => closeModal(modal);
+    const close = () => closeFormSheet(modal);
     modal.querySelector('#penjanaan-modal-close').addEventListener('click', close);
-    modal.querySelector('#penjanaan-cancel-btn').addEventListener('click', close);
     modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+
+    const sumberEl = modal.querySelector('#penjanaan-sumber');
+    const jumlahEl = modal.querySelector('#penjanaan-jumlah');
+    const bulanEl = modal.querySelector('#penjanaan-bulan');
+    sumberEl.addEventListener('input', () => syncSourceChips(modal));
+    jumlahEl.addEventListener('input', () => renderFormSummary(modal));
+    bulanEl.addEventListener('change', () => renderFormSummary(modal));
+    modal.querySelector('#penjanaan-source-chips').addEventListener('click', (e) => {
+        const chip = e.target.closest('.fs-chip');
+        if (!chip) return;
+        sumberEl.value = chip.dataset.name;
+        syncSourceChips(modal);
+        jumlahEl.focus();
+    });
 
     modal.querySelector('#penjanaan-form').addEventListener('submit', async (e) => {
         e.preventDefault();
-        const sumber = modal.querySelector('#penjanaan-sumber').value.trim();
-        const jumlah = parseFloat(modal.querySelector('#penjanaan-jumlah').value);
-        const bulan = parseInt(modal.querySelector('#penjanaan-bulan').value, 10);
+        const sumber = sumberEl.value.trim();
+        const jumlah = parseFloat(jumlahEl.value);
+        const bulan = parseInt(bulanEl.value, 10);
 
         if (!sumber || isNaN(jumlah) || isNaN(bulan)) {
             showToastNotification('Sila isi Sumber, Jumlah dan Bulan.', 'danger');
@@ -150,18 +181,78 @@ function ensureModal() {
     return modal;
 }
 
+function syncSourceChips(modal) {
+    const v = modal.querySelector('#penjanaan-sumber').value.trim();
+    modal.querySelectorAll('#penjanaan-source-chips .fs-chip').forEach(c => {
+        c.setAttribute('aria-pressed', c.dataset.name === v ? 'true' : 'false');
+    });
+}
+
+// Quarter hint under the month, and the running total before / after saving
+function renderFormSummary(modal) {
+    const bulan = parseInt(modal.querySelector('#penjanaan-bulan').value, 10);
+    const qKey = bulanToQuarterKey(bulan);
+    const hint = modal.querySelector('#penjanaan-quarter-hint');
+    hint.innerHTML = qKey ? `Rekod ini masuk ke <strong>Suku ${qKey.slice(1)}</strong>.` : '';
+    hint.classList.toggle('hidden', !qKey);
+
+    const total = cachedItems.reduce((sum, it) => sum + (Number(it.value) || 0), 0);
+    const origRaw = modal.querySelector('#penjanaan-orig-value').value;
+    const orig = modal.querySelector('#penjanaan-orig-index').value !== '' ? (parseFloat(origRaw) || 0) : 0;
+    const amount = parseFloat(modal.querySelector('#penjanaan-jumlah').value);
+    const target = Number(cachedTarget) || 0;
+    const pct = target ? Math.min(100, (total / target) * 100) : 0;
+
+    let line;
+    if (isNaN(amount)) {
+        line = target
+            ? `Masukkan jumlah untuk melihat kesannya pada sasaran ${formatRM(target)}.`
+            : 'Masukkan jumlah untuk melihat jumlah terkumpul selepas disimpan.';
+    } else {
+        const after = Math.max(0, total - orig + amount);
+        line = `Selepas disimpan: <strong>${formatRM(after)}</strong>`;
+        if (target) {
+            line += ` (${((after / target) * 100).toFixed(1)}%). `;
+            line += after < target
+                ? `Baki ${formatRM(target - after)} untuk capai sasaran.`
+                : `Sasaran ${formatRM(target)} tercapai.`;
+        } else {
+            line += '.';
+        }
+    }
+    modal.querySelector('#penjanaan-summary').innerHTML = `
+        <div class="fs-summary-row"><span>Terkumpul sekarang</span><strong>${formatRM(total)}</strong></div>
+        ${target ? `<div class="fs-summary-bar"><span style="width:${pct.toFixed(1)}%"></span></div>` : ''}
+        <p>${line}</p>`;
+}
+
 function openRecordModal(record) {
     const modal = ensureModal();
     const isEdit = !!record;
-    modal.querySelector('#penjanaan-modal-title').textContent = isEdit ? 'Edit Rekod' : 'Tambah Rekod';
+    modal.querySelector('#penjanaan-modal-title').textContent = isEdit ? 'Edit rekod' : 'Tambah rekod';
+    modal.querySelector('#penjanaan-modal-subtitle').textContent = `Penjanaan dana ${currentYear}`;
     modal.querySelector('#penjanaan-sumber').value = isEdit ? (record.name || '') : '';
     modal.querySelector('#penjanaan-jumlah').value = isEdit ? (record.value != null ? record.value : '') : '';
-    modal.querySelector('#penjanaan-bulan').value = isEdit && record.bulan ? String(record.bulan) : '';
+    // A new record starts on this month when the selected year is this year;
+    // the quarter hint underneath shows where it will land
+    const now = new Date();
+    const defaultBulan = String(currentYear) === String(now.getFullYear()) ? String(now.getMonth() + 1) : '';
+    modal.querySelector('#penjanaan-bulan').value = isEdit ? (record.bulan ? String(record.bulan) : '') : defaultBulan;
     modal.querySelector('#penjanaan-orig-index').value = isEdit ? String(record._index) : '';
     modal.querySelector('#penjanaan-orig-bulan').value = isEdit && record.bulan ? String(record.bulan) : '';
     modal.querySelector('#penjanaan-orig-name').value = isEdit ? (record.name || '') : '';
     modal.querySelector('#penjanaan-orig-value').value = isEdit ? String(record.value != null ? record.value : '') : '';
     modal.querySelector('#penjanaan-orig-id').value = isEdit && record.id ? String(record.id) : '';
+
+    // The duplicate rule is checked when adding (api.js), so the note is for adding only
+    modal.querySelector('#penjanaan-dup-note').classList.toggle('hidden', isEdit);
+    const sources = frequentSources();
+    modal.querySelector('#penjanaan-sources').classList.toggle('hidden', !sources.length);
+    modal.querySelector('#penjanaan-source-chips').innerHTML = sources
+        .map(n => `<button type="button" class="fs-chip" data-name="${escapeHtml(n)}" aria-pressed="false">${escapeHtml(n)}</button>`)
+        .join('');
+    syncSourceChips(modal);
+    renderFormSummary(modal);
     openModal(modal);
 }
 

@@ -187,6 +187,74 @@ const scenarios = {
         await ctx.close();
     },
 
+    // Admin redesign stage 2: full-screen add forms. Saves go to the mock only.
+    async 'admin forms'() {
+        const { ctx, page } = await open({ admin: true, mobile: true });
+        const lastItems = (kpiId) => page.evaluate((id) => {
+            const t = window.__tx[window.__tx.length - 1];
+            return t.d.kpis.find(k => k.id === id).details.items;
+        }, kpiId);
+
+        // Penjanaan: frequent-source chip, quarter hint, total after saving
+        await page.click('#bottom-nav [data-view=penjanaan]'); await page.waitForTimeout(1500);
+        await page.click('#penjanaan-add-btn'); await page.waitForTimeout(400);
+        assert.equal(await page.textContent('#penjanaan-modal-subtitle'), 'Penjanaan dana 2026');
+        assert.equal(await page.inputValue('#penjanaan-bulan'), '10', 'a new record starts on this month');
+        assert.equal(await page.textContent('#penjanaan-quarter-hint'), 'Rekod ini masuk ke Suku 4.');
+        const chips = await page.$$eval('#penjanaan-source-chips .fs-chip', c => c.map(x => x.textContent));
+        assert.equal(chips.length, 4);
+        await page.click('#penjanaan-source-chips .fs-chip >> nth=1');
+        assert.equal(await page.inputValue('#penjanaan-sumber'), chips[1]);
+        await page.fill('#penjanaan-jumlah', '1500');
+        assert.match(await page.textContent('#penjanaan-summary'), /Selepas disimpan: RM 79,800\.00 \(53\.2%\)\. Baki RM 70,200\.00/);
+        await page.selectOption('#penjanaan-bulan', '8');
+        assert.equal(await page.textContent('#penjanaan-quarter-hint'), 'Rekod ini masuk ke Suku 3.');
+        await shot(page, 'form-penjanaan');
+        // Back closes the full-page form without saving
+        await page.goBack(); await page.waitForTimeout(400);
+        assert.equal(await page.evaluate(() => document.getElementById('penjanaan-modal').classList.contains('is-open')), false);
+        assert.equal(await page.evaluate(() => window.__tx.length), 0);
+        await page.click('#penjanaan-add-btn'); await page.waitForTimeout(400);
+        await page.fill('#penjanaan-sumber', 'Tabung Alumni Care');
+        await page.fill('#penjanaan-jumlah', '250');
+        await page.click('#penjanaan-modal .form-sheet-save'); await page.waitForTimeout(1200);
+        const pItems = await lastItems('pendanaan');
+        const added = pItems.find(i => i.name === 'Tabung Alumni Care');
+        assert.equal(added.value, 250);
+        assert.equal(added.bulan, 10);
+
+        // Takwim: status chosen from cards
+        await page.click('#bottom-nav [data-view=takwim]'); await page.waitForTimeout(1200);
+        await page.click('#takwim-add-btn'); await page.waitForTimeout(400);
+        assert.equal(await page.$eval('input[name="takwim-status"]:checked', r => r.value), '', 'default follows the date');
+        await page.fill('#takwim-title', 'Bengkel Kerjaya Alumni');
+        await page.fill('#takwim-date', '2026-12-12');
+        await page.click('.fs-radio:has(input[value="Ditangguhkan"])');
+        await shot(page, 'form-takwim');
+        await page.click('#takwim-modal .form-sheet-save'); await page.waitForTimeout(1200);
+        const ev = await page.evaluate(() => window.__tx[window.__tx.length - 1].d.events.find(e => e.title === 'Bengkel Kerjaya Alumni'));
+        assert.equal(ev.status, 'Ditangguhkan');
+        assert.equal(ev.date, '2026-12-12');
+
+        // Kembara: "Tambah program" opens the full form over Butiran
+        await page.click('#bottom-nav [data-view=dashboard]'); await page.waitForTimeout(800);
+        await page.locator('.kpi-row', { hasText: 'Kembara' }).click(); await page.waitForTimeout(500);
+        await page.locator('#focus-actions .focus-action').first().click(); await page.waitForTimeout(800);
+        await page.click('#add-program-btn'); await page.waitForTimeout(400);
+        await page.fill('#program-name', 'Kembara Alumni Kuantan');
+        await page.fill('#program-tarikh', '2026-08-15');
+        await page.dispatchEvent('#program-tarikh', 'change');
+        assert.match(await page.textContent('#program-info'), /masuk ke Suku 3 dan dikira sebanyak 1 program\. Sasaran tahunan: 8 program\./);
+        await page.fill('#program-hadir', '64');
+        await shot(page, 'form-program');
+        await page.click('#program-modal .form-sheet-save'); await page.waitForTimeout(1200);
+        const kItem = (await lastItems('kembara')).find(i => i.name === 'Kembara Alumni Kuantan');
+        assert.deepEqual({ ...kItem, id: undefined }, { name: 'Kembara Alumni Kuantan', value: 1, bulan: 8, tarikh: '2026-08-15', hadir: 64, id: undefined });
+        assert.equal(await page.evaluate(() => document.getElementById('details-modal').classList.contains('is-open')), true, 'Butiran stays open after saving');
+        assert.deepEqual(page.__errors, []);
+        await ctx.close();
+    },
+
     // Butiran: full page on phones, overview on top, Back closes it
     async 'butiran page'() {
         const { ctx, page } = await open({ mobile: true });
@@ -282,10 +350,10 @@ const scenarios = {
         const { ctx, page } = await open({ admin: true });
         await page.click('#main-nav [data-view=takwim]'); await page.waitForTimeout(1200);
         await page.click('.takwim-edit-btn[data-id="e3"]'); await page.waitForTimeout(400);
-        assert.equal(await page.inputValue('#takwim-status'), 'Ditangguhkan');
+        assert.equal(await page.$eval('input[name="takwim-status"]:checked', r => r.value), 'Ditangguhkan');
         assert.equal(await page.inputValue('#takwim-notes'), '');
         await page.fill('#takwim-notes', 'Ke Januari 2027');
-        await page.click('#takwim-form button[type=submit]'); await page.waitForTimeout(800);
+        await page.click('#takwim-modal .form-sheet-save'); await page.waitForTimeout(800);
         const events = await page.evaluate(() => window.__tx[window.__tx.length - 1].d.events);
         const e3 = events.find(e => e.id === 'e3');
         assert.equal(e3.status, 'Ditangguhkan');

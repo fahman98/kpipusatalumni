@@ -2508,6 +2508,138 @@ body.dark-mode .admin-todo-icon { background: #451a03; color: #fcd34d; }
 body.dark-mode .admin-todo-action { color: #93c5fd; }
 @media print { .admin-todo { display: none !important; } }
 
+/* ===== FORM SHEETS (redesign canvas, Admin-Penjanaan / Kembara / Takwim) =====
+   Add / edit forms: a dialog on desktop, a full page on phones. Header holds
+   close, title and Simpan; the fields scroll underneath. */
+.form-sheet .form-sheet-panel {
+    width: 100%; max-width: 480px; max-height: 90vh; padding: 0;
+    background: #fff; border-radius: 20px; overflow: hidden;
+    display: flex; flex-direction: column; color: #0E1A2B;
+    box-shadow: 0 24px 60px rgba(14, 26, 43, 0.3);
+}
+.form-sheet-head {
+    /* margin: the page's global `header` rule adds a bottom margin */
+    flex-shrink: 0; display: flex; align-items: center; gap: 4px; margin: 0; transition: none;
+    padding: 8px 12px 8px 4px; border-bottom: 1px solid #E2E7EF; background: #fff;
+}
+.form-sheet-x {
+    width: 44px; height: 44px; flex-shrink: 0; border: 0; border-radius: 10px;
+    background: transparent; color: #0E1A2B; display: inline-flex; align-items: center; justify-content: center;
+}
+.form-sheet-x:hover { background: #F3F5F9; }
+.form-sheet-titles { flex: 1; min-width: 0; }
+.form-sheet-titles h3 { margin: 0; font-size: 16px; line-height: 1.25; font-weight: 800; color: #0E1A2B; }
+.form-sheet-titles p { margin: 0; font-size: 12px; font-weight: 600; color: #5B6779; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.form-sheet-titles p:empty { display: none; }
+.form-sheet-save {
+    min-height: 40px; padding: 0 18px; border: 0; border-radius: 10px;
+    background: #0d47a1; color: #fff; font-size: 14px; font-weight: 800;
+}
+.form-sheet-save:hover { background: #0a3880; }
+.form-sheet-body {
+    flex: 1; min-height: 0; overflow-y: auto; padding: 20px;
+    display: flex; flex-direction: column; gap: 20px;
+}
+.fs-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.fs-field.hidden { display: none; }
+.fs-fieldset { border: 0; margin: 0; padding: 0; }
+.fs-label { padding: 0; font-size: 14px; font-weight: 700; color: #0E1A2B; }
+.fs-fieldset > .fs-label { margin-bottom: 6px; }
+.fs-req { color: #B42E24; }
+.fs-optional { font-weight: 500; color: #5B6779; font-size: 13px; }
+.fs-input {
+    width: 100%; min-height: 52px; padding: 0 14px; box-sizing: border-box;
+    border: 1px solid #C7D0DD; border-radius: 12px; background: #fff;
+    color: #0E1A2B; font-size: 16px;
+}
+.fs-textarea { padding: 12px 14px; min-height: 80px; resize: vertical; }
+.fs-select { font-weight: 600; }
+.fs-input:focus { outline: none; border-color: #0d47a1; box-shadow: 0 0 0 3px rgba(13, 71, 161, 0.18); }
+.fs-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.fs-hint { margin: 0; font-size: 13px; color: #5B6779; line-height: 1.45; }
+.fs-hint.hidden { display: none; }
+.fs-hint strong { color: #0E1A2B; }
+.fs-foot { margin: 0; font-size: 13px; color: #5B6779; line-height: 1.45; }
+.fs-foot.hidden { display: none; }
+.fs-sublabel { margin: 4px 0 0; font-size: 12px; font-weight: 700; color: #5B6779; }
+.fs-chips-wrap { display: flex; flex-direction: column; gap: 8px; }
+.fs-chips-wrap.hidden { display: none; }
+.fs-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.fs-chip {
+    min-height: 36px; max-width: 100%; padding: 0 12px; border-radius: 999px;
+    border: 1px solid #D3DAE5; background: #fff; color: #3A4658;
+    font-size: 13px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.fs-chip[aria-pressed="true"] { border-color: #0d47a1; background: #E8EEFA; color: #0d47a1; }
+.fs-money {
+    display: flex; align-items: stretch; border: 2px solid #0d47a1; border-radius: 12px; overflow: hidden; background: #fff;
+}
+.fs-money span { display: flex; align-items: center; padding: 0 14px; background: #E8EEFA; color: #0d47a1; font-size: 16px; font-weight: 800; }
+.fs-money input {
+    flex: 1; min-width: 0; min-height: 52px; padding: 0 14px; border: 0; outline: none; background: #fff;
+    color: #0E1A2B; font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums;
+}
+.fs-summary {
+    display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 14px;
+    background: #F3F5F9; font-size: 13px; color: #3A4658; font-variant-numeric: tabular-nums;
+}
+.fs-summary p { margin: 0; line-height: 1.45; }
+.fs-summary strong { color: #0E1A2B; font-weight: 800; }
+.fs-summary-row { display: flex; justify-content: space-between; gap: 8px; }
+.fs-summary-row span { color: #5B6779; font-weight: 600; }
+.fs-summary-bar { height: 6px; border-radius: 999px; background: #E2E7EF; overflow: hidden; }
+.fs-summary-bar span { display: block; height: 6px; border-radius: 999px; background: #0d47a1; }
+.fs-radios { display: flex; flex-direction: column; gap: 8px; }
+.fs-radio {
+    display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 10px 14px;
+    border: 1px solid #D3DAE5; border-radius: 12px; background: #fff; cursor: pointer;
+}
+.fs-radio input { width: 20px; height: 20px; flex-shrink: 0; accent-color: #0d47a1; margin: 0; }
+.fs-radio:has(input:checked) { border: 2px solid #0d47a1; padding: 9px 13px; background: #F3F6FD; }
+.fs-radio-text { display: flex; flex-direction: column; min-width: 0; }
+.fs-radio-label { font-size: 15px; font-weight: 700; color: #0E1A2B; }
+.fs-radio-hint { font-size: 12px; font-weight: 600; color: #5B6779; }
+
+@media (max-width: 639px) {
+    .modal.form-sheet { padding: 0 !important; align-items: stretch !important; }
+    .form-sheet .modal-content.form-sheet-panel {
+        max-width: none !important; height: 100dvh; max-height: 100dvh !important;
+        border-radius: 0 !important; box-shadow: none !important;
+    }
+    .form-sheet .modal-content::before { display: none !important; }
+    .form-sheet-head { padding-top: calc(8px + env(safe-area-inset-top, 0px)); }
+    .form-sheet-body { padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)); }
+}
+
+body.dark-mode .form-sheet .form-sheet-panel,
+body.dark-mode .form-sheet-head { background: #1f2937 !important; color: #f3f4f6; border-color: #374151; }
+body.dark-mode .form-sheet-x { color: #f3f4f6; }
+body.dark-mode .form-sheet-x:hover { background: #374151; }
+body.dark-mode .form-sheet-titles h3,
+body.dark-mode .fs-label,
+body.dark-mode .fs-radio-label,
+body.dark-mode .fs-hint strong,
+body.dark-mode .fs-summary strong { color: #f3f4f6; }
+body.dark-mode .form-sheet-titles p,
+body.dark-mode .fs-hint,
+body.dark-mode .fs-foot,
+body.dark-mode .fs-sublabel,
+body.dark-mode .fs-optional,
+body.dark-mode .fs-radio-hint,
+body.dark-mode .fs-summary-row span { color: #9ca3af; }
+body.dark-mode .fs-input,
+body.dark-mode .fs-money input,
+body.dark-mode .fs-chip,
+body.dark-mode .fs-radio { background: #111827; border-color: #4b5563; color: #f3f4f6; }
+body.dark-mode .fs-chip[aria-pressed="true"] { background: #1e3a8a; border-color: #60a5fa; color: #dbeafe; }
+body.dark-mode .fs-money { border-color: #60a5fa; background: #111827; }
+body.dark-mode .fs-money span { background: #1e3a8a; color: #dbeafe; }
+body.dark-mode .fs-summary { background: #111827; color: #d1d5db; }
+body.dark-mode .fs-summary-bar { background: #374151; }
+body.dark-mode .fs-summary-bar span { background: #60a5fa; }
+body.dark-mode .fs-radio:has(input:checked) { border-color: #60a5fa; background: #172554; }
+body.dark-mode .form-sheet-save { background: #1d4ed8; }
+
 /* ===== PRINT: LAST-WORD OVERRIDES =====
    The glassmorphism rules for `#header-inner` and `.kpi-card` are declared
    further down the file with !important, so equal-specificity print rules

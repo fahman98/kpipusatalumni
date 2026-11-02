@@ -18,7 +18,7 @@ descriptions of PR #2 to #8.
 - The owner cannot easily re-enter lost data. Never write to live Firestore
   from a session, and never press reset / delete in a live app.
 - Test with `tests/` (see `tests/README.md`): `cd tests && npm install`
-  once, then `node run.js` (21 scenarios, ~3 min) against `mock-firebase.js`,
+  once, then `node run.js` (22 scenarios, ~3 min) against `mock-firebase.js`,
   which records every write instead of sending it. Clock pinned to
   29/10/2026. Add a scenario to `tests/run.js` for each behaviour change;
   extend the mock's seed data rather than touching live data. The proxy
@@ -81,17 +81,27 @@ descriptions of PR #2 to #8.
   Built: phase 1 (PWA layer + icon), phase 2 (phone dashboard), phase 3
   (Takwim chips + "Hari ini", Penjanaan balance + quarter summary, Butiran
   overview + full page on phones), phase 5 stage 1 (admin: value editor,
-  delete preview, "Perlu tindakan", Takwim chip/section "Selesai"). Not
-  yet: phase 4 (desktop + global colour #1747A6 / white phone header);
-  phase 5 stage 2 (full-screen add forms: Penjanaan "Sumber kerap" chips,
-  Kembara, Takwim status cards) and stage 3 (admin desktop table, with
-  phase 4). Agreed for admin: "Salin struktur" stays on the empty-year
+  delete preview, "Perlu tindakan", Takwim chip/section "Selesai"), phase 5
+  stage 2 (full-screen add forms). Not yet: phase 4 (desktop + global
+  colour #1747A6 / white phone header) and phase 5 stage 3 (admin desktop
+  table, with phase 4). Agreed for admin: "Salin struktur" stays on the empty-year
   screen only; native date pickers stay; the design's "Akan datang (Lalai)"
   status = empty status (follows the date); Sandaran / Sejarah / Zon Bahaya
   blocks stay; "Tambah ke takwim" from Kembara deferred.
 - Admin value editor (`showInputModal` options icon / eyebrow / note /
   step / target): stepper, live "pencapaian selepas simpan" preview, note
   that the figure is the running total since January.
+- Add / edit forms (Penjanaan, Takwim, Kembara-style "Tambah program") use
+  the form sheet in ui.js (`formSheetHtml`, `closeFormSheet`, class
+  `form-sheet`): dialog on desktop, full page on phones with Simpan in the
+  header; on phones opening pushes a history entry so Back closes it (the
+  Butiran popstate handler ignores a pop that lands on its own entry).
+  Penjanaan: "Sumber kerap" chips (repeated names first, then latest, max
+  5), new record defaults to this month, quarter hint, total after saving.
+  Takwim status as radio cards (`name="takwim-status"`, '' = ikut tarikh).
+  Count KPIs with dates (2026+) add programmes via `openProgramForm`
+  instead of the old inline Butiran form; other KPIs keep the inline form.
+  Save logic and payloads are unchanged.
 - Delete dialogs (`showConfirmModal` options `preview {title, meta}` and
   `impact {text, strong}`) show the record and the new total, and say a
   copy stays in Sejarah Perubahan (true since the audit snapshots).
