@@ -18,7 +18,7 @@ descriptions of PR #2 to #8.
 - The owner cannot easily re-enter lost data. Never write to live Firestore
   from a session, and never press reset / delete in a live app.
 - Test with `tests/` (see `tests/README.md`): `cd tests && npm install`
-  once, then `node run.js` (20 scenarios, ~2.5 min) against `mock-firebase.js`,
+  once, then `node run.js` (21 scenarios, ~3 min) against `mock-firebase.js`,
   which records every write instead of sending it. Clock pinned to
   29/10/2026. Add a scenario to `tests/run.js` for each behaviour change;
   extend the mock's seed data rather than touching live data. The proxy
@@ -37,7 +37,8 @@ descriptions of PR #2 to #8.
 - `js/ui.js` cards, details modal, confirm/input modals, formatting.
 - `js/status.js` status tiers and pace logic. `js/charts.js` Chart.js.
 - `js/takwim.js`, `js/penjanaan.js` the two other tabs. `js/admin.js` login,
-  logout, idle logout. `js/history.js` audit log viewer. `js/auth.js` admin
+  logout, idle logout. `js/history.js` audit log viewer. `js/todo.js` admin
+  "Perlu tindakan" panel (read-only). `js/auth.js` admin
   allow-list (`alumni@upsi.edu.my`, mirrored in `firestore.rules`).
 
 ## Data model (`artifacts/{appId}/public/data/...`)
@@ -79,8 +80,27 @@ descriptions of PR #2 to #8.
 - Design source: claude.ai canvas "Redesign KPI Pusat Alumni" (owner's).
   Built: phase 1 (PWA layer + icon), phase 2 (phone dashboard), phase 3
   (Takwim chips + "Hari ini", Penjanaan balance + quarter summary, Butiran
-  overview + full page on phones). Not yet: phase 4 (desktop + global
-  colour #1747A6 / white phone header).
+  overview + full page on phones), phase 5 stage 1 (admin: value editor,
+  delete preview, "Perlu tindakan", Takwim chip/section "Selesai"). Not
+  yet: phase 4 (desktop + global colour #1747A6 / white phone header);
+  phase 5 stage 2 (full-screen add forms: Penjanaan "Sumber kerap" chips,
+  Kembara, Takwim status cards) and stage 3 (admin desktop table, with
+  phase 4). Agreed for admin: "Salin struktur" stays on the empty-year
+  screen only; native date pickers stay; the design's "Akan datang (Lalai)"
+  status = empty status (follows the date); Sandaran / Sejarah / Zon Bahaya
+  blocks stay; "Tambah ke takwim" from Kembara deferred.
+- Admin value editor (`showInputModal` options icon / eyebrow / note /
+  step / target): stepper, live "pencapaian selepas simpan" preview, note
+  that the figure is the running total since January.
+- Delete dialogs (`showConfirmModal` options `preview {title, meta}` and
+  `impact {text, strong}`) show the record and the new total, and say a
+  copy stays in Sejarah Perubahan (true since the audit snapshots).
+- "Perlu tindakan" (admin, dashboard, hidden when empty): Kembara ended
+  with no `hadir`; current year only: no Penjanaan record in the current
+  quarter (from day 15 of it), no upcoming Takwim activity (next year's
+  takwim counts). Reads q4 + takwim with one-off gets (`getQuarterOnce`,
+  `getTakwimEvents`); buttons only open Butiran / the add forms. Mock flag
+  `todos` (harness) raises all three.
 - Butiran on phones is the same details modal styled as a full page (all
   admin add/edit/delete logic untouched). Opening it pushes one history
   entry so Android Back closes it; close/back/backdrop/Escape go through

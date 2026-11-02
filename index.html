@@ -58,8 +58,8 @@
     <link rel="apple-touch-icon" href="./images/apple-touch-icon.png">
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="style.css?v=5.8">
-    <link rel="stylesheet" href="tailwind.css?v=17">
+    <link rel="stylesheet" href="style.css?v=5.9">
+    <link rel="stylesheet" href="tailwind.css?v=18">
 </head>
 
 <body class="bg-gray-100 relative overflow-x-hidden">
@@ -216,7 +216,7 @@
             <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse flex-shrink-0"></span>
             <div class="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
                 <span class="ribbon-title text-amber-800 font-bold text-sm">Mod Admin Aktif</span>
-                <span class="ribbon-sub text-amber-600 text-xs hidden sm:inline">— Semua perubahan disimpan ke Firestore secara langsung</span>
+                <span class="ribbon-sub text-amber-600 text-xs hidden sm:inline">Semua perubahan disimpan ke Firestore secara langsung</span>
             </div>
         </div>
 
@@ -237,6 +237,16 @@
 
         <!-- ===================== VIEW: DASHBOARD ===================== -->
         <div id="view-dashboard">
+
+        <!-- Admin "Perlu tindakan" (redesign canvas, Admin-Main). Read-only
+             reminders filled by js/todo.js; hidden for guests and when empty -->
+        <section id="admin-todo" class="hidden admin-todo" aria-labelledby="admin-todo-title">
+            <div class="admin-todo-head">
+                <h2 id="admin-todo-title">Perlu tindakan</h2>
+                <span id="admin-todo-count" class="admin-todo-count">0</span>
+            </div>
+            <div id="admin-todo-list"></div>
+        </section>
 
         <!-- Empty State / Clone Data Container (Hidden by default) -->
         <div id="empty-state-container"
@@ -1020,6 +1030,14 @@
                                         Tindakan
                                         ini tidak boleh diundur.</p>
                                 </div>
+                                <!-- Record being deleted and its effect on the totals
+                                     (redesign canvas, Admin-Padam); filled by
+                                     showConfirmModal's preview / impact options -->
+                                <div id="confirm-modal-preview" class="hidden confirm-preview">
+                                    <p id="confirm-modal-preview-title" class="confirm-preview-title"></p>
+                                    <p id="confirm-modal-preview-meta" class="confirm-preview-meta"></p>
+                                </div>
+                                <p id="confirm-modal-impact" class="hidden confirm-impact"></p>
                                 <!-- Shown only when showConfirmModal is given requireText -->
                                 <div id="confirm-modal-typed" class="hidden mt-3">
                                     <label id="confirm-modal-input-label" for="confirm-modal-input"
@@ -1046,13 +1064,39 @@
                 <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
                 <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
                 <div class="inline-block align-bottom bg-white rounded-t-2xl sm:rounded-2xl sheet-panel text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
-                    <div class="bg-white px-6 pt-5 pb-4">
-                        <h3 class="text-lg font-bold text-gray-900 mb-1" id="input-modal-title">Kemaskini Nilai</h3>
-                        <p class="text-sm text-gray-500 mb-3" id="input-modal-message">Masukkan nilai baharu:</p>
+                    <!-- Value editor (redesign canvas, Admin-KemasKini): stepper, live
+                         "achievement after saving" preview and, for cumulative KPIs,
+                         a reminder that the figure is the running total -->
+                    <div class="bg-white px-5 sm:px-6 pt-5 pb-5 flex flex-col gap-5">
+                        <div class="flex items-start gap-3">
+                            <div class="value-editor-icon" aria-hidden="true"><i id="input-modal-icon" class="ph-duotone ph-chart-bar"></i></div>
+                            <div class="flex-1 min-w-0">
+                                <p id="input-modal-eyebrow" class="text-xs font-bold text-gray-500">Kemas kini nilai</p>
+                                <h3 class="text-lg font-extrabold text-gray-900 leading-tight" id="input-modal-title">Kemaskini Nilai</h3>
+                            </div>
+                            <button type="button" id="input-modal-close" class="value-editor-close" aria-label="Tutup">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12 M18 6L6 18"></path></svg>
+                            </button>
+                        </div>
+
+                        <div class="flex flex-col gap-2">
+                            <label for="input-modal-field" id="input-modal-message" class="text-sm font-bold text-gray-800">Jumlah setakat ini</label>
+                            <div class="flex items-center gap-2.5">
+                                <button type="button" id="input-modal-minus" class="value-step-btn" aria-label="Kurangkan">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path></svg>
+                                </button>
+                                <input type="number" id="input-modal-field" inputmode="decimal" min="0" class="value-editor-input" placeholder="0">
+                                <button type="button" id="input-modal-plus" class="value-step-btn" aria-label="Tambah">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14 M5 12h14"></path></svg>
+                                </button>
+                            </div>
+                            <p id="input-modal-preview" class="hidden text-sm text-gray-500"></p>
+                        </div>
+
                         <!-- Month selector (shown only for 2026+) -->
-                        <div id="input-modal-month-row" class="hidden mb-3">
-                            <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Bulan Data</label>
-                            <select id="input-modal-month" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-brand-primary focus:border-brand-primary bg-white text-gray-700 text-sm font-medium">
+                        <div id="input-modal-month-row" class="hidden flex flex-col gap-2">
+                            <label for="input-modal-month" class="text-sm font-bold text-gray-800">Bulan data</label>
+                            <select id="input-modal-month" class="value-editor-select">
                                 <option value="1">Januari</option>
                                 <option value="2">Februari</option>
                                 <option value="3">Mac</option>
@@ -1067,15 +1111,16 @@
                                 <option value="12">Disember</option>
                             </select>
                         </div>
-                        <input type="number" id="input-modal-field"
-                            class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-brand-primary focus:border-brand-primary text-center text-xl font-bold"
-                            placeholder="0">
-                    </div>
-                    <div class="bg-gray-50 px-6 py-3 flex flex-row-reverse gap-2">
-                        <button id="input-modal-ok-btn"
-                            class="inline-flex justify-center rounded-lg border border-transparent shadow-sm px-4 py-2 bg-brand-primary text-sm font-medium text-white hover:bg-blue-800 focus:outline-none">Simpan</button>
-                        <button id="input-modal-cancel-btn"
-                            class="inline-flex justify-center rounded-lg border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none">Batal</button>
+
+                        <div id="input-modal-note" class="hidden value-editor-note">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="flex-shrink-0 mt-px"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z M12 16v-4 M12 8h.01"></path></svg>
+                            <p id="input-modal-note-text" class="m-0"></p>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2.5">
+                            <button id="input-modal-cancel-btn" type="button" class="value-editor-cancel">Batal</button>
+                            <button id="input-modal-ok-btn" type="button" class="value-editor-save">Simpan</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1153,7 +1198,7 @@
         </div>
 
         <!-- Load Main Script as Module -->
-        <script type="module" src="js/main.js?v=6.2"></script>
+        <script type="module" src="js/main.js?v=6.3"></script>
 </body>
 
 </html>

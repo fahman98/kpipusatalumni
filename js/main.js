@@ -21,6 +21,7 @@ import {
     showLoading,
     hideLoading,
 } from './ui.js';
+import { refreshAdminTodo, hideAdminTodo } from './todo.js';
 
 import {
     subscribeToQuarterData,
@@ -270,6 +271,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 hideTableView();
                 if (adminSetupActions) adminSetupActions.classList.add('hidden');
                 setHeaderTitle('Ralat Sambungan');
+                hideAdminTodo();
                 return;
             }
 
@@ -289,6 +291,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 setHeaderTitle('Tiada Data');
+                hideAdminTodo();
                 return;
             }
 
@@ -365,8 +368,9 @@ document.addEventListener('DOMContentLoaded', () => {
                             : (currentMonth >= monthStart && currentMonth <= monthEnd ? currentMonth : monthStart);
 
                         showInputModal(
-                            `Kemaskini Nilai: ${kpi.name}`,
-                            "Masukkan nilai pencapaian terkini:",
+                            kpi.name,
+                            kpi.isPercentage ? 'Skor terkini (%)'
+                                : kpi.isCurrency ? 'Jumlah terkumpul (RM)' : 'Jumlah setakat ini',
                             currentVal,
                             // Return false to reject the value — showInputModal then
                             // keeps the dialog open with the entry intact instead of
@@ -387,7 +391,20 @@ document.addEventListener('DOMContentLoaded', () => {
                                 }
                                 updateKpiValueInFirestore(quarterKey, kpi.id, parsed, showMonth ? bulan : null);
                             },
-                            showMonth ? { showMonth: true, defaultMonth, monthRange: [monthStart, monthEnd] } : {}
+                            {
+                                ...(showMonth ? { showMonth: true, defaultMonth, monthRange: [monthStart, monthEnd] } : {}),
+                                eyebrow: `Kemas kini nilai · Suku ${qNum} ${selectedYear}`,
+                                icon: getPhosphorIcon(kpi.icon),
+                                target: kpi.target,
+                                isPercentage: !!kpi.isPercentage,
+                                isCurrency: !!kpi.isCurrency,
+                                step: kpi.isCurrency ? 100 : 1,
+                                // Values are cumulative; the commonest data-entry slip is
+                                // typing only this month's figure
+                                note: kpi.isPercentage
+                                    ? 'Masukkan skor terkini. Skor ini dipaparkan terus sebagai pencapaian.'
+                                    : 'Masukkan jumlah terkumpul sejak Januari, bukan jumlah bulan ini sahaja.'
+                            }
                         );
                     });
                 }
@@ -461,6 +478,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             setEditMode(isEditMode);
+            refreshAdminTodo(selectedYear, isEditMode);
 
             filterDashboardCards(activeStatusFilter);
             syncHeroCounts();
@@ -663,6 +681,9 @@ document.addEventListener('DOMContentLoaded', () => {
             initTakwim(viewTakwim, isEditMode, selectedYear);
         } else if (view === 'penjanaan' && viewPenjanaan) {
             initPenjanaan(viewPenjanaan, isEditMode, selectedYear);
+        } else if (view === 'dashboard' && isEditMode) {
+            // Records may have been added on the other tabs
+            refreshAdminTodo(selectedYear, isEditMode);
         }
 
         window.scrollTo({ top: 0, behavior: 'smooth' });

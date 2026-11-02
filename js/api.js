@@ -446,13 +446,16 @@ export async function updateKpiStructure(kpiId, newName, newTarget) {
 }
 
 // 3. DELETE KPI
-// 3. DELETE KPI
 export function deleteKpi(kpiId) {
     if (!isEditMode) return;
 
+    // Name the KPI in the dialog (any cached quarter has it)
+    const known = Object.values(kpiDataCache)
+        .map(d => d && Array.isArray(d.kpis) ? d.kpis.find(k => k.id === kpiId) : null)
+        .find(Boolean);
     showConfirmModal(
-        "Padam KPI?",
-        "Adakah anda pasti mahu memadam KPI ini dari SEMUA suku tahun? Tindakan ini tidak boleh diundur.",
+        "Padam KPI ini?",
+        "KPI ini akan dibuang daripada SEMUA suku tahun untuk semua pengguna, bersama butirannya. Salinannya disimpan dalam Sejarah Perubahan.",
         async () => {
             if (!assertOnline()) return;
             showLoading("Memadam KPI...");
@@ -479,6 +482,10 @@ export function deleteKpi(kpiId) {
             } finally {
                 hideLoading();
             }
+        },
+        {
+            okLabel: 'Padam KPI',
+            preview: known ? { title: known.name, meta: `Sasaran tahunan ${known.isCurrency ? "RM " : ""}${Number(known.target || 0).toLocaleString("en-US")}${known.isPercentage ? "%" : ""} · tahun ${selectedYear}` } : null
         }
     );
 }
@@ -1216,6 +1223,32 @@ export function subscribeTakwim(year, callback) {
         console.error("subscribeTakwim error:", e);
         callback([]);
         return () => {};
+    }
+}
+
+// One-off READ of a year's takwim events (admin "Perlu tindakan" panel).
+// Returns null when it cannot be read, so the caller can say nothing rather
+// than wrongly report an empty takwim.
+export async function getTakwimEvents(year) {
+    try {
+        const snap = await takwimDocRef(year).get();
+        return (snap.exists && Array.isArray(snap.data().events)) ? snap.data().events : [];
+    } catch (e) {
+        console.warn('getTakwimEvents failed:', e);
+        return null;
+    }
+}
+
+// One-off READ of a quarter document of the selected year, bypassing
+// kpiDataCache (that cache only follows the quarter on screen, so q4 can be
+// stale after an edit made from an earlier quarter). null on failure / none.
+export async function getQuarterOnce(quarterKey) {
+    try {
+        const snap = await db.collection(`artifacts/${getAppId()}/public/data/kpi-${selectedYear}`).doc(quarterKey).get();
+        return snap.exists ? snap.data() : null;
+    } catch (e) {
+        console.warn('getQuarterOnce failed:', e);
+        return null;
     }
 }
 
