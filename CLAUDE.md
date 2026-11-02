@@ -8,6 +8,8 @@ descriptions of PR #2 to #8.
 ## Working with the owner
 - Chat in Manglish ("aku"/"kau"). UI text, toasts and official copy: formal
   Bahasa Melayu (DBP spelling), friendly not stiff. No Indonesian words.
+  Compounds stay apart: "kemas kini", "dikemas kini", "mengemas kini"
+  (joined only with a circumfix: "dikemaskinikan").
 - Never use em dashes (—) in anything you write; a hyphen is fine.
 - Dates DD/MM/YYYY (`toLocaleDateString('en-GB')`), money `RM 1,234.00`.
 - When there are options, recommend one and say why. Ask with clickable

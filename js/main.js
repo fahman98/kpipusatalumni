@@ -121,7 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentQuarter = 'q1';
     let quarterSwitchTimeout = null;
 
-    // --- GLOBAL "DATA DIKEMASKINI" FOOTER ---
+    // --- GLOBAL "DATA DIKEMAS KINI" FOOTER ---
     // Driven by a single per-year marker bumped by ANY write (KPI / Penjanaan /
     // Takwim). Falls back to the viewed quarter's footerDate until that marker
     // exists for the year.
@@ -132,14 +132,14 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderFooter() {
         if (!footerNote) return;
         const label = lastUpdatedLabel || quarterFooterDate;
-        footerNote.textContent = label ? `Data dikemaskini pada ${label}.` : '';
+        footerNote.textContent = label ? `Data dikemas kini pada ${label}.` : '';
     }
 
     function subscribeFooter(year) {
         if (unsubLastUpdated) { unsubLastUpdated(); unsubLastUpdated = null; }
         lastUpdatedLabel = null;
         // Drop the previous year's quarter date too, or a year with no data
-        // kept showing the last year's "Data dikemaskini pada ..." line.
+        // kept showing the last year's "Data dikemas kini pada ..." line.
         quarterFooterDate = '';
         renderFooter();
         unsubLastUpdated = subscribeLastUpdated(year, (label) => {
@@ -848,7 +848,7 @@ document.addEventListener('DOMContentLoaded', () => {
         add('.show-details-btn', detailsLabel ? detailsLabel.textContent : 'Butiran', 'fa-list-ul', true);
         add('.show-chart-btn', 'Sejarah prestasi', 'fa-chart-line');
         if (isEditMode) {
-            add('.edit-kpi-btn', 'Kemaskini nilai', 'fa-pencil-alt', true);
+            add('.edit-kpi-btn', 'Kemas kini nilai', 'fa-pencil-alt', true);
             add('.settings-btn', 'Tetapan KPI', 'fa-cog');
             add('.info-btn', 'Edit deskripsi', 'fa-align-left');
         }

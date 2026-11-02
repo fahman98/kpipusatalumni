@@ -636,7 +636,7 @@ export function createKpiCard(kpi) {
         targetDisplay.remove();
     }
 
-    // #4: Tarikh nilai terakhir dikemaskini
+    // #4: Tarikh nilai terakhir dikemas kini
     const updatedAtEl = cardElement.querySelector('.kpi-updated-at');
     if (updatedAtEl) {
         if (kpi.updatedAt) {

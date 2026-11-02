@@ -157,9 +157,9 @@ const scenarios = {
         ({ ctx, page } = await open({ mobile: true, admin: true }));
         await page.locator('.kpi-row').first().click(); await page.waitForTimeout(500);
         const adminActions = await page.$$eval('#focus-actions .focus-action', b => b.map(x => x.textContent.trim()));
-        assert.ok(adminActions.includes('Kemaskini nilai') && adminActions.includes('Tetapan KPI'), adminActions.join(', '));
-        await page.locator('#focus-actions .focus-action', { hasText: 'Kemaskini nilai' }).click(); await page.waitForTimeout(500);
-        assert.equal(await page.isVisible('#input-modal'), true, 'Kemaskini nilai opens the value editor');
+        assert.ok(adminActions.includes('Kemas kini nilai') && adminActions.includes('Tetapan KPI'), adminActions.join(', '));
+        await page.locator('#focus-actions .focus-action', { hasText: 'Kemas kini nilai' }).click(); await page.waitForTimeout(500);
+        assert.equal(await page.isVisible('#input-modal'), true, 'Kemas kini nilai opens the value editor');
         await ctx.close();
 
         ({ ctx, page } = await open({}));
@@ -540,7 +540,7 @@ const scenarios = {
         await page.click('#history-open-btn'); await page.waitForTimeout(800);
         assert.equal(await page.$$eval('#history-list li', l => l.length), 30);
         const first = await page.$eval('#history-list li', l => l.innerText);
-        assert.match(first, /Kemaskini nilai/);
+        assert.match(first, /Kemas kini nilai/);
         assert.match(first, /4,600 → 4,900/);
         const second = await page.$$eval('#history-list li', l => l[1].innerText);
         assert.match(second, /RM 5,000/);

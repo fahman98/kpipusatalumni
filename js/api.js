@@ -33,7 +33,7 @@ const getAppId = () => {
     return "dashboard-alumni-kpi";
 };
 
-// Timestamp string for the "Data dikemaskini pada ..." dashboard footer.
+// Timestamp string for the "Data dikemas kini pada ..." dashboard footer.
 // Stamped on every KPI write so the footer reflects the latest change.
 const nowFooterDate = () => new Date().toLocaleDateString('ms-MY', {
     day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
@@ -415,7 +415,7 @@ export async function updateKpiStructure(kpiId, newName, newTarget) {
         return;
     }
 
-    showLoading("Mengemaskini Struktur...");
+    showLoading("Mengemas kini struktur...");
 
     try {
         await runQuarterTransaction(ALL_QUARTERS, (data) => {
@@ -432,13 +432,13 @@ export async function updateKpiStructure(kpiId, newName, newTarget) {
             });
         });
         await writeAuditLog('EDIT_KPI_STRUCTURE', { kpiId, newName: cleanName, newTarget: parsedTarget });
-        showToastNotification("Struktur KPI dikemaskini!", "success");
+        showToastNotification("Struktur KPI dikemas kini!", "success");
     } catch (e) {
         console.error(e);
         if (e.code === 'permission-denied') {
             showToastNotification("AKSES DITOLAK.", "danger");
         } else {
-            showToastNotification("Gagal kemaskini.", "danger");
+            showToastNotification("Gagal kemas kini.", "danger");
         }
     } finally {
         hideLoading();
@@ -692,7 +692,7 @@ export async function saveBulkKpiValues(kpiId, valuesObj) {
             data.kpis[kpiIndex].value = valuesObj[qKey];
         });
         await writeAuditLog('BULK_UPDATE_VALUES', { kpiId, values: valuesObj });
-        showToastNotification('Nilai semua suku dikemaskini!', 'success');
+        showToastNotification('Nilai semua suku dikemas kini!', 'success');
     } catch (e) {
         console.error(e);
         showToastNotification("Ralat simpan nilai bulk.", "danger");
@@ -760,7 +760,7 @@ export async function updateKpiValueInFirestore(quarterKey, kpiId, newValue, bul
                 t.update(ref, { kpis: data.kpis, footerDate: nowFooterDate() }));
         });
         await writeAuditLog('UPDATE_VALUE', { kpiId, quarterKey, oldValue, newValue, bulan });
-        showToastNotification('Nilai dikemaskini!', 'success');
+        showToastNotification('Nilai dikemas kini!', 'success');
     } catch (e) {
         console.error(e);
         showToastNotification("Ralat simpan.", "danger");
@@ -810,7 +810,7 @@ export async function updateKpiDetailsList(quarterKey, kpiId, itemName, isChecke
             }
         });
         await writeAuditLog('TOGGLE_CHECKLIST_ITEM', { kpiId, quarterKey, itemName, isChecked });
-        showToastNotification('Status dikemaskini!', 'success');
+        showToastNotification('Status dikemas kini!', 'success');
     } catch (e) {
         console.error(e);
         showToastNotification("Ralat simpan.", "danger");
@@ -868,7 +868,7 @@ export async function updateKpiTargetListItem(quarterKey, kpiId, payload, action
             if (kpi.details.targetList) kpi.value = achieved.length;
         });
         await writeAuditLog('UPDATE_TARGET_LIST', { kpiId, quarterKey, action, payload });
-        showToastNotification('Senarai dikemaskini!', 'success');
+        showToastNotification('Senarai dikemas kini!', 'success');
         const btn = document.querySelector(`.show-details-btn[data-kpi-id="${kpiId}"]`);
         closeModal(document.getElementById('details-modal'));
         showDetailsModal(kpiId, btn);
@@ -1028,7 +1028,7 @@ export async function updateKpiBreakdownList(quarterKey, kpiId, payload, action)
             ...(action === 'edit' ? { before: auditItem, after: payload && payload.data } : {}),
             ...(action === 'add' ? { added: addPayload } : {})
         });
-        showToastNotification('Butiran dikemaskini!', 'success');
+        showToastNotification('Butiran dikemas kini!', 'success');
         const btn = document.querySelector(`.show-details-btn[data-kpi-id="${kpiId}"]`);
         closeModal(document.getElementById('details-modal'));
         showDetailsModal(kpiId, btn);
@@ -1184,7 +1184,7 @@ export async function updateKpiProgressListItem(quarterKey, kpiId, itemName, sub
             }
         });
         await writeAuditLog('UPDATE_PROGRESS_ITEM', { kpiId, quarterKey, itemName, subItemName, newValue });
-        showToastNotification('Progres dikemaskini!', 'success');
+        showToastNotification('Progres dikemas kini!', 'success');
         const btn = document.querySelector(`.show-details-btn[data-kpi-id="${kpiId}"]`);
         closeModal(document.getElementById('details-modal'));
         showDetailsModal(kpiId, btn);
@@ -1297,7 +1297,7 @@ export async function updateTakwimEvent(year, eventId, updatedData) {
         showToastNotification("Tiada sambungan internet.", "danger");
         return;
     }
-    showLoading("Mengemaskini aktiviti...");
+    showLoading("Mengemas kini aktiviti...");
     let before = null;   // the event as it was, for the audit log
     try {
         const ref = takwimDocRef(year);
@@ -1323,13 +1323,13 @@ export async function updateTakwimEvent(year, eventId, updatedData) {
             t.set(ref, { events }, { merge: true });
         });
         await writeAuditLog('EDIT_TAKWIM', { year, eventId, before, after: updatedData });
-        showToastNotification("Aktiviti dikemaskini!", "success");
+        showToastNotification("Aktiviti dikemas kini!", "success");
     } catch (e) {
         console.error("updateTakwimEvent error:", e);
         if (e.code === 'permission-denied') {
             showToastNotification("AKSES DITOLAK: Admin sahaja.", "danger");
         } else {
-            showToastNotification("Gagal mengemaskini aktiviti.", "danger");
+            showToastNotification("Gagal mengemas kini aktiviti.", "danger");
         }
     } finally {
         hideLoading();
