@@ -18,7 +18,7 @@ descriptions of PR #2 to #8.
 - The owner cannot easily re-enter lost data. Never write to live Firestore
   from a session, and never press reset / delete in a live app.
 - Test with `tests/` (see `tests/README.md`): `cd tests && npm install`
-  once, then `node run.js` (23 scenarios, ~3 min) against `mock-firebase.js`,
+  once, then `node run.js` (24 scenarios, ~3 min) against `mock-firebase.js`,
   which records every write instead of sending it. Clock pinned to
   29/10/2026. Add a scenario to `tests/run.js` for each behaviour change;
   extend the mock's seed data rather than touching live data. The proxy
@@ -38,7 +38,8 @@ descriptions of PR #2 to #8.
 - `js/status.js` status tiers and pace logic. `js/charts.js` Chart.js.
 - `js/takwim.js`, `js/penjanaan.js` the two other tabs. `js/admin.js` login,
   logout, idle logout. `js/history.js` audit log viewer. `js/todo.js` admin
-  "Perlu tindakan" panel (read-only). `js/auth.js` admin
+  "Perlu tindakan" panel (read-only). `js/admin-table.js` admin desktop
+  table (borrows the hidden cards' buttons). `js/auth.js` admin
   allow-list (`alumni@upsi.edu.my`, mirrored in `firestore.rules`).
 
 ## Data model (`artifacts/{appId}/public/data/...`)
@@ -84,9 +85,16 @@ descriptions of PR #2 to #8.
   overview + full page on phones), phase 5 stage 1 (admin: value editor,
   delete preview, "Perlu tindakan", Takwim chip/section "Selesai"), phase 5
   stage 2 (full-screen add forms), phase 4a (brand colour #1747A6 everywhere
-  incl. the PDF, white app header), phase 4b (desktop dashboard body). Not
-  yet: 4c = phase 5 stage 3 (admin desktop table with "Perlu tindakan"
-  aside).
+  incl. the PDF, white app header), phase 4b (desktop dashboard body), 4c =
+  phase 5 stage 3 (admin desktop table). The whole canvas is now built.
+- Admin desktop (4c, `js/admin-table.js`): admin at >= 1024px gets
+  `body.admin-desk-on`: `#admin-desk` table (kind, value / target,
+  achievement, actions) + `#admin-aside` ("Perlu tindakan" moved in by
+  `syncAdminLayout`, and a "Simpanan" box that only states online/offline,
+  plus a link to Sejarah Perubahan). Cards stay in the DOM hidden; every
+  table button clicks the same button on its card (like the phone KPI
+  sheet), so the module writes nothing. The Jadual toggle and executive
+  table are hidden there; filterDashboardCards also filters `.admin-row`.
 - Dashboard body (4b): `#dash-top` = page heading + `#quarter-toolbar`
   (segmented quarters, "Laporan PDF", Jadual/Kad toggle); on phones it
   moves above the hero (order -1). `#dash-summary` = hero + `#stats-bar`

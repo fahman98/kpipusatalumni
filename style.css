@@ -2754,6 +2754,127 @@ body.dark-mode .kpi-status-chip-bad  { background: #450a0a; color: #f87171; }
     #stats-bar { display: none !important; }
 }
 
+/* ===== ADMIN DESKTOP (redesign canvas phase 4c, Admin-Main) =====
+   body.admin-desk-on (js/admin-table.js): admin at 1024px or wider. The
+   table replaces the cards (kept in the DOM, hidden), "Perlu tindakan"
+   moves to the side column. */
+.admin-desk { display: none; }
+body.admin-desk-on .admin-desk {
+    display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: start; margin-bottom: 24px;
+}
+body.admin-desk-on #kpi-grid-container > .kpi-card,
+body.admin-desk-on #view-toggle-btn,
+body.admin-desk-on #kpi-table-container,
+body.admin-desk-on #open-add-kpi-modal-btn { display: none !important; }
+body.admin-desk-on #add-kpi-container { margin-top: 0; }
+@media (min-width: 1280px) {
+    body.admin-desk-on .admin-desk { grid-template-columns: minmax(0, 1fr) 340px; }
+}
+.admin-table-card { background: #fff; border: 1px solid #E2E7EF; border-radius: 16px; overflow: hidden; min-width: 0; }
+.admin-table-head {
+    padding: 16px 20px; border-bottom: 1px solid #E2E7EF;
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;
+}
+.admin-table-head h2 { margin: 0; font-size: 17px; font-weight: 800; color: #0E1A2B; }
+.admin-table-count { margin-left: 6px; font-size: 13px; font-weight: 700; color: #5B6779; }
+.admin-table-head p { margin: 2px 0 0; font-size: 13px; color: #5B6779; }
+.admin-table-tools { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.admin-table-avg { font-size: 13px; color: #5B6779; }
+.admin-table-avg strong { color: #0E1A2B; font-weight: 800; font-variant-numeric: tabular-nums; }
+.admin-add-btn {
+    min-height: 40px; display: inline-flex; align-items: center; gap: 8px; padding: 0 14px;
+    border: 0; border-radius: 10px; background: #1747A6; color: #fff; font-size: 14px; font-weight: 800;
+}
+.admin-add-btn:hover { background: #0F2F6E; }
+.admin-table-scroll { overflow-x: auto; }
+.admin-kt { width: 100%; border-collapse: collapse; font-size: 14px; }
+.admin-kt th {
+    text-align: left; padding: 10px 12px; background: #F7F9FC; border-bottom: 1px solid #E2E7EF;
+    font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #5B6779; white-space: nowrap;
+}
+.admin-kt td { padding: 12px 12px; border-bottom: 1px solid #EDF0F5; vertical-align: middle; color: #0E1A2B; }
+.admin-kt tr:last-child td { border-bottom: 0; }
+.admin-kt tr.hidden { display: none; }
+.admin-kt tbody tr:hover td { background: #FAFBFD; }
+.admin-kpi { display: flex; align-items: center; gap: 12px; min-width: 200px; }
+.admin-kpi-icon {
+    width: 36px; height: 36px; flex-shrink: 0; border-radius: 10px; background: #E8EEFA; color: #1747A6;
+    font-size: 18px; --ph-fill-opacity: 0.25; display: flex; align-items: center; justify-content: center;
+}
+.admin-kpi-text { display: flex; flex-direction: column; min-width: 0; }
+.admin-kpi-name { font-weight: 700; line-height: 1.3; }
+.admin-kpi-kind { font-size: 12px; font-weight: 600; color: #5B6779; }
+.admin-kt .c-val { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.admin-kt .c-val span { display: block; color: #5B6779; font-size: 13px; }
+.admin-kt .c-pct { min-width: 140px; }
+.admin-kt .c-act { width: 1%; }
+.admin-pct { display: flex; align-items: center; gap: 10px; }
+.admin-bar { flex: 1; height: 6px; border-radius: 999px; background: #EDF0F5; overflow: hidden; min-width: 60px; }
+.admin-bar span { display: block; height: 6px; border-radius: 999px; }
+.admin-pct-num { font-size: 13px; font-weight: 800; font-variant-numeric: tabular-nums; min-width: 46px; text-align: right; }
+.admin-tier { display: inline-block; margin-top: 4px; font-size: 11px; font-weight: 700; }
+.admin-tier-good { color: #12703F; }
+.admin-tier-ok   { color: #8F5300; }
+.admin-tier-bad  { color: #B42E24; }
+.admin-actions { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+.admin-primary-btn {
+    min-height: 36px; padding: 0 12px; border: 1px solid #C7D0DD; border-radius: 9px; background: #fff;
+    color: #0E1A2B; font-size: 13px; font-weight: 700; white-space: nowrap;
+}
+.admin-primary-btn:hover { border-color: #1747A6; color: #1747A6; }
+.admin-icon-btn {
+    width: 36px; height: 36px; flex-shrink: 0; border: 0; border-radius: 9px; background: #F3F5F9;
+    color: #5B6779; display: inline-flex; align-items: center; justify-content: center; font-size: 13px;
+}
+.admin-icon-btn:hover { background: #E8EEFA; color: #1747A6; }
+.admin-aside { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.admin-aside .admin-todo { margin-bottom: 0; }
+.admin-aside #admin-todo-list { grid-template-columns: 1fr; }
+.admin-aside .admin-todo-row { border-right: 0; border-bottom: 1px solid #E2E7EF; }
+.admin-aside .admin-todo-row:last-child { border-bottom: 0; }
+.admin-save-box {
+    background: #fff; border: 1px solid #E2E7EF; border-radius: 16px; padding: 16px 20px;
+    display: flex; flex-direction: column; gap: 6px;
+}
+.admin-save-box h2 { margin: 0 0 4px; font-size: 15px; font-weight: 800; color: #0E1A2B; }
+.admin-save-status { margin: 0; font-size: 13px; font-weight: 700; }
+.admin-save-status.is-online { color: #12703F; }
+.admin-save-status.is-offline { color: #8F5300; }
+.admin-save-note { margin: 0; font-size: 13px; color: #5B6779; }
+.admin-link-btn {
+    align-self: flex-start; min-height: 32px; padding: 0; border: 0; background: transparent;
+    color: #1747A6; font-size: 13px; font-weight: 800; display: inline-flex; align-items: center; gap: 6px;
+}
+.admin-link-btn i { font-size: 11px; }
+.admin-link-btn:hover { text-decoration: underline; }
+body.dark-mode .admin-table-card,
+body.dark-mode .admin-save-box { background: #1f2937; border-color: #374151; }
+body.dark-mode .admin-table-head,
+body.dark-mode .admin-kt th,
+body.dark-mode .admin-kt td { border-color: #374151; }
+body.dark-mode .admin-kt th { background: #111827; color: #9ca3af; }
+body.dark-mode .admin-kt td,
+body.dark-mode .admin-table-head h2,
+body.dark-mode .admin-table-avg strong,
+body.dark-mode .admin-save-box h2 { color: #f3f4f6; }
+body.dark-mode .admin-kt tbody tr:hover td { background: #111827; }
+body.dark-mode .admin-table-head p,
+body.dark-mode .admin-table-count,
+body.dark-mode .admin-table-avg,
+body.dark-mode .admin-kpi-kind,
+body.dark-mode .admin-kt .c-val span,
+body.dark-mode .admin-save-note { color: #9ca3af; }
+body.dark-mode .admin-kpi-icon { background: #1e3a8a; color: #93c5fd; }
+body.dark-mode .admin-bar { background: #374151; }
+body.dark-mode .admin-primary-btn { background: #111827; border-color: #4b5563; color: #f3f4f6; }
+body.dark-mode .admin-icon-btn { background: #111827; color: #d1d5db; }
+body.dark-mode .admin-tier-good { color: #6FD39B; }
+body.dark-mode .admin-tier-ok   { color: #F2B54A; }
+body.dark-mode .admin-tier-bad  { color: #f87171; }
+body.dark-mode .admin-save-status.is-online { color: #6FD39B; }
+body.dark-mode .admin-link-btn { color: #93c5fd; }
+@media print { .admin-desk { display: none !important; } body.admin-desk-on #kpi-grid-container > .kpi-card { display: flex !important; } }
+
 /* ===== PRINT: LAST-WORD OVERRIDES =====
    The glassmorphism rules for `#header-inner` and `.kpi-card` are declared
    further down the file with !important, so equal-specificity print rules
