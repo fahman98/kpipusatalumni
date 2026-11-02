@@ -44,6 +44,21 @@ function formatDate(dateStr) {
     return `${day} ${BULAN_MY[monthIdx] || m} ${y}`;
 }
 
+// Delete confirmation showing which activity goes (redesign canvas, Admin-Padam)
+function confirmDeleteEvent(ev) {
+    const when = ev.dateTo && ev.dateTo !== ev.date
+        ? `${formatDate(ev.date)} hingga ${formatDate(ev.dateTo)}` : formatDate(ev.date);
+    showConfirmModal(
+        'Padam aktiviti ini?',
+        'Aktiviti akan dibuang daripada takwim untuk semua pengguna. Salinannya disimpan dalam Sejarah Perubahan.',
+        async () => { await deleteTakwimEvent(currentYear, ev.id); },
+        {
+            okLabel: 'Padam aktiviti',
+            preview: { title: ev.title || 'Aktiviti tanpa tajuk', meta: [when, ev.location].filter(Boolean).join(' · ') }
+        }
+    );
+}
+
 // Split date badge into day / mon / year. Supports optional dateTo for ranges.
 function dateBadgeParts(dateStr, dateToStr) {
     const p = String(dateStr || '').split('-');
@@ -338,11 +353,7 @@ function openDetailModal(ev) {
         });
         actions.querySelector('#takwim-detail-delete').addEventListener('click', () => {
             closeModal(modal);
-            showConfirmModal(
-                'Padam Aktiviti?',
-                `Adakah anda pasti mahu memadam "${ev.title}"? Tindakan ini tidak boleh diundur.`,
-                async () => { await deleteTakwimEvent(currentYear, ev.id); }
-            );
+            confirmDeleteEvent(ev);
         });
     } else {
         actions.innerHTML = `
@@ -467,7 +478,7 @@ function render() {
     const chips = [
         ['semua', 'Semua', sorted.length],
         ['akan-datang', 'Akan datang', today.length + upcoming.length],
-        ['berlangsung', 'Telah berlangsung', past.length],
+        ['berlangsung', 'Selesai', past.length],
         ['ditangguhkan', 'Ditangguhkan', postponed.length],
         ['dibatalkan', 'Dibatalkan', cancelled.length]
     ].filter(([key, , n]) => key === 'semua' || n > 0);
@@ -511,7 +522,7 @@ function render() {
             (show('akan-datang') ? sectionHtml('Hari Ini', 'ph-calendar-check', today) : '') +
             (show('akan-datang') ? (upcoming.length ? sectionHtml('Akan Datang', 'ph-clock-countdown', upcoming) : noUpcomingHtml) : '') +
             // Collapsed to the latest few under "Semua"; the chip shows them all
-            (show('berlangsung') ? sectionHtml('Telah Berlangsung', 'ph-clock-counter-clockwise', past,
+            (show('berlangsung') ? sectionHtml('Selesai', 'ph-clock-counter-clockwise', past,
                 { limit: takwimFilter === 'berlangsung' ? 0 : PAST_PREVIEW, expanded: showAllPast, toggleId: 'takwim-past-toggle' }) : '') +
             (show('ditangguhkan') ? sectionHtml('Ditangguhkan', 'ph-pause-circle', postponed) : '') +
             (show('dibatalkan') ? sectionHtml('Dibatalkan', 'ph-x-circle', cancelled) : '');
@@ -577,11 +588,7 @@ function render() {
             btn.addEventListener('click', () => {
                 const ev = cachedEvents.find(e => e.id === btn.dataset.id);
                 if (!ev) return;
-                showConfirmModal(
-                    'Padam Aktiviti?',
-                    `Adakah anda pasti mahu memadam "${ev.title}"? Tindakan ini tidak boleh diundur.`,
-                    async () => { await deleteTakwimEvent(currentYear, ev.id); }
-                );
+                confirmDeleteEvent(ev);
             });
         });
     }

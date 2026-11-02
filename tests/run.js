@@ -93,7 +93,7 @@ const scenarios = {
         const { ctx, page } = await open({ mobile: true });
         await page.click('#bottom-nav [data-view=takwim]'); await page.waitForTimeout(1200);
         const chips = await page.$$eval('.takwim-chip', c => c.map(x => x.textContent.replace(/\s+/g, ' ').trim()));
-        assert.deepEqual(chips, ['Semua 9', 'Akan datang 2', 'Telah berlangsung 5', 'Ditangguhkan 1', 'Dibatalkan 1']);
+        assert.deepEqual(chips, ['Semua 9', 'Akan datang 2', 'Selesai 5', 'Ditangguhkan 1', 'Dibatalkan 1']);
         const headings = await page.$$eval('#view-takwim h3', h => h.map(x => x.textContent.replace(/\s+/g, ' ').trim()));
         assert.match(headings[0], /^Hari Ini 1/);
         await shot(page, 'takwim-chips');
@@ -116,6 +116,74 @@ const scenarios = {
         const rows = await page.$$eval('.penjanaan-quarters .flex.justify-between', r => r.map(x => x.textContent.replace(/\s+/g, ' ').trim()));
         assert.deepEqual(rows, ['Suku 1 · Jan - Mac RM 42,000.00', 'Suku 2 · Apr - Jun RM 15,000.00', 'Suku 3 · Jul - Sep RM 12,500.00', 'Suku 4 · Okt - Dis RM 8,800.00']);
         await shot(page, 'penjanaan-summary', true);
+        await ctx.close();
+    },
+
+    // Admin redesign stage 1: "Perlu tindakan", value editor, delete preview.
+    // Only dialogs are opened and cancelled: nothing may be written.
+    async 'admin tools'() {
+        let { ctx, page } = await open({ admin: true });
+        assert.equal(await page.isVisible('#admin-todo'), false, 'nothing due with the default data');
+        await ctx.close();
+
+        ({ ctx, page } = await open({ admin: true, todos: true }));
+        const rows = await page.$$eval('.admin-todo-row', r => r.map(x => [x.querySelector('.admin-todo-title').textContent, x.querySelector('.admin-todo-detail').textContent]));
+        assert.deepEqual(rows, [
+            ['Kehadiran belum direkod', 'Kembara Alumni Perak, 10/10/2026'],
+            ['Tiada rekod penjanaan Suku 4', 'Rekod terakhir pada Julai 2026.'],
+            ['Tiada aktiviti akan datang', 'Aktiviti terakhir dalam takwim bertarikh 12/09/2026.']
+        ]);
+        assert.equal(await page.textContent('#admin-todo-count'), '3');
+        await shot(page, 'admin-todo');
+        // Opens Butiran Kembara on a quarter that holds the programme
+        await page.click('.admin-todo-row[data-todo=kehadiran] .admin-todo-action'); await page.waitForTimeout(2000);
+        assert.equal(await page.isVisible('#details-modal'), true);
+        assert.equal(await page.$eval('#pagination .active', e => e.dataset.quarter), '4');
+        await page.click('#details-list .delete-breakdown-item-btn');
+        assert.equal(await page.textContent('#confirm-modal-preview-title'), 'Kembara Alumni Sabah');
+        assert.equal(await page.textContent('#confirm-modal-preview-meta'), '14/03/2026 · 120 hadir');
+        assert.equal(await page.textContent('#confirm-modal-impact'), 'Jumlah terkumpul Suku 4 akan berubah daripada 3 kepada 2.');
+        await page.click('#confirm-modal-cancel-btn');
+        await noWrites(page);
+        await ctx.close();
+
+        ({ ctx, page } = await open({ admin: true, todos: true, mobile: true }));
+        await page.click('.admin-todo-row[data-todo=takwim] .admin-todo-action'); await page.waitForTimeout(2000);
+        assert.equal(await page.isVisible('#takwim-modal'), true, 'Tambah aktiviti opens the Takwim form');
+        await ctx.close();
+
+        // Value editor: running-total note, live preview, stepper
+        ({ ctx, page } = await open({ admin: true }));
+        await page.click('.kpi-card[data-kpi-id=pendaftaran] .edit-kpi-btn'); await page.waitForTimeout(300);
+        assert.equal(await page.textContent('#input-modal-title'), 'Pendaftaran Alumni Baharu');
+        assert.equal(await page.textContent('#input-modal-eyebrow'), 'Kemas kini nilai · Suku 1 2026');
+        assert.match(await page.textContent('#input-modal-note-text'), /jumlah terkumpul sejak Januari/);
+        assert.equal(await page.inputValue('#input-modal-field'), '1450');
+        await page.click('#input-modal-plus');
+        assert.equal(await page.inputValue('#input-modal-field'), '1451');
+        await page.fill('#input-modal-field', '2500');
+        assert.equal(await page.textContent('#input-modal-preview'), 'Sasaran tahunan 5,000 · pencapaian selepas simpan 50.0%');
+        await shot(page, 'value-editor');
+        await page.click('#input-modal-close');
+        assert.equal(await page.isVisible('#input-modal'), false);
+
+        // Penjanaan delete shows the record and the new year total
+        await page.click('#main-nav [data-view=penjanaan]'); await page.waitForTimeout(1500);
+        await page.locator('.penjanaan-delete-btn').first().click();
+        assert.equal(await page.textContent('#confirm-modal-preview-title'), 'Sumbangan Majlis Makan Malam Alumni');
+        assert.equal(await page.textContent('#confirm-modal-preview-meta'), 'RM 42,000.00 · Februari 2026 · Suku 1');
+        assert.equal(await page.textContent('#confirm-modal-impact'), 'Jumlah terkumpul akan berubah daripada RM 78,300.00 kepada RM 36,300.00.');
+        assert.equal(await page.textContent('#confirm-modal-ok-btn'), 'Padam rekod');
+        await shot(page, 'delete-preview');
+        await page.click('#confirm-modal-cancel-btn');
+
+        // Takwim delete names the activity, date and place
+        await page.click('#main-nav [data-view=takwim]'); await page.waitForTimeout(1200);
+        await page.locator('.takwim-delete-btn').first().click();
+        assert.match(await page.textContent('#confirm-modal-preview-meta'), /\d{1,2} \w+ 2026.* · /);
+        await page.click('#confirm-modal-cancel-btn');
+        await noWrites(page);
+        assert.deepEqual(page.__errors, []);
         await ctx.close();
     },
 

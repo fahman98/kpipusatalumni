@@ -234,11 +234,7 @@ function openDetailModal(record) {
         });
         actions.querySelector('#penjanaan-detail-delete').addEventListener('click', () => {
             closeModal(modal);
-            showConfirmModal(
-                'Padam Rekod?',
-                `Adakah anda pasti mahu memadam rekod "${record.name}" (${formatRM(record.value)})? Tindakan ini tidak boleh diundur.`,
-                async () => { await deleteRecord(record); }
-            );
+            confirmDeleteRecord(record);
         });
     } else {
         actions.innerHTML = `
@@ -340,6 +336,30 @@ async function resolveRecordLocation(record) {
         if (idx !== -1) return { quarterKey: s.key, index: idx, item: items[idx] };
     }
     return { quarterKey: null, index: -1, item: null };
+}
+
+// Delete confirmation with the record and its effect on the year's total
+// (redesign canvas, Admin-Padam). cachedItems is the whole year (q4 list).
+function confirmDeleteRecord(record) {
+    const bulan = parseInt(record.bulan, 10);
+    const qKey = bulanToQuarterKey(bulan);
+    const meta = [formatRM(record.value)];
+    if (BULAN_FULL[bulan]) meta.push(`${BULAN_FULL[bulan]} ${currentYear}`);
+    if (qKey) meta.push(`Suku ${qKey.slice(1)}`);
+    const total = cachedItems.reduce((sum, it) => sum + (Number(it.value) || 0), 0);
+    showConfirmModal(
+        'Padam rekod ini?',
+        'Rekod akan dibuang daripada dashboard untuk semua pengguna. Salinannya disimpan dalam Sejarah Perubahan.',
+        async () => { await deleteRecord(record); },
+        {
+            okLabel: 'Padam rekod',
+            preview: { title: record.name, meta: meta.join(' · ') },
+            impact: {
+                text: `Jumlah terkumpul akan berubah daripada ${formatRM(total)} kepada `,
+                strong: formatRM(Math.max(0, total - (Number(record.value) || 0)))
+            }
+        }
+    );
 }
 
 async function deleteRecord(record) {
@@ -629,11 +649,7 @@ function render() {
             btn.addEventListener('click', () => {
                 const item = itemsIndexed[parseInt(btn.dataset.idx, 10)];
                 if (!item) return;
-                showConfirmModal(
-                    'Padam Rekod?',
-                    `Adakah anda pasti mahu memadam rekod "${item.name}" (${formatRM(item.value)})? Tindakan ini tidak boleh diundur.`,
-                    async () => { await deleteRecord(item); }
-                );
+                confirmDeleteRecord(item);
             });
         });
     }

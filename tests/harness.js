@@ -33,7 +33,8 @@ function startServer() {
 }
 
 // opts:
-//   admin, with2025      mock flags (see mock-firebase.js)
+//   admin, with2025,     mock flags (see mock-firebase.js)
+//   todos
 //   mobile               390x844 touch viewport instead of 1366x900
 //   time                 ISO string; null leaves the real clock alone
 //   clock                'fixed' (Date pinned, timers run) | 'install' (fully
@@ -44,7 +45,7 @@ function startServer() {
 //   path                 URL path + query to open (default '/')
 async function openApp(browser, base, opts = {}) {
     const {
-        admin = false, with2025 = false, mobile = false, time = DEFAULT_TIME,
+        admin = false, with2025 = false, todos = false, mobile = false, time = DEFAULT_TIME,
         clock = 'fixed', blockFirebase = false, dark = false, userAgent = undefined, path: urlPath = '/'
     } = opts;
     const ctx = await browser.newContext({
@@ -55,7 +56,7 @@ async function openApp(browser, base, opts = {}) {
         // A registered sw.js would serve later requests itself, around these routes
         serviceWorkers: 'block'
     });
-    await ctx.addInitScript(([a, w]) => { window.__ADMIN = a; window.__WITH2025 = w; }, [admin, with2025]);
+    await ctx.addInitScript(([a, w, t]) => { window.__ADMIN = a; window.__WITH2025 = w; window.__TODOS = t; }, [admin, with2025, todos]);
     await ctx.route('**/*', async (route) => {
         const u = route.request().url();
         if (u === base + '/' || u.startsWith(base + '/index.html')) {

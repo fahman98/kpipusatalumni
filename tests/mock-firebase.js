@@ -9,6 +9,9 @@
 // Flags read at load (set with page.addInitScript):
 //   window.__ADMIN    sign in as the admin instead of an anonymous guest
 //   window.__WITH2025 also seed kpi-2025 (default: only 2026 has data)
+//   window.__TODOS    data that raises every "Perlu tindakan" reminder: a
+//                     finished Kembara with no attendance, no Penjanaan record
+//                     in Q4, and no upcoming Takwim activity
 // signOut() leaves a sessionStorage marker so the reload after a logout comes
 // back as a guest even when __ADMIN is set.
 (function () {
@@ -29,14 +32,15 @@
                     { name: 'Tajaan Syarikat XYZ Sdn Bhd', value: 15000, bulan: 5 },
                     { name: 'Jualan Cenderamata Konvokesyen', value: 8800, bulan: 10 },
                     { name: 'Kutipan Dana Endowmen', value: 12500, bulan: 7 }
-                ].slice(0, q) }
+                ].slice(0, q).filter(it => !(window.__TODOS && it.bulan === 10)) }
             }),
             mk('kepuasan', 'Indeks Kepuasan Alumni', 'fa-star', 100, 82 * Math.min(1, f + 0.3), { isPercentage: true }),
             mk('kembara', 'Kembara Alumni', 'fa-globe', 8, undefined, {
                 details: { type: 'breakdownList', items: [
                     { name: 'Kembara Alumni Sabah', value: 1, tarikh: '2026-03-14', hadir: 120 },
                     { name: 'Kembara Alumni Johor', value: 1, tarikh: '2026-06-20', tarikhTamat: '2026-06-21', hadir: 85 }
-                ].slice(0, Math.min(q, 2)) }
+                ].slice(0, Math.min(q, 2)).concat(window.__TODOS && q === 4
+                    ? [{ name: 'Kembara Alumni Perak', value: 1, tarikh: '2026-10-10' }] : []) }
             }),
             mk('hebahan', 'Hebahan Media Sosial', 'fa-megaphone', 200, Math.round(210 * f)),
         ];
@@ -72,6 +76,9 @@
         { id: 'p4', title: 'Program Lalu 4', date: '2026-07-10', location: 'UPSI', notes: '' },
         { id: 'e5', title: 'Karnival Alumni (baru)', date: '2026-12-20', location: 'Padang UPSI', status: 'Dibatalkan', notes: 'Amaran banjir JPS' },
     ] };
+    if (window.__TODOS) {
+        DATA['takwim-2026/main'].events = DATA['takwim-2026/main'].events.filter(e => e.date < '2026-10-29');
+    }
     DATA['meta/2026'] = { label: '15 Oktober 2026, 10:30 PG' };
 
     window.__writes = [];

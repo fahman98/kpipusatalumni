@@ -106,6 +106,41 @@ const FA_TO_PHOSPHOR = {
     'fa-chart-bar':       'ph-chart-bar',
 };
 
+// Options for the breakdown delete confirmation (redesign canvas,
+// Admin-Padam): the record itself and what happens to this quarter's
+// cumulative total. The delete runs from this quarter onwards (api.js), so
+// the impact line names the quarter rather than the record's own month.
+const isoToDmy = (iso) => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
+    return m ? `${m[3]}/${m[2]}/${m[1]}` : '';
+};
+function breakdownDeleteOptions(kpi, item, activeQuarter) {
+    const qNum = String(activeQuarter).replace(/^q/, '');
+    const meta = [];
+    if (COUNT_KPI_IDS.has(kpi.id)) {
+        if (item.tarikh) {
+            meta.push(item.tarikhTamat && item.tarikhTamat !== item.tarikh
+                ? `${isoToDmy(item.tarikh)} hingga ${isoToDmy(item.tarikhTamat)}` : isoToDmy(item.tarikh));
+        }
+        if (kpi.id === HADIR_KPI_ID && item.hadir != null) meta.push(`${Number(item.hadir).toLocaleString('en-US')} hadir`);
+    } else {
+        meta.push(formatItemValue(kpi, item.value));
+        const b = parseInt(item.bulan, 10) || bulanFromTarikh(item.tarikh);
+        if (BULAN_FULL[b]) meta.push(`${BULAN_FULL[b]} ${selectedYear}`);
+    }
+    const total = calculateKpiValue(kpi);
+    const after = Math.max(0, total - (Number(item.value) || 0));
+    const fmt = (n) => kpi.isCurrency ? formatItemValue(kpi, n) : Number(n).toLocaleString('en-US');
+    return {
+        okLabel: 'Padam rekod',
+        preview: { title: item.name || 'Rekod tanpa nama', meta: meta.join(' · ') },
+        impact: {
+            text: `Jumlah terkumpul Suku ${qNum} akan berubah daripada ${fmt(total)} kepada `,
+            strong: fmt(after)
+        }
+    };
+}
+
 // A labelled form field for the admin add forms. `full` spans both columns
 // of the sm:grid-cols-2 layout; `hint` is a short line under the input.
 function formField(id, label, inputHtml, { full = false, hint = '' } = {}) {
@@ -218,6 +253,27 @@ export function showConfirmModal(title, message, onConfirm, options = {}) {
 
     newOk.textContent = options.okLabel || 'Teruskan';
 
+    // Optional record preview ({ title, meta }) and impact line
+    // ({ text, strong }: "...daripada X kepada <strong>Y</strong>."), so the
+    // admin sees exactly which record goes and what happens to the total
+    const previewEl = document.getElementById('confirm-modal-preview');
+    if (previewEl) {
+        const pv = options.preview;
+        previewEl.classList.toggle('hidden', !pv);
+        document.getElementById('confirm-modal-preview-title').textContent = pv ? pv.title || '' : '';
+        const metaEl = document.getElementById('confirm-modal-preview-meta');
+        metaEl.textContent = pv ? pv.meta || '' : '';
+        metaEl.classList.toggle('hidden', !(pv && pv.meta));
+    }
+    const impactEl = document.getElementById('confirm-modal-impact');
+    if (impactEl) {
+        const im = options.impact;
+        impactEl.classList.toggle('hidden', !im);
+        impactEl.innerHTML = im
+            ? escapeHtml(im.text || '') + (im.strong ? `<strong>${escapeHtml(im.strong)}</strong>.` : '')
+            : '';
+    }
+
     // Typed confirmation (fresh input each time so old listeners don't stack)
     const typedWrap = document.getElementById('confirm-modal-typed');
     const oldInput = document.getElementById('confirm-modal-input');
@@ -272,6 +328,48 @@ export function showInputModal(title, message, currentValue, onConfirm, options 
     msgEl.textContent = message;
     inputEl.value = currentValue || '';
 
+    // Optional context (value editor): icon, eyebrow line, live preview of the
+    // achievement after saving, and a note (e.g. "running total since January")
+    const setText = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text || ''; };
+    const iconEl = document.getElementById('input-modal-icon');
+    if (iconEl) iconEl.className = `ph-duotone ${options.icon || 'ph-chart-bar'}`;
+    setText('input-modal-eyebrow', options.eyebrow || 'Kemas kini nilai');
+    const noteEl = document.getElementById('input-modal-note');
+    setText('input-modal-note-text', options.note);
+    if (noteEl) noteEl.classList.toggle('hidden', !options.note);
+    const step = options.step || 1;
+    const maxVal = options.isPercentage ? 100 : Infinity;
+    inputEl.step = 'any';
+    inputEl.max = options.isPercentage ? '100' : '';
+    const previewEl = document.getElementById('input-modal-preview');
+    const renderPreview = () => {
+        if (!previewEl) return;
+        const target = Number(options.target);
+        const v = parseFloat(inputEl.value);
+        if (!options.target || !target || isNaN(v)) { previewEl.classList.add('hidden'); return; }
+        const pct = options.isPercentage ? v : (v / target) * 100;
+        const targetText = options.isCurrency
+            ? `RM ${target.toLocaleString('en-US')}`
+            : target.toLocaleString('en-US') + (options.isPercentage ? '%' : '');
+        previewEl.innerHTML = `Sasaran tahunan ${escapeHtml(targetText)} · pencapaian selepas simpan <strong>${pct.toFixed(1)}%</strong>`;
+        previewEl.classList.remove('hidden');
+    };
+    inputEl.oninput = renderPreview;
+    renderPreview();
+    // Stepper: replace the buttons so listeners from an earlier open don't stack
+    ['input-modal-minus', 'input-modal-plus'].forEach((id, i) => {
+        const oldBtn = document.getElementById(id);
+        if (!oldBtn) return;
+        const btn = oldBtn.cloneNode(true);
+        oldBtn.parentNode.replaceChild(btn, oldBtn);
+        btn.addEventListener('click', () => {
+            const cur = parseFloat(inputEl.value) || 0;
+            const next = Math.min(maxVal, Math.max(0, cur + (i ? step : -step)));
+            inputEl.value = String(Math.round(next * 100) / 100);
+            renderPreview();
+        });
+    });
+
     // Month selector — show/hide and configure per options
     const monthRow = document.getElementById('input-modal-month-row');
     const monthSelect = document.getElementById('input-modal-month');
@@ -320,6 +418,8 @@ export function showInputModal(title, message, currentValue, onConfirm, options 
 
     newOk.addEventListener('click', submit);
     newCancel.addEventListener('click', closeModal);
+    const closeX = document.getElementById('input-modal-close');
+    if (closeX) closeX.onclick = closeModal;
 
     inputEl.onkeydown = (e) => {
         if (e.key === 'Enter') {
@@ -954,8 +1054,8 @@ export function showDetailsModal(kpiId, triggerElement) {
                     const target = kpi.details.items[itemIndex];
                     // Confirm first — immediate Firestore write, no undo.
                     showConfirmModal(
-                        'Padam Butiran?',
-                        `Padam "${target ? target.name : 'item ini'}"? Tindakan ini tidak boleh diundur.`,
+                        'Padam rekod ini?',
+                        'Rekod akan dibuang daripada dashboard untuk semua pengguna. Salinannya disimpan dalam Sejarah Perubahan.',
                         // `expect` = the row as it was rendered. api.js verifies the
                         // index still points at it before deleting, so a document
                         // that changed while this modal was open can't make us
@@ -964,7 +1064,8 @@ export function showDetailsModal(kpiId, triggerElement) {
                             activeQuarter, kpi.id,
                             { index: itemIndex, expect: target },
                             'delete'
-                        )
+                        ),
+                        target ? breakdownDeleteOptions(kpi, target, activeQuarter) : { okLabel: 'Padam rekod' }
                     );
                     return;
                 }
