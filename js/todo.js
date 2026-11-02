@@ -175,7 +175,7 @@ export async function refreshAdminTodo(year, isAdmin) {
                 <p class="admin-todo-title">${escapeHtml(t.title)}</p>
                 <p class="admin-todo-detail">${escapeHtml(t.detail)}</p>
                 <button type="button" class="admin-todo-action" data-todo-index="${i}">${escapeHtml(t.action)}
-                    <i class="ph ph-arrow-right" aria-hidden="true"></i></button>
+                    <i class="fas fa-arrow-right" aria-hidden="true"></i></button>
             </div>
         </div>`).join('');
     list.querySelectorAll('.admin-todo-action').forEach(btn => {
