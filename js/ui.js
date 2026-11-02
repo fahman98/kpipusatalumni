@@ -1357,6 +1357,11 @@ export function filterDashboardCards(statusFilter) {
         row.classList.toggle('hidden', !show);
         if (show) shownRows++;
     });
+    // Admin desktop table rows (admin-table.js) too
+    document.querySelectorAll('.admin-row').forEach(row => {
+        row.classList.toggle('hidden', !(statusFilter === 'all' || row.dataset.tier === statusFilter));
+    });
+
     const listHeading = document.getElementById('kpi-list-heading');
     if (listHeading && rows.length) {
         listHeading.textContent = statusFilter === 'all'

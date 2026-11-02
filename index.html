@@ -58,8 +58,8 @@
     <link rel="apple-touch-icon" href="./images/apple-touch-icon.png">
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="style.css?v=6.2">
-    <link rel="stylesheet" href="tailwind.css?v=21">
+    <link rel="stylesheet" href="style.css?v=6.3">
+    <link rel="stylesheet" href="tailwind.css?v=22">
 </head>
 
 <body class="bg-gray-100 relative overflow-x-hidden">
@@ -376,6 +376,46 @@
             <span class="pace-note-swatch" aria-hidden="true"></span>
             <span id="pace-note-text"></span>
         </p>
+
+        <!-- Admin desktop layout (redesign canvas, Admin-Main; js/admin-table.js):
+             from 1024px an admin gets this table instead of the cards, which stay
+             in the DOM hidden because the table's buttons click theirs. -->
+        <div id="admin-desk" class="admin-desk">
+            <section class="admin-table-card" aria-labelledby="admin-table-title">
+                <div class="admin-table-head">
+                    <div class="min-w-0">
+                        <h2 id="admin-table-title">Urus data KPI <span id="admin-table-count" class="admin-table-count"></span></h2>
+                        <p>Setiap perubahan disimpan terus dan dipaparkan kepada semua pengguna serta-merta.</p>
+                    </div>
+                    <div class="admin-table-tools">
+                        <span class="admin-table-avg">Purata keseluruhan <strong id="admin-table-avg">0.0%</strong></span>
+                        <button type="button" id="admin-add-kpi-btn" class="admin-add-btn"><i class="fas fa-plus" aria-hidden="true"></i>Tambah KPI</button>
+                    </div>
+                </div>
+                <div class="admin-table-scroll">
+                    <table class="admin-kt">
+                        <thead>
+                            <tr>
+                                <th scope="col">KPI</th>
+                                <th scope="col">Nilai / sasaran</th>
+                                <th scope="col">Pencapaian</th>
+                                <th scope="col">Tindakan</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-table-body"></tbody>
+                    </table>
+                </div>
+            </section>
+            <aside id="admin-aside" class="admin-aside" aria-label="Panel admin">
+                <!-- #admin-todo moves in here while this layout shows -->
+                <section class="admin-save-box" aria-labelledby="admin-save-title">
+                    <h2 id="admin-save-title">Simpanan</h2>
+                    <p id="admin-save-status" class="admin-save-status"></p>
+                    <p class="admin-save-note">Setiap perubahan direkod dalam Sejarah Perubahan.</p>
+                    <button type="button" id="admin-history-btn" class="admin-link-btn">Lihat Sejarah Perubahan <i class="fas fa-arrow-right" aria-hidden="true"></i></button>
+                </section>
+            </aside>
+        </div>
 
         <div id="kpi-grid-container" class="relative grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             <!-- Content or Skeleton will be injected here -->
@@ -1121,7 +1161,7 @@
         </div>
 
         <!-- Load Main Script as Module -->
-        <script type="module" src="js/main.js?v=6.6"></script>
+        <script type="module" src="js/main.js?v=6.7"></script>
 </body>
 
 </html>

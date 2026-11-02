@@ -90,6 +90,47 @@ const scenarios = {
         await ctx.close();
     },
 
+    // Phase 4c: admin desktop gets the management table; its buttons use the hidden cards
+    async 'admin desktop table'() {
+        const { ctx, page } = await open({ admin: true, todos: true });
+        assert.equal(await page.evaluate(() => document.body.classList.contains('admin-desk-on')), true);
+        const rows = await page.$$eval('.admin-row', r => r.map(x => [x.dataset.kpiId, x.querySelector('.admin-kpi-kind').textContent, (x.querySelector('.admin-primary-btn') || {}).textContent]));
+        assert.deepEqual(rows, [
+            ['pendaftaran', 'Nilai terus', 'Kemas kini nilai'],
+            ['program', 'Nilai terus', 'Kemas kini nilai'],
+            ['pendanaan', 'Rekod RM · 1', 'Urus rekod'],
+            ['kepuasan', 'Skor peratus', 'Kemas kini skor'],
+            ['kembara', 'Program bertarikh · 1', 'Urus butiran'],
+            ['hebahan', 'Nilai terus', 'Kemas kini nilai']
+        ]);
+        assert.equal(await page.isVisible('.kpi-card[data-kpi-id=pendaftaran]'), false, 'cards hidden behind the table');
+        assert.equal(await page.evaluate(() => document.getElementById('admin-todo').parentElement.id), 'admin-aside');
+        assert.match(await page.textContent('#admin-save-status'), /Disambungkan ke pelayan/);
+        await shot(page, 'admin-desktop', true);
+        // Each table button opens the same dialog as the card button
+        await page.click('.admin-row[data-kpi-id=kepuasan] .admin-primary-btn'); await page.waitForTimeout(300);
+        assert.equal(await page.textContent('#input-modal-title'), 'Indeks Kepuasan Alumni');
+        await page.click('#input-modal-cancel-btn');
+        await page.click('.admin-row[data-kpi-id=kembara] .admin-primary-btn'); await page.waitForTimeout(600);
+        assert.equal(await page.isVisible('#details-modal'), true);
+        await page.keyboard.press('Escape'); await page.waitForTimeout(300);
+        await page.click('.admin-row[data-kpi-id=program] .admin-icon-btn[data-click=".show-chart-btn"]'); await page.waitForTimeout(800);
+        assert.equal(await page.isVisible('#chart-modal'), true);
+        await page.keyboard.press('Escape'); await page.waitForTimeout(300);
+        // Status filter applies to the table rows
+        await page.click('.stat-card[data-filter="ok"]'); await page.waitForTimeout(200);
+        assert.equal(await page.$$eval('.admin-row', r => r.filter(x => !x.classList.contains('hidden')).length), 2);
+        await page.click('.stat-card[data-filter="ok"]'); await page.waitForTimeout(200);
+        // Narrower than 1024px: back to cards, "Perlu tindakan" back above
+        await page.setViewportSize({ width: 900, height: 900 }); await page.waitForTimeout(300);
+        assert.equal(await page.evaluate(() => document.body.classList.contains('admin-desk-on')), false);
+        assert.equal(await page.isVisible('.kpi-card[data-kpi-id=pendaftaran]'), true);
+        assert.notEqual(await page.evaluate(() => document.getElementById('admin-todo').parentElement.id), 'admin-aside');
+        await noWrites(page);
+        assert.deepEqual(page.__errors, []);
+        await ctx.close();
+    },
+
     // Phone: compact rows instead of cards, hero counts filter, row opens the KPI sheet
     async 'phone dashboard'() {
         let { ctx, page } = await open({ mobile: true });
@@ -192,7 +233,7 @@ const scenarios = {
 
         // Value editor: running-total note, live preview, stepper
         ({ ctx, page } = await open({ admin: true }));
-        await page.click('.kpi-card[data-kpi-id=pendaftaran] .edit-kpi-btn'); await page.waitForTimeout(300);
+        await page.click('.admin-row[data-kpi-id=pendaftaran] .admin-primary-btn'); await page.waitForTimeout(300);
         assert.equal(await page.textContent('#input-modal-title'), 'Pendaftaran Alumni Baharu');
         assert.equal(await page.textContent('#input-modal-eyebrow'), 'Kemas kini nilai · Suku 1 2026');
         assert.match(await page.textContent('#input-modal-note-text'), /jumlah terkumpul sejak Januari/);
@@ -427,20 +468,21 @@ const scenarios = {
         assert.deepEqual(Object.keys(json.years['2026'].kpi), ['q1', 'q2', 'q3', 'q4']);
         await noWrites(page);
 
-        await page.locator('.show-details-btn:visible').first().click(); await page.waitForTimeout(500);
+        // Admin desktop: the table's "Urus rekod" opens Butiran (admin-table.js)
+        await page.click('.admin-row[data-kpi-id=pendanaan] .admin-primary-btn'); await page.waitForTimeout(500);
         await page.locator('.delete-breakdown-item-btn').first().click(); await page.waitForTimeout(300);
         await page.click('#confirm-modal-ok-btn'); await page.waitForTimeout(800);
         let last = await page.evaluate(() => window.__audit[window.__audit.length - 1]);
         assert.equal(last.details.deleted.name, 'Sumbangan Majlis Makan Malam Alumni');
         await page.keyboard.press('Escape'); await page.waitForTimeout(300);
 
-        await page.locator('.edit-kpi-btn').first().click(); await page.waitForTimeout(400);
+        await page.click('.admin-row[data-kpi-id=pendaftaran] .admin-primary-btn'); await page.waitForTimeout(400);
         await page.fill('#input-modal-field', '1500'); await page.click('#input-modal-ok-btn'); await page.waitForTimeout(800);
         last = await page.evaluate(() => window.__audit[window.__audit.length - 1]);
         assert.equal(last.details.oldValue, 1450);
         assert.equal(last.details.newValue, 1500);
 
-        await page.locator('.settings-btn').nth(1).click(); await page.waitForTimeout(400);
+        await page.click('.admin-row[data-kpi-id=program] .admin-icon-btn[data-click=".settings-btn"]'); await page.waitForTimeout(400);
         await page.click('#delete-kpi-btn'); await page.waitForTimeout(300);
         await page.click('#confirm-modal-ok-btn'); await page.waitForTimeout(800);
         last = await page.evaluate(() => window.__audit[window.__audit.length - 1]);

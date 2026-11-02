@@ -22,6 +22,7 @@ import {
     hideLoading,
 } from './ui.js';
 import { refreshAdminTodo, hideAdminTodo } from './todo.js';
+import { renderAdminTable, syncAdminLayout } from './admin-table.js';
 
 import {
     subscribeToQuarterData,
@@ -275,6 +276,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (adminSetupActions) adminSetupActions.classList.add('hidden');
                 setHeaderTitle('Ralat Sambungan');
                 hideAdminTodo();
+                syncAdminLayout(false);
                 return;
             }
 
@@ -295,6 +297,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 setHeaderTitle('Tiada Data');
                 hideAdminTodo();
+                syncAdminLayout(false);
                 return;
             }
 
@@ -481,6 +484,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             setEditMode(isEditMode);
+            // Admin desktop: management table instead of the cards (admin-table.js)
+            if (isEditMode) renderAdminTable(processedKpis, overall);
+            syncAdminLayout(isEditMode);
             refreshAdminTodo(selectedYear, isEditMode);
 
             filterDashboardCards(activeStatusFilter);
