@@ -8,7 +8,7 @@
 // does, so each action keeps exactly one implementation and this module
 // never writes anything itself.
 
-import { escapeHtml, getPhosphorIcon, getKpiPercentage, calculateKpiValue } from './ui.js';
+import { escapeHtml, kpiIcon, getKpiPercentage, calculateKpiValue } from './ui.js';
 import { statusTier, statusHex, kpiStatusPct, STATUS_LABEL } from './status.js';
 
 const DESK_QUERY = window.matchMedia('(min-width: 1024px)');
@@ -88,7 +88,7 @@ export function renderAdminTable(kpis, overall) {
         <tr class="admin-row" data-kpi-id="${escapeHtml(kpi.id)}" data-tier="${tier}">
             <td class="c-name">
                 <div class="admin-kpi">
-                    <span class="admin-kpi-icon" aria-hidden="true"><i class="ph-duotone ${getPhosphorIcon(kpi.icon)}"></i></span>
+                    <span class="admin-kpi-icon" aria-hidden="true"><i class="ph-duotone ${kpiIcon(kpi)}"></i></span>
                     <span class="admin-kpi-text">
                         <span class="admin-kpi-name">${escapeHtml(kpi.name)}</span>
                         <span class="admin-kpi-kind">${escapeHtml(kindText(kpi))}</span>

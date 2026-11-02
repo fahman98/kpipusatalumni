@@ -14,7 +14,7 @@ import {
     showDetailsModal,
     showConfirmModal,
     showInputModal,
-    getPhosphorIcon,
+    kpiIcon,
     escapeHtml,
     isAnyModalOpen,
     syncBodyScrollLock,
@@ -400,7 +400,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             {
                                 ...(showMonth ? { showMonth: true, defaultMonth, monthRange: [monthStart, monthEnd] } : {}),
                                 eyebrow: `Kemas kini nilai · Suku ${qNum} ${selectedYear}`,
-                                icon: getPhosphorIcon(kpi.icon),
+                                icon: kpiIcon(kpi),
                                 target: kpi.target,
                                 isPercentage: !!kpi.isPercentage,
                                 isCurrency: !!kpi.isCurrency,
@@ -1907,7 +1907,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return `
             <button type="button" class="kpi-row" data-kpi-id="${escapeHtml(kpi.id)}" data-tier="${tier}">
                 <span class="kpi-row-top">
-                    <span class="kpi-row-icon" aria-hidden="true"><i class="ph-duotone ${getPhosphorIcon(kpi.icon)}"></i></span>
+                    <span class="kpi-row-icon" aria-hidden="true"><i class="ph-duotone ${kpiIcon(kpi)}"></i></span>
                     <span class="kpi-row-main">
                         <span class="kpi-row-name">${escapeHtml(kpi.name)}</span>
                         <span class="kpi-row-sub">${escapeHtml(kpiValueText(kpi))} / ${escapeHtml(kpiTargetText(kpi))}</span>
@@ -2032,7 +2032,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td class="px-3 sm:px-4 py-3">
                     <div class="flex items-center gap-2 sm:gap-3">
                         <div class="w-8 h-8 rounded-lg ${iconBg} hidden sm:flex items-center justify-center flex-shrink-0">
-                            <i class="ph-duotone ${getPhosphorIcon(kpi.icon)} ${iconClr} text-xs"></i>
+                            <i class="ph-duotone ${kpiIcon(kpi)} ${iconClr} text-xs"></i>
                         </div>
                         <span class="font-semibold text-gray-800 text-sm leading-snug">${escapeHtml(kpi.name)}</span>
                     </div>

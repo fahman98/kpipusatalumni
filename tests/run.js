@@ -155,6 +155,29 @@ const scenarios = {
         }
     },
 
+    // KPIs whose stored icon is unknown or the generic bar chart get one from
+    // their name (no data written), so the list no longer repeats one icon
+    async 'kpi icons'() {
+        const { ctx, page } = await open({});
+        const icons = await page.$$eval('#kpi-grid-container .kpi-card .kpi-icon', els =>
+            els.map(i => [...i.classList].find(c => c.startsWith('ph-') && c !== 'ph-duotone')));
+        assert.equal(new Set(icons).size, icons.length, `repeated icons: ${icons.join(', ')}`);
+        // The real KPI names, stored with an icon the app does not know
+        const picked = await page.evaluate(async () => {
+            const { kpiIcon } = await import('/js/ui.js');
+            return ['Data Alumni', 'Kembara Santuni dan Program Alumni', 'Bicara Alumni', 'Kolaborasi',
+                'Pendanaan dan Penjanaan', 'Program Ziarah Kasih', 'Penerbitan',
+                'Ikon Anak Kandung Suluh Budiman', 'Chapter Antarabangsa']
+                .map(name => kpiIcon({ id: 'kpi-x', name, icon: 'fa-unknown' }));
+        });
+        assert.deepEqual(picked, ['ph-users', 'ph-path', 'ph-microphone-stage', 'ph-link', 'ph-money',
+            'ph-heart', 'ph-book-open', 'ph-star', 'ph-globe-hemisphere-east']);
+        // A known stored icon is kept as it is
+        assert.equal(await page.evaluate(async () => (await import('/js/ui.js')).kpiIcon({ name: 'Bicara Alumni', icon: 'fa-trophy' })), 'ph-trophy');
+        await noWrites(page);
+        await ctx.close();
+    },
+
     // Phone: compact rows instead of cards, hero counts filter, row opens the KPI sheet
     async 'phone dashboard'() {
         let { ctx, page } = await open({ mobile: true });
