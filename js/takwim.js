@@ -506,8 +506,8 @@ function render() {
         </div>`;
 
     const addBtnHtml = isAdminMode
-        ? `<button id="takwim-add-btn" class="bg-brand-primary text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-800 shadow-md transition-all text-sm flex items-center gap-2 flex-shrink-0">
-               <i class="fas fa-plus-circle"></i><span>Tambah Aktiviti</span>
+        ? `<button id="takwim-add-btn" aria-label="Tambah Aktiviti" class="bg-brand-primary text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-800 shadow-md transition-all text-sm flex items-center gap-2 flex-shrink-0">
+               <i class="fas fa-plus-circle" aria-hidden="true"></i><span class="sm:hidden">Tambah</span><span class="hidden sm:inline">Tambah Aktiviti</span>
            </button>` : '';
 
     let bodyHtml;
@@ -537,7 +537,7 @@ function render() {
             <div class="min-w-0">
                 <h2 class="text-lg sm:text-xl font-bold text-brand-primary flex items-center gap-2 min-w-0">
                     <i class="ph-duotone ph-calendar-dots flex-shrink-0"></i>
-                    <span class="truncate">Takwim Aktiviti ${escapeHtml(currentYear)}</span>
+                    <span class="min-w-0 leading-tight">Takwim Aktiviti ${escapeHtml(currentYear)}</span>
                 </h2>
                 <p class="text-xs text-gray-500 font-semibold mt-0.5">${cachedEvents.length} aktiviti direkodkan bagi ${escapeHtml(currentYear)}</p>
             </div>

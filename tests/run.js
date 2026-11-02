@@ -131,6 +131,30 @@ const scenarios = {
         await ctx.close();
     },
 
+    // Phones (360px, guest and admin): no heading or label cut off with an ellipsis
+    async 'phone text not cut off'() {
+        for (const admin of [false, true]) {
+            const { ctx, page } = await open({ admin, mobile: true, todos: true });
+            await page.setViewportSize({ width: 360, height: 800 });
+            for (const v of ['dashboard', 'takwim', 'penjanaan']) {
+                await page.click(`#bottom-nav [data-view=${v}]`); await page.waitForTimeout(1300);
+                const cut = await page.evaluate(() => [...document.querySelectorAll('body *')].filter(el => {
+                    if (!el.offsetParent || el.children.length > 2 || !el.innerText.trim()) return false;
+                    const cs = getComputedStyle(el);
+                    const clipped = cs.textOverflow === 'ellipsis' || cs.webkitLineClamp !== 'none';
+                    return clipped && (el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1);
+                }).map(el => el.innerText.trim().slice(0, 60)));
+                assert.deepEqual(cut, [], `${admin ? 'admin' : 'guest'} ${v}: text cut off`);
+            }
+            if (admin) {
+                // Phones show the short label; the full one stays for screen readers
+                assert.equal(await page.$eval('#penjanaan-add-btn', b => b.innerText.trim()), 'Tambah');
+                assert.equal(await page.getAttribute('#penjanaan-add-btn', 'aria-label'), 'Tambah Rekod');
+            }
+            await ctx.close();
+        }
+    },
+
     // Phone: compact rows instead of cards, hero counts filter, row opens the KPI sheet
     async 'phone dashboard'() {
         let { ctx, page } = await open({ mobile: true });
