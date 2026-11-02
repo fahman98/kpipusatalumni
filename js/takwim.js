@@ -7,6 +7,8 @@ import {
     showToastNotification,
     openModal,
     closeModal,
+    closeFormSheet,
+    formSheetHtml,
     showConfirmModal,
     escapeHtml
 } from './ui.js';
@@ -162,70 +164,68 @@ function statusStyle(ev) {
 
 // ---- Modal (dynamically created, reuses .modal / .is-open CSS) ---------
 
+// Status options as cards (redesign canvas, Admin-Takwim). '' = no status:
+// the event is upcoming or finished according to its date.
+const STATUS_CHOICES = [
+    ['', 'Akan datang', 'Lalai, ikut tarikh'],
+    ['Telah Berlangsung', 'Telah berlangsung', ''],
+    ['Ditangguhkan', 'Ditangguhkan', 'Dipaparkan dalam bahagian tersendiri'],
+    ['Dibatalkan', 'Dibatalkan', 'Dipaparkan dalam bahagian tersendiri']
+];
+
+// Add / edit form. Saving goes through addTakwimEvent / updateTakwimEvent as
+// before; only the form changed.
 function ensureModal() {
     let modal = document.getElementById('takwim-modal');
     if (modal) return modal;
 
+    const statusCards = STATUS_CHOICES.map(([value, label, hint]) => `
+        <label class="fs-radio">
+            <input type="radio" name="takwim-status" value="${value}">
+            <span class="fs-radio-text"><span class="fs-radio-label">${label}</span>${hint ? `<span class="fs-radio-hint">${hint}</span>` : ''}</span>
+        </label>`).join('');
+
     modal = document.createElement('div');
     modal.id = 'takwim-modal';
-    modal.className = 'modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50';
-    modal.innerHTML = `
-        <div class="modal-content bg-white rounded-lg shadow-2xl w-full max-w-md p-6" role="dialog" aria-modal="true" aria-labelledby="takwim-modal-title">
-            <div class="flex justify-between items-center mb-4">
-                <h3 id="takwim-modal-title" class="text-xl font-bold text-brand-primary">Tambah Aktiviti</h3>
-                <button type="button" id="takwim-modal-close" class="text-gray-500 hover:text-red-600 text-2xl font-bold" aria-label="Tutup modal">&times;</button>
+    modal.className = 'modal form-sheet fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50';
+    modal.innerHTML = formSheetHtml({
+        prefix: 'takwim-modal', formId: 'takwim-form', title: 'Tambah aktiviti',
+        body: `
+            <input type="hidden" id="takwim-event-id">
+            <div class="fs-field">
+                <label for="takwim-title" class="fs-label">Tajuk aktiviti <span class="fs-req">*</span></label>
+                <input type="text" id="takwim-title" class="fs-input" placeholder="Contoh: Majlis Alumni Tahunan">
             </div>
-            <form id="takwim-form" class="space-y-4">
-                <input type="hidden" id="takwim-event-id">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Tajuk <span class="text-red-500">*</span></label>
-                    <input type="text" id="takwim-title" required placeholder="Contoh: Majlis Alumni Tahunan"
-                        class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-brand-primary focus:border-brand-primary">
+            <div class="fs-field">
+                <div class="fs-two">
+                    <div class="fs-field">
+                        <label for="takwim-date" class="fs-label">Tarikh mula <span class="fs-req">*</span></label>
+                        <input type="date" id="takwim-date" class="fs-input">
+                    </div>
+                    <div class="fs-field">
+                        <label for="takwim-date-to" class="fs-label">Tarikh akhir</label>
+                        <input type="date" id="takwim-date-to" class="fs-input">
+                    </div>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Tarikh Mula <span class="text-red-500">*</span></label>
-                    <input type="date" id="takwim-date" required
-                        class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-brand-primary focus:border-brand-primary">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Tarikh Akhir <span class="text-xs text-gray-400 font-normal">(kosongkan jika 1 hari)</span></label>
-                    <input type="date" id="takwim-date-to"
-                        class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-brand-primary focus:border-brand-primary">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Lokasi</label>
-                    <input type="text" id="takwim-location" placeholder="Contoh: Dewan Besar UPSI"
-                        class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-brand-primary focus:border-brand-primary">
-                </div>
-                <div>
-                    <label for="takwim-status" class="block text-sm font-medium text-gray-700">Status</label>
-                    <select id="takwim-status"
-                        class="mt-1 block w-full border border-gray-300 rounded-md p-2 bg-white focus:ring-brand-primary focus:border-brand-primary">
-                        <option value="">Tiada (ikut tarikh)</option>
-                        <option value="Telah Berlangsung">Telah Berlangsung</option>
-                        <option value="Ditangguhkan">Ditangguhkan</option>
-                        <option value="Dibatalkan">Dibatalkan</option>
-                    </select>
-                    <p class="text-xs text-gray-400 mt-1">Aktiviti Ditangguhkan atau Dibatalkan dipaparkan dalam bahagian tersendiri.</p>
-                </div>
-                <div>
-                    <label for="takwim-notes" class="block text-sm font-medium text-gray-700">Catatan <span class="text-xs text-gray-400 font-normal">(pilihan)</span></label>
-                    <textarea id="takwim-notes" rows="2" placeholder="Contoh: Ditangguhkan ke Januari 2027"
-                        class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-brand-primary focus:border-brand-primary"></textarea>
-                </div>
-                <div class="flex gap-2 pt-2">
-                    <button type="button" id="takwim-cancel-btn"
-                        class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-semibold">Batal</button>
-                    <button type="submit"
-                        class="flex-1 bg-brand-primary text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-800 transition-all">Simpan</button>
-                </div>
-            </form>
-        </div>`;
+                <p class="fs-hint">Kosongkan tarikh akhir jika aktiviti sehari sahaja.</p>
+            </div>
+            <div class="fs-field">
+                <label for="takwim-location" class="fs-label">Lokasi</label>
+                <input type="text" id="takwim-location" class="fs-input" placeholder="Contoh: Dewan Besar UPSI atau Google Meet">
+            </div>
+            <fieldset class="fs-field fs-fieldset">
+                <legend class="fs-label">Status</legend>
+                <div class="fs-radios">${statusCards}</div>
+            </fieldset>
+            <div class="fs-field">
+                <label for="takwim-notes" class="fs-label">Catatan <span class="fs-optional">(pilihan)</span></label>
+                <textarea id="takwim-notes" rows="2" class="fs-input fs-textarea" placeholder="Contoh: Ditangguhkan ke Januari 2027"></textarea>
+            </div>`
+    });
     document.body.appendChild(modal);
 
-    const close = () => closeModal(modal);
+    const close = () => closeFormSheet(modal);
     modal.querySelector('#takwim-modal-close').addEventListener('click', close);
-    modal.querySelector('#takwim-cancel-btn').addEventListener('click', close);
     modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
 
     modal.querySelector('#takwim-form').addEventListener('submit', async (e) => {
@@ -235,7 +235,8 @@ function ensureModal() {
         const date = modal.querySelector('#takwim-date').value;
         const dateTo = modal.querySelector('#takwim-date-to').value || '';
         const location = modal.querySelector('#takwim-location').value.trim();
-        const status = modal.querySelector('#takwim-status').value;
+        const checked = modal.querySelector('input[name="takwim-status"]:checked');
+        const status = checked ? checked.value : '';
         const notes = modal.querySelector('#takwim-notes').value.trim();
 
         if (!title || !date) {
@@ -260,15 +261,17 @@ function ensureModal() {
 
 function openTakwimModal(eventObj) {
     const modal = ensureModal();
-    modal.querySelector('#takwim-modal-title').textContent = eventObj ? 'Edit Aktiviti' : 'Tambah Aktiviti';
+    modal.querySelector('#takwim-modal-title').textContent = eventObj ? 'Edit aktiviti' : 'Tambah aktiviti';
+    modal.querySelector('#takwim-modal-subtitle').textContent = `Takwim aktiviti ${currentYear}`;
     modal.querySelector('#takwim-event-id').value = eventObj ? eventObj.id : '';
     modal.querySelector('#takwim-title').value = eventObj ? (eventObj.title || '') : '';
     modal.querySelector('#takwim-date').value = eventObj ? (eventObj.date || '') : '';
     modal.querySelector('#takwim-date-to').value = eventObj ? (eventObj.dateTo || '') : '';
     modal.querySelector('#takwim-location').value = eventObj ? (eventObj.location || '') : '';
-    // A legacy event's status word moves into the dropdown here, so saving the
-    // form converts it to the two-field shape without losing anything.
-    modal.querySelector('#takwim-status').value = eventObj ? (eventStatus(eventObj) || '') : '';
+    // A legacy event's status word moves into the status choice here, so saving
+    // the form converts it to the two-field shape without losing anything.
+    const status = eventObj ? (eventStatus(eventObj) || '') : '';
+    modal.querySelectorAll('input[name="takwim-status"]').forEach(r => { r.checked = r.value === status; });
     modal.querySelector('#takwim-notes').value = eventObj ? eventNotes(eventObj) : '';
     openModal(modal);
 }

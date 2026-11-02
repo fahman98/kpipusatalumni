@@ -1040,6 +1040,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     window.addEventListener('popstate', () => {
         if (!detailsHistory) return;
+        // Back from a form opened on top of Butiran (ui.js form sheet) lands
+        // on Butiran's own entry: that closes the form only
+        if (history.state && history.state.kpiDetails) return;
         detailsHistory = false;
         if (detailsModal && detailsModal.classList.contains('is-open')) closeModal(detailsModal);
     });

@@ -950,7 +950,6 @@ export function showDetailsModal(kpiId, triggerElement) {
             // Count KPIs in 2026+ pick a date instead of a value + month: the
             // value is fixed at 1 and `bulan` is derived from the date.
             const useTarikh = isCountKpi && showMonth;
-            const bounds = yearTarikhBounds();
             // Every field gets a visible label (placeholders vanish as soon as
             // you type) and the grid stacks to one column on a phone.
             const inputCls = 'w-full p-2 border rounded-lg bg-white text-sm';
@@ -961,19 +960,18 @@ export function showDetailsModal(kpiId, triggerElement) {
             const addMonthField = !useTarikh && showMonth
                 ? formField('new-breakdown-bulan', 'Bulan',
                     `<select id="new-breakdown-bulan" class="${inputCls}">${bulanOptionsHTML(qNum, null)}</select>`) : '';
-            const tarikhField = useTarikh
-                ? formField('new-breakdown-tarikh', 'Tarikh mula',
-                    `<input type="date" id="new-breakdown-tarikh" class="${inputCls}" min="${bounds.min}" max="${bounds.max}">`,
-                    { hint: 'Suku ditentukan automatik daripada bulan.' }) +
-                  formField('new-breakdown-tarikh-tamat', 'Tarikh tamat (pilihan)',
-                    `<input type="date" id="new-breakdown-tarikh-tamat" class="${inputCls}" min="${bounds.min}" max="${bounds.max}">`,
-                    { hint: 'Kosongkan jika sehari sahaja.' })
-                : '';
-            const hadirField = useTarikh && kpi.id === HADIR_KPI_ID
-                ? formField('new-breakdown-hadir', 'Bilangan alumni hadir (pilihan)',
-                    `<input type="number" id="new-breakdown-hadir" min="0" step="1" inputmode="numeric" class="${inputCls}">`,
-                    { hint: 'Kosongkan jika tiada rekod.', full: true })
-                : '';
+            if (useTarikh) {
+                // Programmes (Kembara and the other count KPIs) are added in a
+                // full form (redesign canvas, Admin-Kembara); the save logic
+                // moved there unchanged
+                detailsAddNewWrapper.innerHTML = `
+                    <div class="add-new-form-wrapper border-t pt-4 mt-4">
+                        <button type="button" id="add-program-btn" class="w-full bg-brand-primary text-white font-bold py-3 px-4 rounded-xl hover:bg-blue-800 transition-all flex items-center justify-center gap-2">
+                            <i class="ph-bold ph-plus" aria-hidden="true"></i> Tambah program
+                        </button>
+                    </div>`;
+                document.getElementById('add-program-btn').onclick = () => openProgramForm(kpi);
+            } else {
             detailsAddNewWrapper.innerHTML = `
                 <div class="add-new-form-wrapper border-t pt-4 mt-4">
                     <h4 class="text-sm font-semibold text-gray-700 mb-3">Tambah Butiran Baharu</h4>
@@ -982,8 +980,6 @@ export function showDetailsModal(kpiId, triggerElement) {
                             `<input type="text" id="new-breakdown-name" class="${inputCls}">`, { full: true })}
                         ${valueField}
                         ${addMonthField}
-                        ${tarikhField}
-                        ${hadirField}
                     </div>
                     <button id="save-new-breakdown-btn" class="w-full mt-3 bg-brand-primary text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-800 transition-all">
                         Simpan Butiran
@@ -993,44 +989,6 @@ export function showDetailsModal(kpiId, triggerElement) {
             document.getElementById('save-new-breakdown-btn').onclick = async () => {
                 const nameInput = document.getElementById('new-breakdown-name');
                 const name = nameInput.value.trim();
-                if (useTarikh) {
-                    const tarikhInput = document.getElementById('new-breakdown-tarikh');
-                    const tarikhTamatInput = document.getElementById('new-breakdown-tarikh-tamat');
-                    const tarikh = tarikhInput.value;
-                    const tarikhTamat = tarikhTamatInput.value;
-                    const bulan = bulanFromTarikh(tarikh);
-                    if (!name || !bulan) {
-                        showToastNotification('Sila isi nama dan tarikh mula.', 'danger');
-                        return;
-                    }
-                    if (!tarikh.startsWith(`${selectedYear}-`)
-                        || (tarikhTamat && !tarikhTamat.startsWith(`${selectedYear}-`))) {
-                        showToastNotification(`Tarikh mesti dalam tahun ${selectedYear}.`, 'danger');
-                        return;
-                    }
-                    if (tarikhTamat && tarikhTamat < tarikh) {
-                        showToastNotification('Tarikh tamat mesti selepas tarikh mula.', 'danger');
-                        return;
-                    }
-                    const hadir = parseHadirInput(document.getElementById('new-breakdown-hadir'));
-                    if (Number.isNaN(hadir)) {
-                        showToastNotification('Bilangan hadir mesti nombor bulat positif.', 'danger');
-                        return;
-                    }
-                    // The event's date decides where the record starts; cumulative
-                    // storage then carries it into every later quarter.
-                    const startQ = Math.ceil(bulan / 3);
-                    const payload = { name, value: 1, bulan, tarikh };
-                    if (tarikhTamat && tarikhTamat !== tarikh) payload.tarikhTamat = tarikhTamat;
-                    if (hadir !== null) payload.hadir = hadir;
-                    await updateKpiBreakdownList(`q${startQ}`, kpi.id, payload, 'add');
-                    nameInput.value = '';
-                    tarikhInput.value = '';
-                    tarikhTamatInput.value = '';
-                    const hadirInput = document.getElementById('new-breakdown-hadir');
-                    if (hadirInput) hadirInput.value = '';
-                    return;
-                }
                 const valueInput = document.getElementById('new-breakdown-value');
                 const bulanSel = document.getElementById('new-breakdown-bulan');
                 const value = parseFloat(valueInput.value);
@@ -1046,6 +1004,7 @@ export function showDetailsModal(kpiId, triggerElement) {
                     showToastNotification('Sila isi nama dan nilai yang sah.', 'danger');
                 }
             };
+            }
             detailsList.onclick = async (e) => {
                 const deleteBtn = e.target.closest('.delete-breakdown-item-btn');
                 const editBtn = e.target.closest('.edit-breakdown-item-btn');
@@ -1572,6 +1531,154 @@ export function closeModal(modalElement) {
 // Every modal — the .is-open system plus the .hidden overlays (confirm /
 // bulk-edit / ios) — behaves consistently for keyboard users. Focus restore
 // is already handled by openModal/closeModal via lastFocusedElement.
+
+// --- FORM SHEET (redesign canvas, Admin-Penjanaan / Admin-Kembara /
+// Admin-Takwim) ---
+// The add / edit forms share one shell: a header with a close button, the
+// title and Simpan; the fields scroll underneath. A dialog on desktop, a full
+// page on phones (style.css `.form-sheet`). On phones opening one pushes a
+// history entry so Back closes the form instead of leaving the app.
+const X_ICON = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12 M18 6L6 18"></path></svg>';
+
+export function formSheetHtml({ prefix, formId, title = '', subtitle = '', body = '' }) {
+    return `
+        <div class="modal-content form-sheet-panel" role="dialog" aria-modal="true" aria-labelledby="${prefix}-title">
+            <header class="form-sheet-head">
+                <button type="button" id="${prefix}-close" class="form-sheet-x" aria-label="Tutup tanpa simpan">${X_ICON}</button>
+                <div class="form-sheet-titles">
+                    <h3 id="${prefix}-title">${escapeHtml(title)}</h3>
+                    <p id="${prefix}-subtitle">${escapeHtml(subtitle)}</p>
+                </div>
+                <button type="submit" form="${formId}" class="form-sheet-save">Simpan</button>
+            </header>
+            <form id="${formId}" class="form-sheet-body" novalidate>${body}</form>
+        </div>`;
+}
+
+const sheetPhoneQuery = window.matchMedia('(max-width: 639px)');
+let sheetWithHistory = null;
+document.addEventListener('modal-opened', (e) => {
+    const m = document.getElementById(e.detail.modalId);
+    if (!m || !m.classList.contains('form-sheet') || !sheetPhoneQuery.matches || sheetWithHistory) return;
+    history.pushState({ formSheet: m.id }, '');
+    sheetWithHistory = m;
+});
+window.addEventListener('popstate', () => {
+    if (!sheetWithHistory) return;
+    const m = sheetWithHistory;
+    sheetWithHistory = null;
+    if (m.classList.contains('is-open')) closeModal(m);
+});
+// Every way of closing a form sheet (X, Simpan, backdrop, Escape) comes here
+export function closeFormSheet(modal) {
+    if (sheetWithHistory === modal) history.back();   // popstate above closes it
+    else closeModal(modal);
+}
+
+// Add-programme form for the count KPIs with dates (Kembara and the like),
+// redesign canvas Admin-Kembara. Same checks and payload as the old inline
+// form in Butiran; the programme starts in the quarter of its start date and
+// cumulative storage carries it into later quarters.
+let programFormKpi = null;
+function ensureProgramForm() {
+    let modal = document.getElementById('program-modal');
+    if (modal) return modal;
+    modal = document.createElement('div');
+    modal.id = 'program-modal';
+    modal.className = 'modal form-sheet fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50';
+    modal.innerHTML = formSheetHtml({
+        prefix: 'program-modal', formId: 'program-form', title: 'Tambah program',
+        body: `
+            <div class="fs-field">
+                <label for="program-name" class="fs-label">Nama program <span class="fs-req">*</span></label>
+                <input type="text" id="program-name" class="fs-input" placeholder="Contoh: Kembara Santuni Alumni di Kuantan">
+            </div>
+            <div class="fs-field">
+                <div class="fs-two">
+                    <div class="fs-field">
+                        <label for="program-tarikh" class="fs-label">Tarikh mula <span class="fs-req">*</span></label>
+                        <input type="date" id="program-tarikh" class="fs-input">
+                    </div>
+                    <div class="fs-field">
+                        <label for="program-tarikh-tamat" class="fs-label">Tarikh tamat</label>
+                        <input type="date" id="program-tarikh-tamat" class="fs-input">
+                    </div>
+                </div>
+                <p class="fs-hint">Biarkan tarikh tamat kosong jika program sehari sahaja. Suku ditentukan secara automatik daripada tarikh mula.</p>
+            </div>
+            <div id="program-hadir-field" class="fs-field">
+                <label for="program-hadir" class="fs-label">Bilangan alumni hadir</label>
+                <input type="number" id="program-hadir" class="fs-input" min="0" step="1" inputmode="numeric" placeholder="Boleh diisi kemudian">
+            </div>
+            <div class="fs-summary"><p id="program-info"></p></div>`
+    });
+    document.body.appendChild(modal);
+
+    const close = () => closeFormSheet(modal);
+    modal.querySelector('#program-modal-close').addEventListener('click', close);
+    modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+    modal.querySelector('#program-tarikh').addEventListener('change', () => renderProgramInfo(modal));
+
+    modal.querySelector('#program-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const kpi = programFormKpi;
+        if (!kpi) return;
+        const name = modal.querySelector('#program-name').value.trim();
+        const tarikh = modal.querySelector('#program-tarikh').value;
+        const tarikhTamat = modal.querySelector('#program-tarikh-tamat').value;
+        const bulan = bulanFromTarikh(tarikh);
+        if (!name || !bulan) {
+            showToastNotification('Sila isi nama dan tarikh mula.', 'danger');
+            return;
+        }
+        if (!tarikh.startsWith(`${selectedYear}-`)
+            || (tarikhTamat && !tarikhTamat.startsWith(`${selectedYear}-`))) {
+            showToastNotification(`Tarikh mesti dalam tahun ${selectedYear}.`, 'danger');
+            return;
+        }
+        if (tarikhTamat && tarikhTamat < tarikh) {
+            showToastNotification('Tarikh tamat mesti selepas tarikh mula.', 'danger');
+            return;
+        }
+        const hadir = kpi.id === HADIR_KPI_ID ? parseHadirInput(modal.querySelector('#program-hadir')) : null;
+        if (Number.isNaN(hadir)) {
+            showToastNotification('Bilangan hadir mesti nombor bulat positif.', 'danger');
+            return;
+        }
+        const startQ = Math.ceil(bulan / 3);
+        const payload = { name, value: 1, bulan, tarikh };
+        if (tarikhTamat && tarikhTamat !== tarikh) payload.tarikhTamat = tarikhTamat;
+        if (hadir !== null) payload.hadir = hadir;
+        close();
+        await updateKpiBreakdownList(`q${startQ}`, kpi.id, payload, 'add');
+    });
+    return modal;
+}
+
+function renderProgramInfo(modal) {
+    const kpi = programFormKpi;
+    const bulan = bulanFromTarikh(modal.querySelector('#program-tarikh').value);
+    const target = kpi && typeof kpi.target === 'number' ? ` Sasaran tahunan: ${kpi.target.toLocaleString('en-US')} program.` : '';
+    modal.querySelector('#program-info').innerHTML = bulan
+        ? `Program ini masuk ke <strong>Suku ${Math.ceil(bulan / 3)}</strong> dan dikira sebanyak 1 program.${escapeHtml(target)}`
+        : `Setiap program dikira sebanyak 1.${escapeHtml(target)}`;
+}
+
+function openProgramForm(kpi) {
+    programFormKpi = kpi;
+    const modal = ensureProgramForm();
+    modal.querySelector('#program-modal-subtitle').textContent = `${kpi.name} ${selectedYear}`;
+    const bounds = yearTarikhBounds();
+    ['#program-tarikh', '#program-tarikh-tamat'].forEach(sel => {
+        const el = modal.querySelector(sel);
+        el.min = bounds.min; el.max = bounds.max; el.value = '';
+    });
+    modal.querySelector('#program-name').value = '';
+    modal.querySelector('#program-hadir').value = '';
+    modal.querySelector('#program-hadir-field').classList.toggle('hidden', kpi.id !== HADIR_KPI_ID);
+    renderProgramInfo(modal);
+    openModal(modal);
+}
 
 function getFocusableEls(container) {
     return Array.from(container.querySelectorAll(
