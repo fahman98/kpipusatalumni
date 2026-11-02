@@ -104,7 +104,47 @@ const FA_TO_PHOSPHOR = {
     'fa-graduation-cap':  'ph-graduation-cap',
     'fa-star':            'ph-star',
     'fa-chart-bar':       'ph-chart-bar',
+    // Other Font Awesome names an older KPI may carry
+    'fa-route':           'ph-path',
+    'fa-map-marked-alt':  'ph-path',
+    'fa-microphone':      'ph-microphone-stage',
+    'fa-microphone-alt':  'ph-microphone-stage',
+    'fa-heart':           'ph-heart',
+    'fa-hand-holding-heart': 'ph-hand-heart',
+    'fa-book':            'ph-book-open',
+    'fa-book-open':       'ph-book-open',
+    'fa-link':            'ph-link',
+    'fa-money':           'ph-money',
+    'fa-megaphone':       'ph-megaphone',
 };
+
+// When a KPI's stored icon is missing, unknown or the generic bar chart, pick
+// one from its id / name, so KPIs no longer share the same bar-chart icon
+// (owner's request; icons follow the redesign canvas). Nothing is written:
+// the stored value is left as it is. Most specific words first ("Program
+// Ziarah Kasih" must match "ziarah" before "program").
+const KPI_ICON_RULES = [
+    [/kembara/, 'ph-path'],
+    [/bicara/, 'ph-microphone-stage'],
+    [/ziarah/, 'ph-heart'],
+    [/penerbitan|terbitan/, 'ph-book-open'],
+    [/kolaborasi/, 'ph-link'],
+    [/antarabangsa|chapter/, 'ph-globe-hemisphere-east'],
+    [/anak kandung|\bikon\b/, 'ph-star'],
+    [/pendanaan|penjanaan|dana/, 'ph-money'],
+    [/hebahan|media sosial/, 'ph-megaphone'],
+    [/kepuasan/, 'ph-smiley'],
+    [/data alumni|pendaftaran|alumni baharu/, 'ph-users'],
+    [/libat sama|program/, 'ph-handshake'],
+];
+
+export function kpiIcon(kpi) {
+    const stored = getPhosphorIcon(kpi && kpi.icon);
+    if (stored !== 'ph-chart-bar' || !kpi) return stored;
+    const text = `${kpi.id || ''} ${kpi.name || ''}`.toLowerCase();
+    const rule = KPI_ICON_RULES.find(([re]) => re.test(text));
+    return rule ? rule[1] : stored;
+}
 
 // Options for the breakdown delete confirmation (redesign canvas,
 // Admin-Padam): the record itself and what happens to this quarter's
@@ -533,7 +573,7 @@ export function createKpiCard(kpi) {
             `Jangkaan setakat ini: ${expectedPct.toFixed(0)}% daripada sasaran tahunan`;
     }
 
-    cardElement.querySelector('.kpi-icon').classList.add(getPhosphorIcon(kpi.icon));
+    cardElement.querySelector('.kpi-icon').classList.add(kpiIcon(kpi));
     const kpiNameEl = cardElement.querySelector('.kpi-name');
     kpiNameEl.textContent = kpi.name;
     kpiNameEl.dataset.kpiId = kpi.id;
