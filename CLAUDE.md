@@ -113,7 +113,12 @@ descriptions of PR #2 to #8.
   used by main.js, the phone KPI sheet and filterDashboardCards: keep them.
 - Phones: no text cut off with an ellipsis (owner: looks unprofessional).
   Let headings wrap, shorten button labels below sm (keep the full one in
-  aria-label); scenario "phone text not cut off" scans every view at 360px.
+  aria-label); scenario "phone text not cut off" scans every view and all
+  four quarters at 360px. The mock carries live-style quarter titles /
+  subtitles ("Suku Keempat", "(Oktober - Disember 2026)") so long text is
+  exercised. Phone app bar: "Dashboard KPI" + short line "Suku 4 · Okt -
+  Dis 2026" (`shortQuarter`); the full line goes to `#page-heading` (md+);
+  print keeps "Dashboard KPI 2026" and both logos.
 - KPI icons: always `kpiIcon(kpi)` (ui.js), never `getPhosphorIcon(kpi.icon)`
   directly. A stored icon the app knows is kept; a missing / unknown one or
   the generic bar chart is picked from the KPI's id / name

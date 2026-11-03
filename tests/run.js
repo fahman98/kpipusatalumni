@@ -56,7 +56,7 @@ const scenarios = {
     async 'desktop dashboard'() {
         const { ctx, page } = await open({});
         assert.equal(await page.textContent('#page-title'), 'Prestasi KPI Pusat Alumni 2026');
-        assert.equal(await page.textContent('#page-eyebrow'), 'Suku Pertama');
+        assert.equal(await page.textContent('#page-eyebrow'), 'Suku Pertama · Januari - Mac 2026');
         assert.equal(await page.textContent('#hero-caption'), 'Purata 6 KPI berbanding sasaran tahunan');
         const card = (id) => `.kpi-card[data-kpi-id="${id}"]`;
         assert.equal(await page.textContent(card('pendaftaran') + ' .kpi-status-chip'), 'Cemerlang');
@@ -136,17 +136,26 @@ const scenarios = {
         for (const admin of [false, true]) {
             const { ctx, page } = await open({ admin, mobile: true, todos: true });
             await page.setViewportSize({ width: 360, height: 800 });
+            const cutText = () => page.evaluate(() => [...document.querySelectorAll('body *')].filter(el => {
+                if (!el.offsetParent || el.children.length > 2 || !el.innerText.trim()) return false;
+                const cs = getComputedStyle(el);
+                const clipped = cs.textOverflow === 'ellipsis' || cs.webkitLineClamp !== 'none';
+                return clipped && (el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1);
+            }).map(el => el.innerText.trim().slice(0, 60)));
             for (const v of ['dashboard', 'takwim', 'penjanaan']) {
                 await page.click(`#bottom-nav [data-view=${v}]`); await page.waitForTimeout(1300);
-                const cut = await page.evaluate(() => [...document.querySelectorAll('body *')].filter(el => {
-                    if (!el.offsetParent || el.children.length > 2 || !el.innerText.trim()) return false;
-                    const cs = getComputedStyle(el);
-                    const clipped = cs.textOverflow === 'ellipsis' || cs.webkitLineClamp !== 'none';
-                    return clipped && (el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1);
-                }).map(el => el.innerText.trim().slice(0, 60)));
-                assert.deepEqual(cut, [], `${admin ? 'admin' : 'guest'} ${v}: text cut off`);
+                assert.deepEqual(await cutText(), [], `${admin ? 'admin' : 'guest'} ${v}: text cut off`);
             }
+            // Every quarter: the app bar line changes with it
+            await page.click('#bottom-nav [data-view=dashboard]'); await page.waitForTimeout(800);
+            for (const q of [1, 2, 3, 4]) {
+                await page.click(`#pagination [data-quarter="${q}"]`); await page.waitForTimeout(1200);
+                assert.deepEqual(await cutText(), [], `${admin ? 'admin' : 'guest'} Suku ${q}: text cut off`);
+            }
+            assert.equal(await page.textContent('#sub-title'), 'Suku 4 · Okt - Dis 2026');
+            assert.equal(await page.$eval('#main-title', h => h.innerText.trim()), 'Dashboard KPI');
             if (admin) {
+                await page.click('#bottom-nav [data-view=penjanaan]'); await page.waitForTimeout(1300);
                 // Phones show the short label; the full one stays for screen readers
                 assert.equal(await page.$eval('#penjanaan-add-btn', b => b.innerText.trim()), 'Tambah');
                 assert.equal(await page.getAttribute('#penjanaan-add-btn', 'aria-label'), 'Tambah Rekod');
