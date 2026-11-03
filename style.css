@@ -2544,8 +2544,16 @@ body.dark-mode .form-sheet-save { background: #1d4ed8; }
 #app-header:has(.header-compact) { box-shadow: 0 6px 18px -8px rgba(14, 26, 43, 0.18); }
 .app-bar-icon { width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0; display: block; }
 .app-bar-title { margin: 0; font-size: 17px; line-height: 1.2; font-weight: 800; color: #0E1A2B; }
-.app-bar-sub { margin: 0; font-size: 12px; font-weight: 600; color: #5B6779; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.app-bar-sub { margin: 0; font-size: 12px; line-height: 1.3; font-weight: 600; color: #5B6779; }
 .app-bar-sub:empty { display: none; }
+/* The year shows in the line underneath on phones; print keeps "Dashboard KPI 2026" */
+.app-bar-title .title-year { display: none; }
+@media print {
+    .app-bar-title .title-year { display: inline !important; }
+    /* Both logos on paper (the UPSI one is hidden below lg on screen) */
+    #header-inner > div:first-of-type img,
+    #header-inner > div:first-of-type > .w-px { display: block !important; }
+}
 .app-bar-select {
     min-height: 40px; padding: 0 10px; border: 1px solid #D3DAE5; border-radius: 10px;
     background: #fff; color: #0E1A2B; font-size: 14px; font-weight: 800; cursor: pointer;

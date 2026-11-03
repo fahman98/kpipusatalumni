@@ -208,11 +208,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const PRINT_QUARTER_LABELS = { q1: 'Suku Pertama', q2: 'Suku Kedua', q3: 'Suku Ketiga', q4: 'Suku Keempat' };
 
-    // Phones: app bar title + the quarter underneath. md+: the same goes to
-    // the page heading above the dashboard (the app bar holds the logos).
-    function setHeaderTitle(sub) {
-        if (mainTitle) mainTitle.textContent = `Dashboard KPI ${selectedYear}`;
-        if (subTitle) subTitle.textContent = sub || '';
+    // Short quarter line for the phone app bar ("Suku 4 · Okt - Dis"): the
+    // full "Suku Keempat · Oktober - Disember 2026" does not fit beside the
+    // year and menu buttons, and the year is already in the title.
+    const SHORT_QUARTER = { q1: 'Suku 1 · Jan - Mac', q2: 'Suku 2 · Apr - Jun', q3: 'Suku 3 · Jul - Sep', q4: 'Suku 4 · Okt - Dis' };
+    const shortQuarter = (qk) => SHORT_QUARTER[qk] ? `${SHORT_QUARTER[qk]} ${selectedYear}` : undefined;
+
+    // Phones: app bar title + the quarter underneath (`short`). md+: the full
+    // line goes to the page heading above the dashboard (the app bar holds
+    // the logos there).
+    function setHeaderTitle(sub, short) {
+        // Phones (redesign canvas): "Dashboard KPI" with the year in the line
+        // underneath; the year span still shows in print (style.css)
+        if (mainTitle) {
+            const year = document.createElement('span');
+            year.className = 'title-year';
+            year.textContent = ` ${selectedYear}`;
+            mainTitle.replaceChildren('Dashboard KPI', year);
+        }
+        if (subTitle) subTitle.textContent = (short === undefined ? sub : short) || '';
         const eyebrow = getEl('page-eyebrow');
         const pageTitle = getEl('page-title');
         if (eyebrow) eyebrow.textContent = sub || '';
@@ -235,7 +249,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // 1. Set Title Serta-merta
-        setHeaderTitle(PRINT_QUARTER_LABELS[quarterKey]);
+        setHeaderTitle(PRINT_QUARTER_LABELS[quarterKey], shortQuarter(quarterKey));
 
         // 2. Reset View states
         if (mainContentWrapper) mainContentWrapper.classList.add('hidden');
@@ -308,7 +322,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Update Title
             const period = (currentData.subtitle || '').replace(/[()]/g, '').trim();
             const quarterLabel = currentData.title || PRINT_QUARTER_LABELS[quarterKey];
-            setHeaderTitle(period ? `${quarterLabel} · ${period}` : quarterLabel);
+            setHeaderTitle(period ? `${quarterLabel} · ${period}` : quarterLabel, shortQuarter(quarterKey));
             if (currentData.footerDate) quarterFooterDate = currentData.footerDate;
             renderFooter();
 

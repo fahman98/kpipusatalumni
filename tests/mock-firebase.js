@@ -60,7 +60,10 @@
     }
 
     const DATA = {};
-    for (const q of [1, 2, 3, 4]) DATA['kpi-2026/q' + q] = { kpis: kpis(q), footerDate: '15 Oktober 2026' };
+    // Title / subtitle as the live documents carry them (the app bar must fit them)
+    const Q_TEXT = { 1: ['Suku Pertama', '(Januari - Mac 2026)'], 2: ['Suku Kedua', '(April - Jun 2026)'],
+        3: ['Suku Ketiga', '(Julai - September 2026)'], 4: ['Suku Keempat', '(Oktober - Disember 2026)'] };
+    for (const q of [1, 2, 3, 4]) DATA['kpi-2026/q' + q] = { title: Q_TEXT[q][0], subtitle: Q_TEXT[q][1], kpis: kpis(q), footerDate: '15 Oktober 2026' };
     if (window.__WITH2025) {
         for (const q of [1, 2, 3, 4]) DATA['kpi-2025/q' + q] = { kpis: kpis(q).slice(0, 3), footerDate: '20 Disember 2025' };
     }
