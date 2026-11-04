@@ -2366,6 +2366,18 @@ body.dark-mode #confirm-modal.confirm-safe .text-red-600 { color: #93c5fd !impor
 body.dark-mode .history-restore-btn { background: #111827; border-color: #4b5563; color: #93c5fd; }
 body.dark-mode .history-restored { color: #6FD39B; }
 
+/* Takwim: "Simpan ke kalendar" in the activity details */
+.takwim-cal { padding-top: 4px; }
+.takwim-cal-btn {
+    display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 14px;
+    border: 1px solid #C7D0DD; border-radius: 10px; background: #fff;
+    color: #0E1A2B; font-size: 14px; font-weight: 700; text-decoration: none; text-align: left;
+}
+.takwim-cal-btn i { font-size: 20px; color: #1747A6; --ph-fill-opacity: 0.25; flex-shrink: 0; }
+.takwim-cal-btn:hover { border-color: #1747A6; background: #E8EEFA; color: #0E1A2B; }
+body.dark-mode .takwim-cal-btn { background: #111827; border-color: #4b5563; color: #f3f4f6; }
+body.dark-mode .takwim-cal-btn i { color: #93c5fd; }
+
 /* "Perlu tindakan" panel */
 .admin-todo {
     margin-bottom: 16px; background: #fff; border: 1px solid #E2E7EF; border-radius: 16px; overflow: hidden;

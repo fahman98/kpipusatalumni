@@ -13,6 +13,8 @@ import {
     escapeHtml
 } from './ui.js';
 
+import { canAddToCalendar, googleCalendarUrl, downloadIcs } from './calendar.js';
+
 import {
     subscribeTakwim,
     addTakwimEvent,
@@ -343,7 +345,22 @@ function openDetailModal(ev) {
         <div>
             <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Catatan</p>
             ${notesHtml}
-        </div>`;
+        </div>
+        ${canAddToCalendar(ev, todayKey(), eventStatus(ev)) ? `
+        <div class="takwim-cal">
+            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Simpan ke kalendar</p>
+            <div class="flex flex-col gap-2">
+                <a id="takwim-cal-google" class="takwim-cal-btn" target="_blank" rel="noopener"
+                    href="${escapeHtml(googleCalendarUrl(ev, notes))}">
+                    <i class="ph-duotone ph-google-logo" aria-hidden="true"></i><span>Google Calendar</span>
+                </a>
+                <button type="button" id="takwim-cal-ics" class="takwim-cal-btn">
+                    <i class="ph-duotone ph-calendar-plus" aria-hidden="true"></i><span>Kalendar telefon atau Outlook (.ics)</span>
+                </button>
+            </div>
+        </div>` : ''}`;
+    const icsBtn = modal.querySelector('#takwim-cal-ics');
+    if (icsBtn) icsBtn.addEventListener('click', () => downloadIcs(ev, notes));
 
     const actions = modal.querySelector('#takwim-detail-actions');
     if (isAdminMode) {
