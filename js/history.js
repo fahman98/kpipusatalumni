@@ -1,12 +1,18 @@
 // --- JS/HISTORY.JS ---
-// "Sejarah Perubahan": the admin's view of the audit log. Read-only. Each
-// entry says what was done, to which KPI or activity, and the old → new value
-// where the log has it. Entries that carry a copy of deleted or replaced data
-// (logged since the audit log started keeping them) can be expanded and the
-// JSON copied, so a mistaken delete can be put back by hand.
+// "Sejarah Perubahan": the admin's view of the audit log. Each entry says
+// what was done, to which KPI or activity, and the old → new value where the
+// log has it. Entries that carry a copy of deleted or replaced data (logged
+// since 29/10/2026) can be expanded and the JSON copied.
+//
+// "Pulihkan" puts a deleted record back from that copy: a breakdown record
+// (Penjanaan, Kembara, ...) through the normal add path, which refuses a
+// duplicate and carries it into later quarters; a Takwim activity or a whole
+// KPI through restoreTakwimEvent / restoreDeletedKpi, which refuse when the
+// same id is already there. Every restore is confirmed first and logged with
+// `restoredFrom` pointing at the delete it undid.
 
-import { openModal, closeModal, showToastNotification, escapeHtml } from './ui.js';
-import { fetchAuditLogs, kpiDataCache } from './api.js';
+import { openModal, closeModal, showToastNotification, showConfirmModal, escapeHtml } from './ui.js';
+import { fetchAuditLogs, kpiDataCache, selectedYear, updateKpiBreakdownList, restoreDeletedKpi, restoreTakwimEvent } from './api.js';
 
 const PAGE_SIZE = 30;
 const QUARTER_LABEL = { q1: 'Suku 1', q2: 'Suku 2', q3: 'Suku 3', q4: 'Suku 4' };
@@ -31,6 +37,8 @@ const ACTIONS = {
     ADD_TAKWIM:           { label: 'Tambah aktiviti Takwim',     icon: 'fa-calendar-plus',tone: 'add' },
     EDIT_TAKWIM:          { label: 'Ubah aktiviti Takwim',       icon: 'fa-calendar-alt', tone: 'edit' },
     DELETE_TAKWIM:        { label: 'Padam aktiviti Takwim',      icon: 'fa-calendar-times', tone: 'delete' },
+    RESTORE_KPI:          { label: 'Pulihkan KPI',               icon: 'fa-undo',         tone: 'add' },
+    RESTORE_TAKWIM:       { label: 'Pulihkan aktiviti Takwim',   icon: 'fa-undo',         tone: 'add' },
 };
 const BREAKDOWN_ACTIONS = {
     add:    { label: 'Tambah butiran', icon: 'fa-plus',      tone: 'add' },
@@ -41,6 +49,7 @@ const BREAKDOWN_ACTIONS = {
 function actionInfo(entry) {
     if (entry.action === 'UPDATE_BREAKDOWN_ITEM') {
         const a = entry.details && entry.details.action;
+        if (a === 'add' && entry.details.restoredFrom) return { label: 'Pulihkan butiran', icon: 'fa-undo', tone: 'add' };
         return BREAKDOWN_ACTIONS[a] || { label: 'Ubah butiran', icon: 'fa-pencil-alt', tone: 'edit' };
     }
     return ACTIONS[entry.action] || { label: entry.action || 'Tindakan', icon: 'fa-circle', tone: 'edit' };
@@ -125,6 +134,10 @@ function describe(entry) {
         }
         case 'DELETE_TAKWIM':
             return [(d.deleted && d.deleted.title) || d.eventId || ''];
+        case 'RESTORE_KPI':
+            return [d.name || d.kpiId || ''];
+        case 'RESTORE_TAKWIM':
+            return [d.title || d.eventId || ''];
         default:
             return [where];
     }
@@ -138,13 +151,88 @@ function snapshotOf(entry) {
     return null;
 }
 
+// What "Pulihkan" would do for this entry: { title, meta, run } when it can be
+// restored now, { blocked } when only another year can take it, null when the
+// entry is not a delete with a copy (older entries kept only ids)
+const restoredIds = new Set();   // restored in this session or by a logged restore
+
+function restorePlan(entry) {
+    const d = entry.details || {};
+    const year = String(entry.year || d.year || '');
+    const otherYear = () => ({ blocked: `Tukar tahun kepada ${year} untuk memulihkan rekod ini.` });
+    if (entry.action === 'UPDATE_BREAKDOWN_ITEM' && d.action === 'delete' && d.deleted && d.kpiId && d.quarterKey) {
+        if (year && year !== String(selectedYear)) return otherYear();
+        const item = d.deleted;
+        const meta = [fmtVal(d, item.value), kpiName(d), `${QUARTER_LABEL[d.quarterKey] || d.quarterKey} ${year}`].filter(Boolean).join(' · ');
+        return {
+            title: item.name || 'Rekod tanpa nama', meta,
+            run: () => updateKpiBreakdownList(d.quarterKey, d.kpiId, item, 'add', { quiet: true, auditExtra: { restoredFrom: entry.id } })
+        };
+    }
+    if (entry.action === 'DELETE_KPI' && d.deleted && (d.deleted.q1 || d.deleted.q2 || d.deleted.q3 || d.deleted.q4)) {
+        if (year && year !== String(selectedYear)) return otherYear();
+        const quarters = ['q1', 'q2', 'q3', 'q4'].filter(q => d.deleted[q]).map(q => QUARTER_LABEL[q]).join(', ');
+        return {
+            title: kpiName(d), meta: `KPI penuh bersama butirannya · ${quarters} ${year}`,
+            run: () => restoreDeletedKpi(d.kpiId, d.deleted, entry.id)
+        };
+    }
+    if (entry.action === 'DELETE_TAKWIM' && d.deleted && d.deleted.id) {
+        const ev = d.deleted;
+        const when = ev.date ? ev.date.split('-').reverse().join('/') : '';
+        return {
+            title: ev.title || 'Aktiviti tanpa tajuk', meta: [when, ev.location, `Takwim ${year}`].filter(Boolean).join(' · '),
+            run: () => restoreTakwimEvent(year, ev, entry.id)
+        };
+    }
+    return null;
+}
+
+const RESTORE_MESSAGES = {
+    ok: ['Rekod dipulihkan.', 'success'],
+    duplicate: ['Rekod ini sudah ada. Tiada apa yang ditambah.', 'info'],
+    'not-found': ['KPI atau data tahun untuk rekod ini tidak dijumpai. Tiada apa yang ditambah.', 'danger'],
+    offline: ['Tiada sambungan internet.', 'danger'],
+    error: ['Gagal memulihkan. Cuba lagi.', 'danger']
+};
+
+function restoreHtml(entry) {
+    if (restoredIds.has(entry.id)) {
+        return `<p class="history-restored mt-1.5 text-xs font-semibold"><i class="fas fa-check-circle mr-1" aria-hidden="true"></i>Sudah dipulihkan</p>`;
+    }
+    const plan = restorePlan(entry);
+    if (!plan) return '';
+    if (plan.blocked) return `<p class="mt-1.5 text-xs text-gray-500">${escapeHtml(plan.blocked)}</p>`;
+    return `<button type="button" class="history-restore-btn mt-1.5" data-entry-id="${escapeHtml(entry.id)}">
+        <i class="fas fa-undo" aria-hidden="true"></i>Pulihkan</button>`;
+}
+
+function confirmRestore(entry, li) {
+    const plan = restorePlan(entry);
+    if (!plan || plan.blocked) return;
+    showConfirmModal(
+        'Pulihkan rekod ini?',
+        'Rekod akan dimasukkan semula ke dashboard untuk semua pengguna. Tindakan ini juga direkod dalam Sejarah Perubahan.',
+        async () => {
+            const result = await plan.run();
+            const [msg, tone] = RESTORE_MESSAGES[result] || RESTORE_MESSAGES.error;
+            showToastNotification(msg, tone);
+            if (result === 'ok' || result === 'duplicate') {
+                restoredIds.add(entry.id);
+                if (li && li.isConnected) li.outerHTML = entryHtml(entry);
+            }
+        },
+        { okLabel: 'Pulihkan', tone: 'safe', preview: { title: plan.title, meta: plan.meta } }
+    );
+}
+
 function entryHtml(entry) {
     const info = actionInfo(entry);
     const lines = describe(entry).filter(Boolean);
     const snap = snapshotOf(entry);
     const toneCls = { add: 'history-tone-add', edit: 'history-tone-edit', delete: 'history-tone-delete' }[info.tone];
     return `
-    <li class="history-entry flex gap-3 py-3">
+    <li class="history-entry flex gap-3 py-3" data-entry-id="${escapeHtml(entry.id)}">
         <div class="history-icon ${toneCls} flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center">
             <i class="fas ${info.icon} text-xs" aria-hidden="true"></i>
         </div>
@@ -164,6 +252,7 @@ function entryHtml(entry) {
                     </button>
                 </div>
             </details>` : ''}
+            ${restoreHtml(entry)}
         </div>
     </li>`;
 }
@@ -182,7 +271,7 @@ function ensureModal() {
                 </h3>
                 <button type="button" id="history-modal-close" class="text-gray-500 hover:text-red-600 text-2xl font-bold leading-none" aria-label="Tutup">&times;</button>
             </div>
-            <p class="text-xs text-gray-500 mb-3 flex-shrink-0">Perubahan terkini dahulu. Rekod sebelum 29/10/2026 hanya menyimpan ID, bukan salinan data.</p>
+            <p class="text-xs text-gray-500 mb-3 flex-shrink-0">Perubahan terkini dahulu. Rekod yang dipadam sejak 29/10/2026 boleh dipulihkan; rekod sebelum tarikh itu hanya menyimpan ID, bukan salinan data.</p>
             <div class="overflow-y-auto -mx-1 px-1">
                 <ul id="history-list" class="divide-y divide-gray-100"></ul>
                 <p id="history-status" class="text-sm text-gray-400 text-center py-4 hidden"></p>
@@ -196,6 +285,12 @@ function ensureModal() {
     modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
     modal.querySelector('#history-more-btn').addEventListener('click', () => loadPage(false));
     modal.querySelector('#history-list').addEventListener('click', async (e) => {
+        const restoreBtn = e.target.closest('.history-restore-btn');
+        if (restoreBtn) {
+            const entry = entriesById.get(restoreBtn.dataset.entryId);
+            if (entry) confirmRestore(entry, restoreBtn.closest('li'));
+            return;
+        }
         const btn = e.target.closest('.history-copy-btn');
         if (!btn) return;
         const entry = entriesById.get(btn.dataset.entryId);
@@ -233,6 +328,9 @@ async function loadPage(reset) {
     try {
         const { entries, last, done } = await fetchAuditLogs({ after: lastDoc, limit: PAGE_SIZE });
         entries.forEach(en => entriesById.set(en.id, en));
+        // A logged restore marks the delete it undid (newest first, so the
+        // restore is usually on an earlier page than its delete)
+        entries.forEach(en => { const r = en.details && en.details.restoredFrom; if (r) restoredIds.add(r); });
         list.insertAdjacentHTML('beforeend', entries.map(entryHtml).join(''));
         lastDoc = last || lastDoc;
         moreBtn.classList.toggle('hidden', done);

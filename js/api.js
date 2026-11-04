@@ -880,13 +880,17 @@ export async function updateKpiTargetListItem(quarterKey, kpiId, payload, action
     }
 }
 
-export async function updateKpiBreakdownList(quarterKey, kpiId, payload, action) {
-    if (!isEditMode) return;
+// opts.quiet (used by "Pulihkan" in Sejarah Perubahan): no toasts and no
+// reopening of Butiran; the caller reads the result instead:
+// 'ok' | 'duplicate' | 'not-found' | 'offline' | 'error'. opts.auditExtra is
+// merged into the audit entry (e.g. { restoredFrom: <audit entry id> }).
+export async function updateKpiBreakdownList(quarterKey, kpiId, payload, action, opts = {}) {
+    if (!isEditMode) return 'error';
     const basePath = `artifacts/${getAppId()}/public/data/kpi-${selectedYear}`;
     const startQuarterNum = parseInt(quarterKey.replace('q', ''), 10);
     const NOT_FOUND = 'kpi/item-not-found';
     const DUPLICATE_ITEM = 'kpi/duplicate-item';
-    if (!assertOnline()) return;
+    if (opts.quiet ? !navigator.onLine : !assertOnline()) return 'offline';
     showLoading("Menyimpan...");
     try {
         // breakdownList items are cumulative (an item added at Qn propagates Qn..Q4),
@@ -1019,6 +1023,14 @@ export async function updateKpiBreakdownList(quarterKey, kpiId, payload, action)
                 pending.push([refs[n], data]);
             });
 
+            // A restore into a year that no longer has this KPI: say so rather
+            // than log a restore that wrote nothing
+            if (opts.quiet && !pending.length) {
+                const missing = new Error('KPI not found');
+                missing.code = NOT_FOUND;
+                throw missing;
+            }
+
             pending.forEach(([ref, data]) =>
                 t.update(ref, { kpis: data.kpis, footerDate: nowFooterDate() }));
         });
@@ -1026,13 +1038,21 @@ export async function updateKpiBreakdownList(quarterKey, kpiId, payload, action)
             kpiId, quarterKey, action,
             ...(action === 'delete' ? { deleted: auditItem } : {}),
             ...(action === 'edit' ? { before: auditItem, after: payload && payload.data } : {}),
-            ...(action === 'add' ? { added: addPayload } : {})
+            ...(action === 'add' ? { added: addPayload } : {}),
+            ...(opts.auditExtra || {})
         });
+        if (opts.quiet) return 'ok';
         showToastNotification('Butiran dikemas kini!', 'success');
         const btn = document.querySelector(`.show-details-btn[data-kpi-id="${kpiId}"]`);
         closeModal(document.getElementById('details-modal'));
         showDetailsModal(kpiId, btn);
     } catch (e) {
+        if (opts.quiet) {
+            if (e && e.code === NOT_FOUND) return 'not-found';
+            if (e && e.code === DUPLICATE_ITEM) return 'duplicate';
+            console.error(e);
+            return 'error';
+        }
         if (e && e.code === NOT_FOUND) {
             showToastNotification("Item tidak dijumpai. Sila buka semula butiran dan cuba lagi.", "danger");
             return;
@@ -1331,6 +1351,78 @@ export async function updateTakwimEvent(year, eventId, updatedData) {
         } else {
             showToastNotification("Gagal mengemas kini aktiviti.", "danger");
         }
+    } finally {
+        hideLoading();
+    }
+}
+
+// --- RESTORE FROM SEJARAH PERUBAHAN ---
+// Put back a KPI or a Takwim activity from the copy its delete left in the
+// audit log. Each is one transaction that refuses when a record with the same
+// id is already there (restored before, or never really gone), so pressing
+// "Pulihkan" twice cannot create a duplicate. Results: 'ok' | 'duplicate' |
+// 'not-found' | 'offline' | 'error'; the caller shows the message.
+const RESTORE_EXISTS = 'restore/already-exists';
+
+// `deleted` = { q1..q4: kpi or null } as DELETE_KPI logged it. Each quarter
+// gets its own copy back (values were per quarter); appended at the end.
+export async function restoreDeletedKpi(kpiId, deleted, restoredFrom) {
+    if (!isEditMode) return 'error';
+    if (!navigator.onLine) return 'offline';
+    const copies = deleted && typeof deleted === 'object' ? deleted : {};
+    const first = copies.q1 || copies.q2 || copies.q3 || copies.q4;
+    if (!first) return 'not-found';
+    showLoading("Memulihkan KPI...");
+    try {
+        let wrote = 0;
+        await runQuarterTransaction(ALL_QUARTERS, (data, qNum) => {
+            if (data.kpis.some(k => k.id === kpiId)) {
+                const dup = new Error('KPI already exists');
+                dup.code = RESTORE_EXISTS;
+                throw dup;   // aborts the whole transaction: nothing written
+            }
+            const copy = copies[`q${qNum}`];
+            if (!copy) return false;
+            data.kpis.push(copy);
+            wrote++;
+        });
+        if (!wrote) return 'not-found';   // the year's quarter documents are gone
+        await writeAuditLog('RESTORE_KPI', { kpiId, name: first.name, restoredFrom });
+        return 'ok';
+    } catch (e) {
+        if (e && e.code === RESTORE_EXISTS) return 'duplicate';
+        console.error('restoreDeletedKpi error:', e);
+        return 'error';
+    } finally {
+        hideLoading();
+    }
+}
+
+// `event` = the activity as DELETE_TAKWIM logged it (same id comes back)
+export async function restoreTakwimEvent(year, event, restoredFrom) {
+    if (!isEditMode) return 'error';
+    if (!navigator.onLine) return 'offline';
+    if (!event || !event.id) return 'not-found';
+    showLoading("Memulihkan aktiviti...");
+    try {
+        const ref = takwimDocRef(year);
+        await db.runTransaction(async (t) => {
+            const doc = await t.get(ref);
+            const events = (doc.exists && Array.isArray(doc.data().events)) ? doc.data().events : [];
+            if (events.some(ev => ev.id === event.id)) {
+                const dup = new Error('Event already exists');
+                dup.code = RESTORE_EXISTS;
+                throw dup;
+            }
+            events.push({ ...event });
+            t.set(ref, { events }, { merge: true });
+        });
+        await writeAuditLog('RESTORE_TAKWIM', { year, eventId: event.id, title: event.title || '', restoredFrom });
+        return 'ok';
+    } catch (e) {
+        if (e && e.code === RESTORE_EXISTS) return 'duplicate';
+        console.error('restoreTakwimEvent error:', e);
+        return 'error';
     } finally {
         hideLoading();
     }

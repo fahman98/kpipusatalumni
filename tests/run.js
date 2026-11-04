@@ -602,8 +602,72 @@ const scenarios = {
         assert.match(second, /RM 5,000/);
         await shot(page, 'history');
         await page.click('#history-more-btn'); await page.waitForTimeout(600);
-        assert.equal(await page.$$eval('#history-list li', l => l.length), 36);
+        assert.equal(await page.$$eval('#history-list li', l => l.length), 39);
         await noWrites(page);
+        await ctx.close();
+    },
+
+    // "Pulihkan" in Sejarah Perubahan puts a deleted record back (writes go to
+    // the mock only). Duplicates, other years and old id-only entries refused.
+    async 'history restore'() {
+        const { ctx, page } = await open({ admin: true });
+        await page.click('#history-open-btn'); await page.waitForTimeout(800);
+        const row = (id) => `#history-list li[data-entry-id="${id}"]`;
+        const tx = () => page.evaluate(() => window.__tx.length);
+        // Only deletes with a copy offer it; another year explains instead
+        assert.equal(await page.isVisible(row('a5') + ' .history-restore-btn'), false, 'id-only delete has no copy');
+        assert.match(await page.textContent(row('r2')), /Tukar tahun kepada 2025 untuk memulihkan/);
+        assert.equal(await page.isVisible(row('r2') + ' .history-restore-btn'), false);
+
+        // Cancel writes nothing
+        await page.click(row('a2') + ' .history-restore-btn'); await page.waitForTimeout(300);
+        assert.equal(await page.textContent('#confirm-modal-title'), 'Pulihkan rekod ini?');
+        assert.equal(await page.textContent('#confirm-modal-preview-title'), 'Tajaan Syarikat ABC');
+        assert.match(await page.textContent('#confirm-modal-preview-meta'), /RM 5,000 · .* · Suku 3 2026/);
+        assert.equal(await page.evaluate(() => document.getElementById('confirm-modal').classList.contains('confirm-safe')), true);
+        await shot(page, 'history-restore-confirm');
+        await page.click('#confirm-modal-cancel-btn');
+        await noWrites(page);
+
+        // Breakdown record: back into Q3 and Q4 through the normal add path
+        await page.click(row('a2') + ' .history-restore-btn'); await page.waitForTimeout(300);
+        await page.click('#confirm-modal-ok-btn'); await page.waitForTimeout(1200);
+        let writes = await page.evaluate(() => window.__tx.map(t => t.k));
+        assert.deepEqual(writes, ['kpi-2026/q3', 'kpi-2026/q4']);
+        const q4Items = await page.evaluate(() => window.__tx[1].d.kpis.find(k => k.id === 'pendanaan').details.items.map(i => i.name));
+        assert.ok(q4Items.includes('Tajaan Syarikat ABC'));
+        let audit = await page.evaluate(() => window.__audit[window.__audit.length - 1]);
+        assert.equal(audit.details.action, 'add');
+        assert.equal(audit.details.restoredFrom, 'a2');
+        assert.equal(await toast(page), 'Rekod dipulihkan.');
+        assert.match(await page.textContent(row('a2')), /Sudah dipulihkan/);
+
+        // Takwim activity: same id comes back
+        await page.click(row('a3') + ' .history-restore-btn'); await page.waitForTimeout(300);
+        await page.click('#confirm-modal-ok-btn'); await page.waitForTimeout(1200);
+        const ev = await page.evaluate(() => window.__tx[window.__tx.length - 1]);
+        assert.equal(ev.k, 'takwim-2026/main');
+        assert.ok(ev.d.events.some(e => e.id === 'e9' && e.title === 'Bengkel Alumni'));
+        audit = await page.evaluate(() => window.__audit[window.__audit.length - 1]);
+        assert.deepEqual([audit.action, audit.details.restoredFrom], ['RESTORE_TAKWIM', 'a3']);
+
+        // Whole KPI: each quarter gets its own copy back
+        const before = await tx();
+        await page.click(row('r1') + ' .history-restore-btn'); await page.waitForTimeout(300);
+        assert.match(await page.textContent('#confirm-modal-preview-meta'), /KPI penuh bersama butirannya · Suku 1, Suku 2, Suku 3, Suku 4 2026/);
+        await page.click('#confirm-modal-ok-btn'); await page.waitForTimeout(1200);
+        const kpiWrites = await page.evaluate((n) => window.__tx.slice(n).map(t => [t.k, t.d.kpis.find(k => k.id === 'kpi-lama').value]), before);
+        assert.deepEqual(kpiWrites, [['kpi-2026/q1', 2], ['kpi-2026/q2', 4], ['kpi-2026/q3', 6], ['kpi-2026/q4', 6]]);
+        audit = await page.evaluate(() => window.__audit[window.__audit.length - 1]);
+        assert.deepEqual([audit.action, audit.details.restoredFrom], ['RESTORE_KPI', 'r1']);
+
+        // A record that is still there: refused, nothing written
+        const beforeDup = await tx();
+        await page.click(row('r3') + ' .history-restore-btn'); await page.waitForTimeout(300);
+        await page.click('#confirm-modal-ok-btn'); await page.waitForTimeout(1200);
+        assert.equal(await tx(), beforeDup);
+        assert.equal(await toast(page), 'Rekod ini sudah ada. Tiada apa yang ditambah.');
+        assert.deepEqual(page.__errors, []);
         await ctx.close();
     },
 

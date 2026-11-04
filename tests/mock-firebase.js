@@ -52,6 +52,13 @@
         { id: 'a2', timestamp: TS('2026-10-29T09:10:00'), user: 'alumni@upsi.edu.my', action: 'UPDATE_BREAKDOWN_ITEM', year: '2026', details: { kpiId: 'pendanaan', quarterKey: 'q3', action: 'delete', deleted: { name: 'Tajaan Syarikat ABC', value: 5000, bulan: 8 } } },
         { id: 'a3', timestamp: TS('2026-10-29T09:05:00'), user: 'alumni@upsi.edu.my', action: 'DELETE_TAKWIM', year: '2026', details: { year: '2026', eventId: 'e9', deleted: { id: 'e9', title: 'Bengkel Alumni', date: '2026-11-02', location: 'Bilik Mesyuarat', status: '', notes: '' } } },
         { id: 'a4', timestamp: TS('2026-10-29T09:00:00'), user: 'alumni@upsi.edu.my', action: 'UPDATE_BREAKDOWN_ITEM', year: '2026', details: { kpiId: 'pendanaan', quarterKey: 'q2', action: 'edit', before: { name: 'Tajaan XYZ', value: 15000, bulan: 5 }, after: { name: 'Tajaan Syarikat XYZ Sdn Bhd', value: 15000, bulan: 5 } } },
+        // Restore cases ("Pulihkan"): a whole KPI with its copies, a delete from
+        // another year, and a record that is still there (duplicate)
+        { id: 'r1', timestamp: TS('2026-10-25T11:00:00'), user: 'alumni@upsi.edu.my', action: 'DELETE_KPI', year: '2026', details: { kpiId: 'kpi-lama', deleted: {
+            q1: mk('kpi-lama', 'Penerbitan Alumni', 'fa-book', 10, 2), q2: mk('kpi-lama', 'Penerbitan Alumni', 'fa-book', 10, 4),
+            q3: mk('kpi-lama', 'Penerbitan Alumni', 'fa-book', 10, 6), q4: mk('kpi-lama', 'Penerbitan Alumni', 'fa-book', 10, 6) } } },
+        { id: 'r2', timestamp: TS('2026-10-24T11:00:00'), user: 'alumni@upsi.edu.my', action: 'UPDATE_BREAKDOWN_ITEM', year: '2025', details: { kpiId: 'pendanaan', quarterKey: 'q1', action: 'delete', deleted: { name: 'Sumbangan 2025', value: 1000, bulan: 1 } } },
+        { id: 'r3', timestamp: TS('2026-10-23T11:00:00'), user: 'alumni@upsi.edu.my', action: 'UPDATE_BREAKDOWN_ITEM', year: '2026', details: { kpiId: 'pendanaan', quarterKey: 'q1', action: 'delete', deleted: { name: 'Sumbangan Majlis Makan Malam Alumni', value: 42000, bulan: 2 } } },
         { id: 'a5', timestamp: TS('2026-10-20T14:00:00'), user: 'alumni@upsi.edu.my', action: 'DELETE_KPI', year: '2026', details: { kpiId: 'kpi-171' } },
         { id: 'a6', timestamp: TS('2026-01-03T10:00:00'), user: 'alumni@upsi.edu.my', action: 'CLONE_YEAR', year: '2026', details: { sourceYear: '2025' } },
     ];
