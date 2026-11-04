@@ -293,6 +293,16 @@ export function showConfirmModal(title, message, onConfirm, options = {}) {
 
     newOk.textContent = options.okLabel || 'Teruskan';
 
+    // tone 'safe' (e.g. restoring a record): blue dialog with an undo icon
+    // instead of the red warning used for deletes and resets
+    const safe = options.tone === 'safe';
+    modal.classList.toggle('confirm-safe', safe);
+    const iconPath = document.getElementById('confirm-modal-icon-path');
+    if (iconPath) {
+        if (!iconPath.dataset.warn) iconPath.dataset.warn = iconPath.getAttribute('d');
+        iconPath.setAttribute('d', safe ? 'M3 7v6h6 M3.5 13a9 9 0 1 0 2.6-6.4L3 9' : iconPath.dataset.warn);
+    }
+
     // Optional record preview ({ title, meta }) and impact line
     // ({ text, strong }: "...daripada X kepada <strong>Y</strong>."), so the
     // admin sees exactly which record goes and what happens to the total

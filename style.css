@@ -2346,6 +2346,26 @@ body.dark-mode .confirm-impact strong { color: #f3f4f6; }
 body.dark-mode .confirm-preview-meta,
 body.dark-mode .confirm-impact { color: #9ca3af; }
 
+/* Confirm dialog, safe tone (restore from Sejarah Perubahan) */
+#confirm-modal.confirm-safe .border-red-100 { border-color: #DCE5F7 !important; }
+#confirm-modal.confirm-safe .bg-red-100 { background-color: #E8EEFA !important; }
+#confirm-modal.confirm-safe .text-red-600 { color: #1747A6 !important; }
+#confirm-modal.confirm-safe #confirm-modal-ok-btn { background-color: #1747A6 !important; }
+#confirm-modal.confirm-safe #confirm-modal-ok-btn:hover { background-color: #0F2F6E !important; }
+body.dark-mode #confirm-modal.confirm-safe .bg-red-100 { background-color: #1e3a8a !important; }
+body.dark-mode #confirm-modal.confirm-safe .text-red-600 { color: #93c5fd !important; }
+
+/* Sejarah Perubahan: restore button and the restored mark */
+.history-restore-btn {
+    display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 12px;
+    border: 1px solid #C7D0DD; border-radius: 8px; background: #fff;
+    color: #1747A6; font-size: 12px; font-weight: 800;
+}
+.history-restore-btn:hover { border-color: #1747A6; background: #E8EEFA; }
+.history-restored { color: #12703F; }
+body.dark-mode .history-restore-btn { background: #111827; border-color: #4b5563; color: #93c5fd; }
+body.dark-mode .history-restored { color: #6FD39B; }
+
 /* "Perlu tindakan" panel */
 .admin-todo {
     margin-bottom: 16px; background: #fff; border: 1px solid #E2E7EF; border-radius: 16px; overflow: hidden;

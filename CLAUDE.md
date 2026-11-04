@@ -20,7 +20,7 @@ descriptions of PR #2 to #8.
 - The owner cannot easily re-enter lost data. Never write to live Firestore
   from a session, and never press reset / delete in a live app.
 - Test with `tests/` (see `tests/README.md`): `cd tests && npm install`
-  once, then `node run.js` (26 scenarios, ~3 min) against `mock-firebase.js`,
+  once, then `node run.js` (27 scenarios, ~3 min) against `mock-firebase.js`,
   which records every write instead of sending it. Clock pinned to
   29/10/2026. Add a scenario to `tests/run.js` for each behaviour change;
   extend the mock's seed data rather than touching live data. The proxy
@@ -154,6 +154,17 @@ descriptions of PR #2 to #8.
 - Delete dialogs (`showConfirmModal` options `preview {title, meta}` and
   `impact {text, strong}`) show the record and the new total, and say a
   copy stays in Sejarah Perubahan (true since the audit snapshots).
+- "Pulihkan" in Sejarah Perubahan (history.js `restorePlan`): deletes that
+  carry a copy (since 29/10/2026) can be put back after a blue
+  (`tone: 'safe'`) confirm with a preview. Breakdown records go through
+  `updateKpiBreakdownList(..., 'add', { quiet, auditExtra: { restoredFrom } })`
+  (same duplicate check and carry-forward as a normal add; quiet returns
+  'ok' | 'duplicate' | 'not-found' | 'offline' | 'error'); Takwim activities
+  and whole KPIs via `restoreTakwimEvent` / `restoreDeletedKpi`, one
+  transaction each, refused when the same id exists. Breakdown / KPI
+  restores need the selected year = the entry's year. Logged as
+  `restoredFrom` / RESTORE_KPI / RESTORE_TAKWIM; an entry with a logged
+  restore shows "Sudah dipulihkan". Edits (`before`) are not reverted.
 - "Perlu tindakan" (admin, dashboard, hidden when empty): Kembara ended
   with no `hadir`; current year only: no Penjanaan record in the current
   quarter (from day 15 of it), no upcoming Takwim activity (next year's
@@ -191,6 +202,7 @@ descriptions of PR #2 to #8.
   `feat:`), body explains why.
 
 ## Ideas not done yet
-- Restore-from-backup button (needs careful design, it writes).
+- Restore from the downloaded JSON backup file (needs careful design, it
+  writes; single deleted records are covered by "Pulihkan" above).
 - Two icon libraries load in full (Font Awesome + Phosphor).
 - Audit log filter by year would need a Firestore composite index.
