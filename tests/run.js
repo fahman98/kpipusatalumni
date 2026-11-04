@@ -480,6 +480,53 @@ const scenarios = {
         await ctx.close();
     },
 
+    // "Simpan ke kalendar" on upcoming activities: Google link + .ics (read only)
+    async 'takwim calendar'() {
+        const { ctx, page } = await open({ mobile: true });
+        await page.click('#bottom-nav [data-view=takwim]'); await page.waitForTimeout(1200);
+        const openEvent = async (id) => {
+            await page.click(`.takwim-card[data-id="${id}"]`); await page.waitForTimeout(400);
+        };
+        const closeEvent = async () => { await page.click('#takwim-detail-close'); await page.waitForTimeout(300); };
+
+        // Upcoming, several days: Google Calendar link with an exclusive end date
+        await openEvent('e1');
+        const href = await page.getAttribute('#takwim-cal-google', 'href');
+        const q = new URL(href).searchParams;
+        assert.equal(q.get('action'), 'TEMPLATE');
+        assert.equal(q.get('text'), 'Majlis Konvokesyen ke-27 UPSI');
+        assert.equal(q.get('dates'), '20261108/20261112');
+        assert.equal(q.get('location'), 'Dewan Tuanku Canselor');
+        assert.match(q.get('details'), /\?tab=takwim/);
+        await shot(page, 'takwim-calendar');
+        const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#takwim-cal-ics')]);
+        assert.match(dl.suggestedFilename(), /^majlis-konvokesyen-ke-27-upsi\.ics$/);
+        const file = path.join(DL_DIR, dl.suggestedFilename());
+        await dl.saveAs(file);
+        const ics = fs.readFileSync(file, 'utf8');
+        for (const line of ['BEGIN:VCALENDAR', 'UID:e1@kpi-pusat-alumni-upsi', 'DTSTART;VALUE=DATE:20261108',
+            'DTEND;VALUE=DATE:20261112', 'SUMMARY:Majlis Konvokesyen ke-27 UPSI', 'LOCATION:Dewan Tuanku Canselor', 'END:VCALENDAR']) {
+            assert.ok(ics.split('\r\n').includes(line), `missing ${line}`);
+        }
+        assert.ok(ics.split('\r\n').every(l => new TextEncoder().encode(l).length <= 75), 'ics lines folded at 75 octets');
+        await closeEvent();
+
+        // Today counts; past and cancelled activities offer nothing
+        await openEvent('e2');
+        assert.equal(await page.isVisible('#takwim-cal-google'), true, 'an activity today can still be saved');
+        await closeEvent();
+        await page.click('.takwim-chip[data-filter="berlangsung"]'); await page.waitForTimeout(400);
+        await openEvent('p1');
+        assert.equal(await page.isVisible('#takwim-cal-google'), false, 'past activity');
+        await closeEvent();
+        await page.click('.takwim-chip[data-filter="dibatalkan"]'); await page.waitForTimeout(400);
+        await openEvent('e5');
+        assert.equal(await page.isVisible('#takwim-cal-google'), false, 'cancelled activity');
+        await noWrites(page);
+        assert.deepEqual(page.__errors, []);
+        await ctx.close();
+    },
+
     // Legacy events keep their look; editing one moves its status to the new field
     async 'takwim status'() {
         const { ctx, page } = await open({ admin: true });

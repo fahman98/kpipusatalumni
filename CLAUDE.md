@@ -20,7 +20,7 @@ descriptions of PR #2 to #8.
 - The owner cannot easily re-enter lost data. Never write to live Firestore
   from a session, and never press reset / delete in a live app.
 - Test with `tests/` (see `tests/README.md`): `cd tests && npm install`
-  once, then `node run.js` (27 scenarios, ~3 min) against `mock-firebase.js`,
+  once, then `node run.js` (28 scenarios, ~3 min) against `mock-firebase.js`,
   which records every write instead of sending it. Clock pinned to
   29/10/2026. Add a scenario to `tests/run.js` for each behaviour change;
   extend the mock's seed data rather than touching live data. The proxy
@@ -41,7 +41,8 @@ descriptions of PR #2 to #8.
 - `js/takwim.js`, `js/penjanaan.js` the two other tabs. `js/admin.js` login,
   logout, idle logout. `js/history.js` audit log viewer. `js/todo.js` admin
   "Perlu tindakan" panel (read-only). `js/admin-table.js` admin desktop
-  table (borrows the hidden cards' buttons). `js/auth.js` admin
+  table (borrows the hidden cards' buttons). `js/calendar.js` Takwim
+  "Simpan ke kalendar" (Google link + .ics, read-only). `js/auth.js` admin
   allow-list (`alumni@upsi.edu.my`, mirrored in `firestore.rules`).
 
 ## Data model (`artifacts/{appId}/public/data/...`)
@@ -165,6 +166,10 @@ descriptions of PR #2 to #8.
   restores need the selected year = the entry's year. Logged as
   `restoredFrom` / RESTORE_KPI / RESTORE_TAKWIM; an entry with a logged
   restore shows "Sudah dipulihkan". Edits (`before`) are not reverted.
+- Takwim activity details offer "Simpan ke kalendar" (everyone) when the
+  activity has not ended and is not Dibatalkan: a Google Calendar link and
+  an .ics download, as whole-day events (end date exclusive), with the
+  notes and a link back to `?tab=takwim`.
 - "Perlu tindakan" (admin, dashboard, hidden when empty): Kembara ended
   with no `hadir`; current year only: no Penjanaan record in the current
   quarter (from day 15 of it), no upcoming Takwim activity (next year's
