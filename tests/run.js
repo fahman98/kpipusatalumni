@@ -764,7 +764,27 @@ const scenarios = {
         assert.ok(Math.abs(fit.ratio - 1414 / 2000) < 0.01, 'poster keeps its ratio');
         assert.ok(fit.bottom <= 900, 'button visible without scrolling');
         assert.equal(fit.loaded, 1414);
+        assert.equal(await page.textContent('#welcome-title'), 'Selamat datang ke Pusat Alumni UPSI');
+        assert.equal(await page.textContent('#welcome-kicker'), 'Lawatan audit · Jumaat, 13/11/2026');
+        assert.match(await page.textContent('#welcome-text'), /sempena Audit Pensijilan Semula ISO 9001:2015/);
         await shot(page, 'welcome-desktop');
+        // Projector sizes: words beside the poster, whole poster and button on screen
+        const layout = () => page.evaluate(() => {
+            const r = (id) => document.getElementById(id).getBoundingClientRect();
+            const p = r('welcome-poster'), t = r('welcome-title'), b = r('welcome-enter-btn');
+            return { beside: t.left >= p.right && t.width > 200, top: p.top, bottom: p.bottom, btn: b.bottom,
+                overflow: document.getElementById('welcome-overlay').scrollWidth - innerWidth };
+        });
+        for (const [width, height] of [[1366, 768], [1280, 720], [1024, 768]]) {
+            await page.setViewportSize({ width, height }); await page.waitForTimeout(250);
+            const l = await layout();
+            assert.ok(l.beside, `words not beside the poster at ${width}x${height}`);
+            assert.ok(l.top >= 0 && l.bottom <= height, `poster cut off at ${width}x${height}`);
+            assert.ok(l.btn <= height, `button off screen at ${width}x${height}`);
+            assert.ok(l.overflow <= 0, `overlay wider than ${width}px`);
+            if (width === 1024) await shot(page, 'welcome-1024');
+        }
+        await page.setViewportSize({ width: 1366, height: 900 }); await page.waitForTimeout(250);
         await page.click('#welcome-enter-btn'); await page.waitForTimeout(200);
         assert.equal(await page.isVisible('#welcome-overlay'), false);
         assert.equal(await page.evaluate(() => document.body.classList.contains('modal-open')), false);
@@ -785,6 +805,10 @@ const scenarios = {
             overflow: document.documentElement.scrollWidth - innerWidth
         }));
         assert.ok(Math.abs(phone.w - (390 - 32)) < 1, `poster ${phone.w}px wide`);
+        // Phone: date line and button only; the heading stays for screen readers
+        assert.equal(await page.isVisible('#welcome-kicker'), true);
+        assert.ok(await page.evaluate(() => document.getElementById('welcome-title').getBoundingClientRect().width <= 1), 'heading shown on the phone');
+        assert.equal(await page.getAttribute('#welcome-overlay', 'aria-labelledby'), 'welcome-title');
         assert.ok(phone.bottom <= 844, 'button visible on the phone');
         assert.equal(phone.overflow, 0);
         await shot(page, 'welcome-phone');

@@ -209,7 +209,14 @@ descriptions of PR #2 to #8.
 
 - Poster sambutan (`js/welcome.js`, `#welcome-overlay`): full-screen poster
   over the dashboard on the dates in `WELCOME` (device's local day,
-  inclusive), once per tab session, or any day with `?sambutan=1`. The
+  inclusive), once per tab session, or any day with `?sambutan=1`. Layout
+  from the canvas artboards "Poster sambutan" (owner's): navy ground, words
+  (`kicker`, `title`, `text`, `note` in `WELCOME`) beside the poster on
+  landscape screens >= 900px (fits 1024x768 projectors; poster follows the
+  screen height); phones / portrait show poster, kicker and a full-width
+  button, title kept for screen readers. Agreed changes from the canvas:
+  no "Juruaudit" card (the poster already names her), app font instead of
+  Manrope, "kunjungan sempena". The
   image src is set by the script so it is not downloaded on other days, and
   it is not precached. Closes by "Masuk ke Dashboard", a click beside the
   poster or Escape (listed first in ui.js `topOpenModal`). First use: ISO

@@ -58,7 +58,7 @@
     <link rel="apple-touch-icon" href="./images/apple-touch-icon.png">
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="style.css?v=6.7">
+    <link rel="stylesheet" href="style.css?v=6.8">
     <link rel="stylesheet" href="tailwind.css?v=23">
 </head>
 
@@ -621,16 +621,29 @@
         </div>
 
         <!-- POSTER SAMBUTAN (js/welcome.js): over the dashboard on set dates only,
-             once per session. The image is set by the script, so it is not
-             downloaded on other days. -->
-        <div id="welcome-overlay" class="welcome-overlay hidden" role="dialog" aria-modal="true" aria-label="Poster sambutan">
+             once per session. Design: canvas "Redesign KPI Pusat Alumni",
+             Poster sambutan. Wide landscape screens put the words beside the
+             poster; phones and portrait screens show poster, date and button.
+             The script fills the image and the words from its WELCOME entry,
+             so the image is not downloaded on other days. -->
+        <div id="welcome-overlay" class="welcome-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
             <div class="welcome-backdrop" aria-hidden="true"></div>
             <div class="welcome-stage">
                 <img id="welcome-poster" class="welcome-poster" alt="" width="1414" height="2000" decoding="async">
-                <button id="welcome-enter-btn" type="button" class="welcome-enter-btn">
-                    <span>Masuk ke Dashboard</span>
-                    <i class="ph-duotone ph-arrow-right" aria-hidden="true"></i>
-                </button>
+                <div class="welcome-panel">
+                    <div class="welcome-copy">
+                        <p id="welcome-kicker" class="welcome-kicker"></p>
+                        <h1 id="welcome-title" class="welcome-title"></h1>
+                        <p id="welcome-text" class="welcome-text"></p>
+                    </div>
+                    <div class="welcome-actions">
+                        <button id="welcome-enter-btn" type="button" class="welcome-enter-btn">
+                            <span>Masuk ke Dashboard KPI</span>
+                            <i class="ph-duotone ph-arrow-right" aria-hidden="true"></i>
+                        </button>
+                        <p id="welcome-note" class="welcome-note"></p>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -1176,7 +1189,7 @@
         </div>
 
         <!-- Load Main Script as Module -->
-        <script type="module" src="js/main.js?v=7.3"></script>
+        <script type="module" src="js/main.js?v=7.4"></script>
 </body>
 
 </html>
