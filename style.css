@@ -1741,6 +1741,78 @@ body.dark-mode .detail-btn-delete:hover{ background:#5b1414; }
 .offline-banner.hidden { display: none; }
 body.dark-mode .offline-banner { background: #3A2606; border-color: #6B4A12; color: #FCD9A0; }
 
+/* ===== POSTER SAMBUTAN (js/welcome.js) =====
+   Sits above everything at boot (the install sheet / iOS guide wait behind
+   it). The poster keeps its own ratio and fits the screen height, so it is
+   full width on phones and centred on desktop or a projector, with a
+   blurred copy of itself filling the sides. */
+.welcome-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 120;
+    display: flex;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    background: #0E1A2B;
+    animation: welcome-in 0.35s ease-out;
+}
+.welcome-overlay.hidden { display: none; }
+.welcome-backdrop {
+    position: fixed;
+    inset: -48px;
+    background-size: cover;
+    background-position: center;
+    filter: blur(32px) saturate(1.15);
+    opacity: 0.7;
+}
+.welcome-stage {
+    position: relative;
+    width: 100%;
+    margin: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: max(16px, env(safe-area-inset-top, 0px)) 16px max(20px, env(safe-area-inset-bottom, 0px));
+}
+.welcome-poster {
+    display: block;
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: calc(100vh - 116px);
+    max-height: calc(100dvh - 116px);
+    border-radius: 14px;
+    background: #DCE3F0;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+}
+.welcome-enter-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 48px;
+    padding: 0 28px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    background: #1747A6;
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 700;
+    box-shadow: 0 10px 28px rgba(23, 71, 166, 0.45);
+    cursor: pointer;
+    transition: background-color 0.15s ease, transform 0.15s ease;
+}
+.welcome-enter-btn i { font-size: 1.15rem; }
+.welcome-enter-btn:hover { background: #123A8A; }
+.welcome-enter-btn:active { transform: scale(0.98); }
+.welcome-enter-btn:focus-visible { outline: 3px solid #FFC24B; outline-offset: 3px; }
+@keyframes welcome-in { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+    .welcome-overlay { animation: none; }
+    .welcome-enter-btn { transition: none; }
+}
+@media print { .welcome-overlay { display: none !important; } }
+
 .install-overlay, .ios-guide-overlay {
     position: fixed;
     inset: 0;

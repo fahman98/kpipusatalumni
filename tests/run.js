@@ -739,6 +739,67 @@ const scenarios = {
         await ctx.close();
     },
 
+    // Poster sambutan: only on 12-13/11/2026 (or ?sambutan=1), once per session, fits the screen
+    async 'welcome poster'() {
+        const POSTER = 'sambutan-audit-2026.webp';
+        const track = (page) => { const reqs = []; page.on('request', r => { if (r.url().includes(POSTER)) reqs.push(r.url()); }); return reqs; };
+        // Outside the dates: hidden, and the image is never downloaded
+        for (const time of ['2026-10-29T10:00:00', '2026-11-11T23:59:00', '2026-11-14T00:00:30']) {
+            const { ctx, page } = await open({ time });
+            assert.equal(await page.isVisible('#welcome-overlay'), false, `poster shown on ${time}`);
+            assert.equal(await page.getAttribute('#welcome-poster', 'src'), null);
+            await ctx.close();
+        }
+        // Audit day, desktop: shown with alt text, the dashboard loaded behind it
+        let { ctx, page } = await open({ time: '2026-11-13T08:30:00' });
+        assert.equal(await page.isVisible('#welcome-overlay'), true);
+        assert.match(await page.getAttribute('#welcome-poster', 'alt'), /Sarasvathy.*13 November 2026.*ISO 9001:2015/);
+        assert.equal(await page.evaluate(() => document.activeElement.id), 'welcome-enter-btn');
+        assert.equal(await page.evaluate(() => document.body.classList.contains('modal-open')), true);
+        const fit = await page.evaluate(() => {
+            const r = document.getElementById('welcome-poster').getBoundingClientRect();
+            const b = document.getElementById('welcome-enter-btn').getBoundingClientRect();
+            return { ratio: r.width / r.height, bottom: b.bottom, loaded: document.getElementById('welcome-poster').naturalWidth };
+        });
+        assert.ok(Math.abs(fit.ratio - 1414 / 2000) < 0.01, 'poster keeps its ratio');
+        assert.ok(fit.bottom <= 900, 'button visible without scrolling');
+        assert.equal(fit.loaded, 1414);
+        await shot(page, 'welcome-desktop');
+        await page.click('#welcome-enter-btn'); await page.waitForTimeout(200);
+        assert.equal(await page.isVisible('#welcome-overlay'), false);
+        assert.equal(await page.evaluate(() => document.body.classList.contains('modal-open')), false);
+        assert.match(await page.textContent('#stat-good'), /^\d+$/, 'dashboard loaded behind the poster');
+        // Same tab again: not shown a second time
+        await page.reload(); await page.waitForTimeout(1500);
+        assert.equal(await page.isVisible('#welcome-overlay'), false, 'shown twice in one session');
+        await noWrites(page);
+        assert.deepEqual(page.__errors, []);
+        await ctx.close();
+        // Phone, day before: full width, button on screen; Escape closes it
+        ({ ctx, page } = await open({ mobile: true, time: '2026-11-12T09:00:00' }));
+        const reqs = track(page);
+        assert.equal(await page.isVisible('#welcome-overlay'), true);
+        const phone = await page.evaluate(() => ({
+            w: document.getElementById('welcome-poster').getBoundingClientRect().width,
+            bottom: document.getElementById('welcome-enter-btn').getBoundingClientRect().bottom,
+            overflow: document.documentElement.scrollWidth - innerWidth
+        }));
+        assert.ok(Math.abs(phone.w - (390 - 32)) < 1, `poster ${phone.w}px wide`);
+        assert.ok(phone.bottom <= 844, 'button visible on the phone');
+        assert.equal(phone.overflow, 0);
+        await shot(page, 'welcome-phone');
+        await page.keyboard.press('Escape'); await page.waitForTimeout(200);
+        assert.equal(await page.isVisible('#welcome-overlay'), false);
+        assert.equal(reqs.length, 0, 'no extra poster download after load');
+        await ctx.close();
+        // ?sambutan=1 shows it on any day; a click beside the poster closes it
+        ({ ctx, page } = await open({ path: '/index.html?sambutan=1' }));
+        assert.equal(await page.isVisible('#welcome-overlay'), true);
+        await page.mouse.click(40, 450); await page.waitForTimeout(200);
+        assert.equal(await page.isVisible('#welcome-overlay'), false);
+        await ctx.close();
+    },
+
     // Install sheet on beforeinstallprompt; "Bukan sekarang" holds for the session
     async 'install sheet'() {
         const { ctx, page } = await open({ mobile: true });

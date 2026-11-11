@@ -1742,7 +1742,8 @@ function topOpenModal() {
     // `input-modal` belongs here too — it is the dialog used for every KPI value
     // edit, and while it was missing from this list Escape did not close it and
     // Tab walked straight out of it into the page behind.
-    const overlayIds = ['confirm-modal', 'input-modal', 'ios-install-modal', 'bulk-edit-modal'];
+    // welcome-overlay (poster sambutan) is first: it sits above all of them.
+    const overlayIds = ['welcome-overlay', 'confirm-modal', 'input-modal', 'ios-install-modal', 'bulk-edit-modal'];
     for (const id of overlayIds) {
         const m = document.getElementById(id);
         if (m && !m.classList.contains('hidden')) return m;
