@@ -1742,10 +1742,13 @@ body.dark-mode .detail-btn-delete:hover{ background:#5b1414; }
 body.dark-mode .offline-banner { background: #3A2606; border-color: #6B4A12; color: #FCD9A0; }
 
 /* ===== POSTER SAMBUTAN (js/welcome.js) =====
-   Sits above everything at boot (the install sheet / iOS guide wait behind
-   it). The poster keeps its own ratio and fits the screen height, so it is
-   full width on phones and centred on desktop or a projector, with a
-   blurred copy of itself filling the sides. */
+   Canvas design "Poster sambutan": navy ground with a blurred copy of the
+   poster, the poster itself, and the words + a white button beside it on
+   wide landscape screens (desktop, projector at 1024x768 and up). Phones
+   and portrait screens get poster, date line and a full-width button; the
+   heading stays for screen readers there. Sizes follow the screen height,
+   so a 768px-tall projector still shows the whole poster. Above everything
+   at boot (install sheet / iOS guide wait behind it). */
 .welcome-overlay {
     position: fixed;
     inset: 0;
@@ -1753,59 +1756,136 @@ body.dark-mode .offline-banner { background: #3A2606; border-color: #6B4A12; col
     display: flex;
     overflow-y: auto;
     overscroll-behavior: contain;
-    background: #0E1A2B;
+    background: #0B1630;
+    color: #FFFFFF;
     animation: welcome-in 0.35s ease-out;
 }
 .welcome-overlay.hidden { display: none; }
 .welcome-backdrop {
     position: fixed;
-    inset: -48px;
+    inset: -60px;
     background-size: cover;
     background-position: center;
-    filter: blur(32px) saturate(1.15);
-    opacity: 0.7;
+    filter: blur(40px) saturate(1.1);
+    opacity: 0.45;
+}
+.welcome-backdrop::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: rgba(11, 22, 48, 0.62);
 }
 .welcome-stage {
     position: relative;
     width: 100%;
     margin: auto;
+    box-sizing: border-box;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 16px;
-    padding: max(16px, env(safe-area-inset-top, 0px)) 16px max(20px, env(safe-area-inset-bottom, 0px));
+    gap: 18px;
+    padding: max(20px, env(safe-area-inset-top, 0px)) 16px max(24px, env(safe-area-inset-bottom, 0px));
 }
 .welcome-poster {
     display: block;
     width: auto;
     height: auto;
     max-width: 100%;
-    max-height: calc(100vh - 116px);
-    max-height: calc(100dvh - 116px);
+    max-height: calc(100vh - 150px);
+    max-height: calc(100dvh - 150px);
     border-radius: 14px;
     background: #DCE3F0;
-    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.4);
 }
+.welcome-panel {
+    width: 100%;
+    max-width: 420px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+.welcome-copy { display: flex; flex-direction: column; gap: 14px; }
+.welcome-kicker {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-variant-numeric: tabular-nums;
+    color: #FFC24B;
+    text-align: center;
+}
+.welcome-title {
+    margin: 0;
+    font-size: clamp(2rem, 3.4vw, 3.25rem);
+    line-height: 1.1;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+.welcome-text { margin: 0; font-size: 1.125rem; line-height: 1.55; color: #D5DEF2; }
+.welcome-actions { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.welcome-note { margin: 0; font-size: 0.875rem; color: #A9BCE0; }
 .welcome-enter-btn {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 10px;
-    min-height: 48px;
+    min-height: 52px;
     padding: 0 28px;
+    border: 0;
     border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.28);
-    background: #1747A6;
-    color: #fff;
+    background: #FFFFFF;
+    color: #1747A6;
+    font-family: inherit;
     font-size: 1rem;
-    font-weight: 700;
-    box-shadow: 0 10px 28px rgba(23, 71, 166, 0.45);
+    font-weight: 800;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
     cursor: pointer;
     transition: background-color 0.15s ease, transform 0.15s ease;
 }
-.welcome-enter-btn i { font-size: 1.15rem; }
-.welcome-enter-btn:hover { background: #123A8A; }
+.welcome-enter-btn i { font-size: 1.2rem; }
+.welcome-enter-btn:hover { background: #EAF0FB; }
 .welcome-enter-btn:active { transform: scale(0.98); }
 .welcome-enter-btn:focus-visible { outline: 3px solid #FFC24B; outline-offset: 3px; }
+
+/* Phones and portrait screens: the poster already says it all in big type,
+   so only the date line and the button show under it. */
+@media not all and (min-width: 900px) and (orientation: landscape) {
+    .welcome-title, .welcome-text, .welcome-note {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        margin: -1px;
+        padding: 0;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+    }
+    .welcome-enter-btn { width: 100%; }
+}
+
+/* Wide landscape: words beside the poster */
+@media (min-width: 900px) and (orientation: landscape) {
+    .welcome-stage {
+        flex-direction: row;
+        justify-content: center;
+        gap: clamp(40px, 5.5vw, 80px);
+        padding: 32px clamp(32px, 6.6vw, 96px);
+    }
+    .welcome-poster {
+        flex-shrink: 0;
+        max-width: 48vw;
+        max-height: calc(100vh - 64px);
+        max-height: calc(100dvh - 64px);
+        border-radius: 16px;
+        box-shadow: 0 28px 70px rgba(0, 0, 0, 0.45);
+    }
+    .welcome-panel { flex: 0 1 540px; min-width: 300px; max-width: 540px; gap: 28px; }
+    .welcome-kicker { font-size: 13px; text-align: left; }
+    .welcome-enter-btn { min-height: 56px; font-size: 1.0625rem; }
+}
+
 @keyframes welcome-in { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
     .welcome-overlay { animation: none; }

@@ -16,6 +16,14 @@ const WELCOME = {
     from: '2026-11-12',
     until: '2026-11-13',
     image: 'images/sambutan-audit-2026.webp',
+    // Words around the poster (canvas design "Poster sambutan"). Title and
+    // text show beside the poster on wide landscape screens; phones show the
+    // kicker and the button only (the title stays for screen readers).
+    kicker: 'Lawatan audit · Jumaat, 13/11/2026',
+    title: 'Selamat datang ke Pusat Alumni UPSI',
+    text: 'Terima kasih atas kunjungan sempena Audit Pensijilan Semula ISO 9001:2015 '
+        + 'Universiti Pendidikan Sultan Idris Tahun 2026.',
+    note: 'Prestasi KPI Pusat Alumni 2026',
     // The poster's words are part of the image, so screen readers get them here
     alt: 'Selamat Datang Puan Sarasvathy a/p Sundara Pathar, Juruaudit SIRIM QAS '
         + 'International Sdn. Bhd., ke Pusat Alumni, Universiti Pendidikan Sultan Idris, '
@@ -48,6 +56,12 @@ export function initWelcome() {
     const inWindow = today >= WELCOME.from && today <= WELCOME.until;
     if (!forcedByUrl() && (!inWindow || seen())) return;
 
+    const setText = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value; };
+    setText('welcome-kicker', WELCOME.kicker);
+    setText('welcome-title', WELCOME.title);
+    setText('welcome-text', WELCOME.text);
+    setText('welcome-note', WELCOME.note);
+
     // The image is only requested when the poster is due, never on other days
     poster.alt = WELCOME.alt;
     poster.src = WELCOME.image;
@@ -68,6 +82,7 @@ export function initWelcome() {
     };
     enterBtn.addEventListener('click', close);
     overlay.addEventListener('click', (e) => {
+        // Empty space only: the poster and the words do not close it
         if (e.target === overlay || e.target.classList.contains('welcome-stage')
             || e.target.classList.contains('welcome-backdrop')) close();
     });
