@@ -58,7 +58,7 @@
     <link rel="apple-touch-icon" href="./images/apple-touch-icon.png">
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="style.css?v=6.6">
+    <link rel="stylesheet" href="style.css?v=6.7">
     <link rel="stylesheet" href="tailwind.css?v=23">
 </head>
 
@@ -620,6 +620,20 @@
             </div>
         </div>
 
+        <!-- POSTER SAMBUTAN (js/welcome.js): over the dashboard on set dates only,
+             once per session. The image is set by the script, so it is not
+             downloaded on other days. -->
+        <div id="welcome-overlay" class="welcome-overlay hidden" role="dialog" aria-modal="true" aria-label="Poster sambutan">
+            <div class="welcome-backdrop" aria-hidden="true"></div>
+            <div class="welcome-stage">
+                <img id="welcome-poster" class="welcome-poster" alt="" width="1414" height="2000" decoding="async">
+                <button id="welcome-enter-btn" type="button" class="welcome-enter-btn">
+                    <span>Masuk ke Dashboard</span>
+                    <i class="ph-duotone ph-arrow-right" aria-hidden="true"></i>
+                </button>
+            </div>
+        </div>
+
         <!-- PWA INSTALL SHEET (Android / desktop Chrome, after beforeinstallprompt).
              Bottom sheet with a backdrop on phones, a small corner card on desktop. -->
         <div id="install-prompt" class="install-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="install-title">
@@ -1162,7 +1176,7 @@
         </div>
 
         <!-- Load Main Script as Module -->
-        <script type="module" src="js/main.js?v=7.2"></script>
+        <script type="module" src="js/main.js?v=7.3"></script>
 </body>
 
 </html>

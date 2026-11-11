@@ -15,7 +15,7 @@ const DEFAULT_TIME = '2026-10-29T10:00:00';
 
 const TYPES = {
     '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css',
-    '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml',
+    '.json': 'application/json', '.png': 'image/png', '.webp': 'image/webp', '.svg': 'image/svg+xml',
     '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf'
 };
 

@@ -49,8 +49,13 @@ import { initPenjanaan } from './penjanaan.js';
 import { statusTier, statusHex, setPaceContext, getPaceFraction, kpiStatusPct, isPacedKpi, quarterStarted, STATUS_LABEL } from './status.js';
 import { isAdminUser } from './auth.js';
 import { openHistory } from './history.js';
+import { initWelcome } from './welcome.js';
 
 document.addEventListener('DOMContentLoaded', () => {
+
+    // Poster sambutan first (only on its set dates), so it covers the page
+    // while the dashboard loads behind it.
+    initWelcome();
 
     // Helper for Selectors
     const getEl = (id) => document.getElementById(id);

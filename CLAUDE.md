@@ -20,7 +20,7 @@ descriptions of PR #2 to #8.
 - The owner cannot easily re-enter lost data. Never write to live Firestore
   from a session, and never press reset / delete in a live app.
 - Test with `tests/` (see `tests/README.md`): `cd tests && npm install`
-  once, then `node run.js` (28 scenarios, ~3 min) against `mock-firebase.js`,
+  once, then `node run.js` (29 scenarios, ~3 min) against `mock-firebase.js`,
   which records every write instead of sending it. Clock pinned to
   29/10/2026. Add a scenario to `tests/run.js` for each behaviour change;
   extend the mock's seed data rather than touching live data. The proxy
@@ -42,7 +42,8 @@ descriptions of PR #2 to #8.
   logout, idle logout. `js/history.js` audit log viewer. `js/todo.js` admin
   "Perlu tindakan" panel (read-only). `js/admin-table.js` admin desktop
   table (borrows the hidden cards' buttons). `js/calendar.js` Takwim
-  "Simpan ke kalendar" (Google link + .ics, read-only). `js/auth.js` admin
+  "Simpan ke kalendar" (Google link + .ics, read-only). `js/welcome.js`
+  poster sambutan overlay (read-only). `js/auth.js` admin
   allow-list (`alumni@upsi.edu.my`, mirrored in `firestore.rules`).
 
 ## Data model (`artifacts/{appId}/public/data/...`)
@@ -205,6 +206,17 @@ descriptions of PR #2 to #8.
   reset the branch to `origin/main` and push it.
 - Commit messages: imperative subject with a type prefix (`ui:`, `fix:`,
   `feat:`), body explains why.
+
+- Poster sambutan (`js/welcome.js`, `#welcome-overlay`): full-screen poster
+  over the dashboard on the dates in `WELCOME` (device's local day,
+  inclusive), once per tab session, or any day with `?sambutan=1`. The
+  image src is set by the script so it is not downloaded on other days, and
+  it is not precached. Closes by "Masuk ke Dashboard", a click beside the
+  poster or Escape (listed first in ui.js `topOpenModal`). First use: ISO
+  9001:2015 re-certification audit, shown 12-13/11/2026 with
+  `images/sambutan-audit-2026.webp` (owner approved the auditor's name and
+  photo). After the visit, delete that image (still reachable by URL) and
+  the `WELCOME` entry or point it at the next poster.
 
 ## Ideas not done yet
 - Restore from the downloaded JSON backup file (needs careful design, it
