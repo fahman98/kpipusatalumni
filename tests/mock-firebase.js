@@ -12,6 +12,12 @@
 //   window.__TODOS    data that raises every "Perlu tindakan" reminder: a
 //                     finished Kembara with no attendance, no Penjanaan record
 //                     in Q4, and no upcoming Takwim activity
+//   window.__TUGASAN  seed tugasan dokumen: two staff and Kembara Johor's
+//                     tasks (one late: Laporan, due 05/07/2026)
+//   window.__RULES_OPEN  the guest probe of `tugasan` is NOT refused, i.e.
+//                     the new firestore.rules are not deployed yet
+// Writes to tugasan/* inside a transaction also update the seed, so the app
+// reads back what it saved (the KPI documents stay fixed).
 // signOut() leaves a sessionStorage marker so the reload after a logout comes
 // back as a guest even when __ADMIN is set.
 (function () {
@@ -90,6 +96,19 @@
         DATA['takwim-2026/main'].events = DATA['takwim-2026/main'].events.filter(e => e.date < '2026-10-29');
     }
     DATA['meta/2026'] = { label: '15 Oktober 2026, 10:30 PG' };
+    if (window.__TUGASAN) {
+        DATA['tugasan/staf'] = { staf: [
+            { id: 'st-1', nama: 'Aminah Yusof', emel: 'aminah@upsi.edu.my' },
+            { id: 'st-2', nama: 'Hafiz Rahman', emel: 'hafiz@upsi.edu.my' }
+        ] };
+        DATA['tugasan/2026'] = { programs: [{
+            key: 'n:Kembara Alumni Johor|2026-06-20', kpiId: 'kembara', name: 'Kembara Alumni Johor',
+            tarikh: '2026-06-20', tarikhTamat: '2026-06-21', tasks: [
+                { id: 'tg-1', jenis: 'Kertas kerja', pic: 'st-1', tarikhAkhir: '2026-06-06', link: 'https://drive.google.com/file/d/kk-johor', selesai: true },
+                { id: 'tg-2', jenis: 'Laporan', pic: 'st-2', tarikhAkhir: '2026-07-05', link: '', selesai: false },
+                { id: 'tg-3', jenis: 'Maklum balas', pic: 'st-1', tarikhAkhir: '2026-06-28', link: 'https://forms.gle/johor', selesai: true }
+            ] }] };
+    }
 
     window.__writes = [];
     window.__tx = [];
@@ -128,7 +147,11 @@
         enablePersistence: async () => {},
         runTransaction: async (fn) => fn({
             get: async (ref) => ref.get(),
-            set: (ref, d) => { window.__tx.push({ k: ref._k, d: JSON.parse(JSON.stringify(d)) }); },
+            set: (ref, d) => {
+                const copy = JSON.parse(JSON.stringify(d));
+                window.__tx.push({ k: ref._k, d: copy });
+                if (ref._k.startsWith('tugasan/')) DATA[ref._k] = Object.assign({}, DATA[ref._k], copy);
+            },
             update: (ref, d) => { window.__tx.push({ k: ref._k, d: JSON.parse(JSON.stringify(d)) }); }
         }),
         batch: () => {
@@ -159,5 +182,27 @@
     });
     auth.Auth = { Persistence: { LOCAL: 'local', SESSION: 'session' } };
 
-    window.firebase = { initializeApp() {}, auth, firestore };
+    // A second, never-signed-in app: api.js checkTugasanRules() reads
+    // tugasan/staf through it as a guest. Deployed rules refuse that read.
+    const apps = {};
+    const probeFirestore = () => ({
+        collection: () => ({ doc: () => ({ get: async () => {
+            if (window.__RULES_OPEN) return snap('tugasan/staf');
+            const err = new Error('Missing or insufficient permissions.');
+            err.code = 'permission-denied';
+            throw err;
+        } }) })
+    });
+    window.firebase = {
+        initializeApp(config, name) {
+            if (!name) return {};
+            apps[name] = { name, firestore: probeFirestore };
+            return apps[name];
+        },
+        app(name) {
+            if (name && !apps[name]) throw new Error(`No Firebase App '${name}'`);
+            return apps[name];
+        },
+        auth, firestore
+    };
 })();

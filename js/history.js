@@ -39,6 +39,8 @@ const ACTIONS = {
     DELETE_TAKWIM:        { label: 'Padam aktiviti Takwim',      icon: 'fa-calendar-times', tone: 'delete' },
     RESTORE_KPI:          { label: 'Pulihkan KPI',               icon: 'fa-undo',         tone: 'add' },
     RESTORE_TAKWIM:       { label: 'Pulihkan aktiviti Takwim',   icon: 'fa-undo',         tone: 'add' },
+    UPDATE_TUGASAN:       { label: 'Kemas kini tugasan dokumen', icon: 'fa-clipboard-list', tone: 'edit' },
+    UPDATE_STAF:          { label: 'Kemas kini senarai staf',    icon: 'fa-user-friends', tone: 'edit' },
 };
 const BREAKDOWN_ACTIONS = {
     add:    { label: 'Tambah butiran', icon: 'fa-plus',      tone: 'add' },
@@ -138,6 +140,13 @@ function describe(entry) {
             return [d.name || d.kpiId || ''];
         case 'RESTORE_TAKWIM':
             return [d.title || d.eventId || ''];
+        case 'UPDATE_TUGASAN': {
+            const tasks = (d.after && Array.isArray(d.after.tasks)) ? d.after.tasks : [];
+            const done = tasks.filter(t => t && t.selesai).length;
+            return [d.name || '', `${done}/${tasks.length} tugasan selesai`];
+        }
+        case 'UPDATE_STAF':
+            return [`${Array.isArray(d.after) ? d.after.length : 0} staf dalam senarai`];
         default:
             return [where];
     }

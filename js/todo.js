@@ -10,9 +10,12 @@
 //      bulan falls in the current quarter.
 //   3. Current year only: no upcoming Takwim activity (next year's takwim
 //      counts too, so December does not raise a false alarm).
+//   4. Tugasan dokumen (tugasan.js): tasks past their due date and not done,
+//      and programmes near today (30 days either side) with no tasks yet.
 
 import { getQuarterOnce, getTakwimEvents, kpiDataCache } from './api.js';
 import { escapeHtml, showDetailsModal } from './ui.js';
+import { tugasanOverview } from './tugasan.js';
 
 const BULAN_FULL = ['', 'Januari', 'Februari', 'Mac', 'April', 'Mei', 'Jun', 'Julai', 'Ogos', 'September', 'Oktober', 'November', 'Disember'];
 const KEMBARA_ID = 'kembara';
@@ -20,6 +23,7 @@ const PENJANAAN_ID = 'pendanaan';
 const QUARTER_GRACE_DAYS = 15;
 
 let refreshToken = 0;
+let lastArgs = null;   // the last refresh, repeated after a tugasan save
 
 const pad = (n) => String(n).padStart(2, '0');
 const dateKey = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -106,6 +110,46 @@ async function takwimTodo(year, today) {
     };
 }
 
+async function tugasanTodos(q4, year, today) {
+    const ov = await tugasanOverview(q4, year, today);
+    if (!ov) return [];   // unreadable: say nothing
+    const out = [];
+    const firstQuarter = (items) => {
+        const m = Math.min(...items.map(it => parseInt(String(it.tarikh).slice(5, 7), 10) || 12));
+        return quarterOfMonth(m);
+    };
+    if (ov.late.length) {
+        const one = ov.late[0];
+        let detail;
+        if (ov.late.length === 1) {
+            detail = `${one.task.jenis}, ${one.item.name}${one.pic ? ` (${one.pic})` : ''}. Tarikh akhir ${isoToDmy(one.task.tarikhAkhir)}.`;
+        } else {
+            const per = new Map();
+            ov.late.forEach(l => { const n = l.pic || 'Tiada PIC'; per.set(n, (per.get(n) || 0) + 1); });
+            detail = Array.from(per.entries()).map(([n, c]) => `${n} ${c}`).join(', ') + '.';
+        }
+        out.push({
+            key: 'tugasan-lewat', icon: 'ph-clipboard-text',
+            title: ov.late.length === 1 ? '1 tugasan dokumen lewat' : `${ov.late.length} tugasan dokumen lewat`,
+            detail, action: 'Lihat tugasan',
+            run: () => openKembaraDetails(firstQuarter(ov.late.map(l => l.item)))
+        });
+    }
+    if (ov.unassigned.length) {
+        const first = ov.unassigned[0];
+        out.push({
+            key: 'tugasan-agih', icon: 'ph-user-plus',
+            title: 'Tugasan dokumen belum diagih',
+            detail: ov.unassigned.length === 1
+                ? `${first.name}, ${isoToDmy(first.tarikh)}.`
+                : `${ov.unassigned.length} program, antaranya ${first.name} (${isoToDmy(first.tarikh)}).`,
+            action: 'Agih tugasan',
+            run: () => openKembaraDetails(firstQuarter(ov.unassigned))
+        });
+    }
+    return out;
+}
+
 // Butiran Kembara for a quarter that holds the programme (lists are
 // cumulative, so the current tab already does when it is that late or later)
 async function openKembaraDetails(quarterNum) {
@@ -143,6 +187,7 @@ export async function refreshAdminTodo(year, isAdmin) {
     const panel = document.getElementById('admin-todo');
     if (!panel) return;
     if (!isAdmin) { hideAdminTodo(); return; }
+    lastArgs = [year, isAdmin];
     const token = ++refreshToken;
 
     const now = new Date();
@@ -158,6 +203,7 @@ export async function refreshAdminTodo(year, isAdmin) {
             const p = penjanaanTodo(q4, now);
             if (p) todos.push(p);
         }
+        todos.push(...await tugasanTodos(q4, year, today));
     }
     if (isCurrentYear) {
         const t = await takwimTodo(year, today);
@@ -183,3 +229,8 @@ export async function refreshAdminTodo(year, isAdmin) {
     });
     panel.classList.remove('hidden');
 }
+
+// A saved tugasan changes reminders 4 without any KPI document changing
+document.addEventListener('tugasan-saved', () => {
+    if (lastArgs) refreshAdminTodo(...lastArgs);
+});
