@@ -20,7 +20,7 @@ descriptions of PR #2 to #8.
 - The owner cannot easily re-enter lost data. Never write to live Firestore
   from a session, and never press reset / delete in a live app.
 - Test with `tests/` (see `tests/README.md`): `cd tests && npm install`
-  once, then `node run.js` (32 scenarios, ~5 min) against `mock-firebase.js`,
+  once, then `node run.js` (33 scenarios, ~5 min) against `mock-firebase.js`,
   which records every write instead of sending it. Clock pinned to
   29/10/2026. Add a scenario to `tests/run.js` for each behaviour change;
   extend the mock's seed data rather than touching live data. The proxy
@@ -277,6 +277,18 @@ descriptions of PR #2 to #8.
   (`inAssignWindow`).
   Mock flags `tugasan` (seed: two staff, Johor with a late Laporan) and
   `rulesOpen` (rules not deployed).
+- Dokumen awam (owner, 17/11/2026, "pilih sendiri"): a finished Laporan /
+  Maklum balas / Gambar with a link can be ticked "Paparkan kepada umum"
+  (`task.awam`; `AWAM_JENIS` in api.js; Senarai kehadiran and Kertas kerja
+  never: PDPA / budgets). `saveProgramTugasan` writes, in the same
+  transaction, a public copy `dokumen-awam/{year}` `{ programs: [{ key,
+  kpiId, name, tarikh, tarikhTamat?, docs: [{ id, jenis, link }] }] }`
+  (public read / admin write under the existing catch-all rule, no rules
+  change; written only when it changes). Butiran rows of the programme KPIs
+  show those links to everyone (`decoratePublicDocs`). The robot opens the
+  file to "anyone with the link, view" (`task.robot.awam` = { status
+  dibuka | gagal, link, id?, mesej? }), closes it when unticked, retries a
+  failure only when the link changes; the editor shows that status.
 - Phase 2 = the robot (owner chose it over staff logins, 16/11/2026):
   `apps-script/Robot.gs` (+ `appsscript.json`, setup guide `README.md`,
   not deployed by Vercel) runs daily under the owner's own UPSI Google

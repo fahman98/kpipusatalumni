@@ -11,7 +11,11 @@ setiap program Kembara yang ada tugasan dalam Dashboard KPI, robot:
 2. mengemel PIC apabila ditetapkan (sekali), 3 hari sebelum tarikh akhir
    (sekali) dan apabila lewat (setiap 7 hari, maksimum 4 kali);
 3. menanda tugasan **Selesai** apabila ada fail dalam subfolder PIC, dan
-   mengisi pautan fail itu dalam dashboard.
+   mengisi pautan fail itu dalam dashboard;
+4. membuka perkongsian fail kepada "sesiapa yang ada pautan" (lihat sahaja)
+   bagi dokumen yang admin tandakan **Paparkan kepada umum** (Laporan,
+   Maklum balas, Gambar), dan menutupnya semula apabila tanda dibuang.
+   Senarai kehadiran dan kertas kerja tidak boleh dipaparkan.
 
 Robot hanya membaca dan menulis koleksi `tugasan` (dan satu log dalam
 Sejarah Perubahan). Dokumen KPI tidak pernah disentuh. Kod ini disemak
@@ -88,6 +92,13 @@ oleh `node tests/robot.test.js` dengan Google palsu.
   tetapan Drive bersama menyekat perkongsian kepada bukan ahli. Tambah
   staf sebagai ahli Drive bersama (*Contributor*), atau minta pentadbir
   Google UPSI membenarkan perkongsian folder.
+- **"Fail belum boleh dibuka oleh umum"** dalam borang tugasan: pentadbir
+  Google UPSI mungkin menyekat perkongsian ke luar domain, atau pautan itu
+  bukan fail Google Drive (contoh Google Form). Buka perkongsian fail itu
+  sendiri dalam Drive, atau minta Pusat ICT membenarkannya. Robot mencuba
+  semula hanya apabila pautan ditukar.
+- **Buang tanda "Paparkan kepada umum" sebelum memadam tugasan itu.** Robot
+  menutup semula perkongsian hanya untuk tugasan yang masih ada.
 - **Hentikan robot**: di *Triggers* (ikon jam), padam pencetus
   `jalankanRobot`. Data dalam dashboard kekal.
 - Google mungkin juga menghantar emel perkongsian folder sendiri kepada

@@ -15,7 +15,8 @@
 //                     in Q4, and no upcoming Takwim activity
 //   window.__TUGASAN  seed tugasan dokumen: two staff and Kembara Johor's
 //                     tasks (one late: Laporan, due 05/07/2026), with the
-//                     Apps Script robot's state (folders) and last run
+//                     Apps Script robot's state (folders) and last run, and
+//                     Johor's Maklum balas published (dokumen-awam/2026)
 //   window.__RULES_OPEN  the guest probe of `tugasan` is NOT refused, i.e.
 //                     the new firestore.rules are not deployed yet
 // Writes to tugasan/* inside a transaction also update the seed, so the app
@@ -110,8 +111,12 @@
                 { id: 'tg-1', jenis: 'Kertas kerja', pic: 'st-1', tarikhAkhir: '2026-06-06', link: 'https://drive.google.com/file/d/kk-johor', selesai: true,
                   robot: { folderId: 'F3', folderUrl: 'https://drive.google.com/drive/folders/F3', selesaiAuto: true, emelTugasan: { emel: 'aminah@upsi.edu.my', pada: '2026-05-20' } } },
                 { id: 'tg-2', jenis: 'Laporan', pic: 'st-2', tarikhAkhir: '2026-07-05', link: '', selesai: false },
-                { id: 'tg-3', jenis: 'Maklum balas', pic: 'st-1', tarikhAkhir: '2026-06-28', link: 'https://forms.gle/johor', selesai: true }
+                { id: 'tg-3', jenis: 'Maklum balas', pic: 'st-1', tarikhAkhir: '2026-06-28', link: 'https://forms.gle/johor', selesai: true, awam: true }
             ] }] };
+        // Public copy of the documents the admin published (dokumen awam)
+        DATA['dokumen-awam/2026'] = { programs: [{ key: 'n:Kembara Alumni Johor|2026-06-20', kpiId: 'kembara',
+            name: 'Kembara Alumni Johor', tarikh: '2026-06-20', tarikhTamat: '2026-06-21',
+            docs: [{ id: 'tg-3', jenis: 'Maklum balas', link: 'https://forms.gle/johor' }] }] };
         // Last run of the Apps Script robot (apps-script/Robot.gs)
         DATA['tugasan/robot'] = { lastRun: '2026-10-29T04:05:00Z', ok: true, mesej: '' };
     }
@@ -156,7 +161,7 @@
             set: (ref, d) => {
                 const copy = JSON.parse(JSON.stringify(d));
                 window.__tx.push({ k: ref._k, d: copy });
-                if (ref._k.startsWith('tugasan/')) DATA[ref._k] = Object.assign({}, DATA[ref._k], copy);
+                if (/^(tugasan|dokumen-awam)\//.test(ref._k)) DATA[ref._k] = Object.assign({}, DATA[ref._k], copy);
             },
             update: (ref, d) => { window.__tx.push({ k: ref._k, d: JSON.parse(JSON.stringify(d)) }); }
         }),
