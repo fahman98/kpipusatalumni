@@ -142,7 +142,7 @@ const scenarios = {
                 const clipped = cs.textOverflow === 'ellipsis' || cs.webkitLineClamp !== 'none';
                 return clipped && (el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1);
             }).map(el => el.innerText.trim().slice(0, 60)));
-            for (const v of ['dashboard', 'takwim', 'penjanaan']) {
+            for (const v of admin ? ['dashboard', 'takwim', 'penjanaan', 'tugasan'] : ['dashboard', 'takwim', 'penjanaan']) {
                 await page.click(`#bottom-nav [data-view=${v}]`); await page.waitForTimeout(1300);
                 assert.deepEqual(await cutText(), [], `${admin ? 'admin' : 'guest'} ${v}: text cut off`);
             }
@@ -560,52 +560,64 @@ const scenarios = {
         await ctx.close();
     },
 
-    // Tugasan dokumen (phase 1): Dokumen button per Kembara programme, the
-    // task sheet, staff list, "Perlu tindakan" and the rules guard
+    // Tugasan dokumen: Dokumen button per programme in Butiran, the task
+    // sheet (shared editor), the Senarai staf sheet, "Perlu tindakan" and the
+    // rules guard
     async 'tugasan dokumen'() {
+        const M = '#tugasan-modal';
+        const R = `${M} .tg-rows .tg-row`;
         // Guests see no task buttons
         let { ctx, page } = await open({ tugasan: true });
         await page.click('.kpi-card[data-kpi-id=kembara] .show-details-btn'); await page.waitForTimeout(800);
         assert.equal(await page.$$eval('#details-list .tugasan-chip', b => b.length), 0);
         await ctx.close();
 
-        // Admin, Q2: Johor has 2/3 done and its Laporan is late
+        // Admin: "Perlu tindakan" names the late task and opens the Tugasan tab filtered
         ({ ctx, page } = await open({ admin: true, tugasan: true }));
         const rows = await page.$$eval('.admin-todo-row', r => r.map(x => [x.dataset.todo, x.querySelector('.admin-todo-title').textContent, x.querySelector('.admin-todo-detail').textContent]));
         assert.deepEqual(rows, [['tugasan-lewat', '1 tugasan dokumen lewat', 'Laporan, Kembara Alumni Johor (Hafiz Rahman). Tarikh akhir 05/07/2026.']]);
-        await page.click('.admin-todo-row[data-todo=tugasan-lewat] .admin-todo-action'); await page.waitForTimeout(2200);
-        assert.equal(await page.$eval('#pagination .active', e => e.dataset.quarter), '2');
+        await page.click('.admin-todo-row[data-todo=tugasan-lewat] .admin-todo-action'); await page.waitForTimeout(1500);
+        assert.equal(await page.isVisible('#view-tugasan'), true);
+        assert.equal(await page.getAttribute('.tgv-filter[data-filter=lewat]', 'aria-pressed'), 'true');
+        assert.deepEqual(await page.$$eval('.tgv-prog-name', n => n.map(x => x.textContent)), ['Kembara Alumni Johor']);
+        await ctx.close();
+
+        // Butiran, Q2: Johor has 2/3 done and its Laporan is late
+        ({ ctx, page } = await open({ admin: true, tugasan: true }));
+        await page.click('#pagination [data-quarter="2"]'); await page.waitForTimeout(1500);
+        await page.click('.admin-row[data-kpi-id=kembara] .admin-primary-btn'); await page.waitForTimeout(1500);
         const chips = () => page.$$eval('#details-list .tugasan-chip', b => b.map(x => [x.dataset.tone, x.textContent.trim()]));
         assert.deepEqual(await chips(), [['none', 'Agih tugasan'], ['late', 'Dokumen 2/3 · 1 lewat']]);
         await shot(page, 'tugasan-butiran');
 
         // Open Johor's tasks: saved rows, states, links
         await page.click('#details-list li:nth-child(2) .tugasan-chip'); await page.waitForTimeout(500);
-        assert.equal(await page.isVisible('#tugasan-modal'), true);
+        assert.equal(await page.isVisible(M), true);
+        assert.equal(await page.textContent('#tugasan-modal-title'), 'Agih tugasan');
         assert.equal(await page.textContent('#tugasan-modal-subtitle'), 'Kembara Alumni Johor');
-        assert.match(await page.textContent('#tugasan-info'), /20\/06\/2026 hingga 21\/06\/2026/);
-        assert.deepEqual(await page.$$eval('#tugasan-rows .tg-state', s => s.map(x => x.textContent)), ['Selesai', 'Lewat', 'Selesai']);
-        assert.equal(await page.isVisible('#tugasan-rules-warn'), false, 'rules are live');
-        assert.equal(await page.getAttribute('#tugasan-rows .tg-row:nth-child(1) .tg-open', 'href'), 'https://drive.google.com/file/d/kk-johor');
-        assert.equal(await page.getAttribute('#tugasan-rows .tg-row:nth-child(1) .tg-open', 'rel'), 'noopener noreferrer');
+        assert.match(await page.textContent(`${M} .tg-info`), /20\/06\/2026 hingga 21\/06\/2026/);
+        assert.deepEqual(await page.$$eval(`${R} .tg-state`, s => s.map(x => x.textContent)), ['Selesai', 'Lewat 116 hari', 'Selesai']);
+        assert.equal(await page.isVisible(`${M} .tg-rules-warn`), false, 'rules are live');
+        assert.equal(await page.getAttribute(`${R}:nth-child(1) .tg-open`, 'href'), 'https://drive.google.com/file/d/kk-johor');
+        assert.equal(await page.getAttribute(`${R}:nth-child(1) .tg-open`, 'rel'), 'noopener noreferrer');
         // What the robot did: programme folder, PIC folder, auto tick, last run
-        assert.equal(await page.getAttribute('#tugasan-info .tg-folder', 'href'), 'https://drive.google.com/drive/folders/F2');
-        assert.match(await page.textContent('#tugasan-rows .tg-row:nth-child(1) .tg-robot'), /Folder PIC dalam Google Drive\. Ditanda selesai oleh robot/);
-        assert.equal(await page.$$eval('#tugasan-rows .tg-robot', r => r.length), 1);
-        assert.match(await page.textContent('#tugasan-robot'), /^Robot terakhir berjalan pada 29\/10\/2026, \d{2}:\d{2}\./);
+        assert.equal(await page.getAttribute(`${M} .tg-info .tg-folder`, 'href'), 'https://drive.google.com/drive/folders/F2');
+        assert.match(await page.textContent(`${R}:nth-child(1) .tg-robot`), /Folder PIC dalam Google Drive\. Ditanda selesai oleh robot/);
+        assert.equal(await page.$$eval(`${R} .tg-robot`, r => r.length), 1);
+        assert.match(await page.textContent(`${M} .tg-robot-status`), /^Robot terakhir berjalan pada 29\/10\/2026, \d{2}:\d{2}\./);
         // Pasting the Laporan link ticks Selesai
-        const laporan = '#tugasan-rows .tg-row:nth-child(2)';
+        const laporan = `${R}:nth-child(2)`;
         await page.fill(`${laporan} .tg-link`, 'https://drive.google.com/file/d/laporan-johor');
         assert.equal(await page.isChecked(`${laporan} .tg-done`), true);
         assert.equal(await page.textContent(`${laporan} .tg-state`), 'Selesai');
         // A link that is not http(s) is refused, nothing written
         await page.fill(`${laporan} .tg-link`, 'javascript:alert(1)');
-        await page.click('#tugasan-modal .form-sheet-save'); await page.waitForTimeout(400);
+        await page.click(`${M} .form-sheet-save`); await page.waitForTimeout(400);
         assert.match(await toast(page), /mesti bermula dengan https/);
         await noWrites(page);
         await page.fill(`${laporan} .tg-link`, 'https://drive.google.com/file/d/laporan-johor');
         await shot(page, 'tugasan-sheet');
-        await page.click('#tugasan-modal .form-sheet-save'); await page.waitForTimeout(800);
+        await page.click(`${M} .form-sheet-save`); await page.waitForTimeout(800);
         assert.match(await toast(page), /Tugasan disimpan/);
         const saved = await page.evaluate(() => window.__tx.filter(t => t.k === 'tugasan/2026'));
         assert.equal(saved.length, 1);
@@ -622,70 +634,66 @@ const scenarios = {
         assert.equal(await page.evaluate(() => window.__tx.some(t => t.k.startsWith('kpi-'))), false, 'KPI documents untouched');
         const audit = await page.evaluate(() => window.__audit.map(a => [a.action, a.details.name, a.details.before && a.details.before.tasks[1].selesai]));
         assert.deepEqual(audit, [['UPDATE_TUGASAN', 'Kembara Alumni Johor', false]]);
-        assert.equal(await page.$eval('#tugasan-modal', m => m.classList.contains('is-open')), false);
+        assert.equal(await page.$eval(M, m => m.classList.contains('is-open')), false);
         assert.deepEqual(await chips(), [['none', 'Agih tugasan'], ['done', 'Dokumen 3/3']]);
         await page.waitForTimeout(600);
         assert.equal(await page.isVisible('#admin-todo'), false, 'late task gone from Perlu tindakan');
+        assert.equal(await page.isVisible('#main-nav .tugasan-nav-badge'), false, 'badge cleared');
 
         // Sabah has no tasks: the usual three are suggested with dates
         await page.click('#details-list li:nth-child(1) .tugasan-chip'); await page.waitForTimeout(500);
-        assert.deepEqual(await page.$$eval('#tugasan-rows .tg-row', r => r.map(x => [x.querySelector('.tg-jenis').value, x.querySelector('.tg-due').value])),
+        assert.deepEqual(await page.$$eval(R, r => r.map(x => [x.querySelector('.tg-jenis').value, x.querySelector('.tg-due').value])),
             [['Kertas kerja', '2026-02-28'], ['Laporan', '2026-03-28'], ['Maklum balas', '2026-03-21']]);
         // Changing a kind moves its suggested date; adding picks an unused kind
-        await page.selectOption('#tugasan-rows .tg-row:nth-child(3) .tg-jenis', 'Gambar');
-        assert.equal(await page.inputValue('#tugasan-rows .tg-row:nth-child(3) .tg-due'), '2026-03-17');
-        await page.click('#tugasan-add');
-        assert.equal(await page.inputValue('#tugasan-rows .tg-row:nth-child(4) .tg-jenis'), 'Maklum balas');
-        await page.click('#tugasan-rows .tg-row:nth-child(4) .tg-remove');
-        assert.equal(await page.$$eval('#tugasan-rows .tg-row', r => r.length), 3);
-        // Staff list: add a third, then assign them
-        await page.click('#tugasan-staf summary');
-        await page.click('#tugasan-staf-add');
-        await page.fill('#tugasan-staf-rows .tg-staf-row:nth-child(3) .tg-staf-nama', 'Siti Nur');
-        await page.fill('#tugasan-staf-rows .tg-staf-row:nth-child(3) .tg-staf-emel', 'bukan-emel');
-        await page.click('#tugasan-staf-save'); await page.waitForTimeout(400);
+        await page.selectOption(`${R}:nth-child(3) .tg-jenis`, 'Gambar');
+        assert.equal(await page.inputValue(`${R}:nth-child(3) .tg-due`), '2026-03-17');
+        await page.click(`${M} .tg-add`);
+        assert.equal(await page.inputValue(`${R}:nth-child(4) .tg-jenis`), 'Maklum balas');
+        await page.click(`${R}:nth-child(4) .tg-remove`);
+        assert.equal(await page.$$eval(R, r => r.length), 3);
+        // Senarai staf opens over the form from "Urus senarai staf"
+        await page.selectOption(`${R}:nth-child(1) .tg-pic`, 'st-1');
+        await page.click(`${R}:nth-child(2) .tg-staf-link`); await page.waitForTimeout(500);
+        assert.equal(await page.isVisible('#staf-modal'), true);
+        assert.equal(await page.textContent('#staf-modal-subtitle'), '2 staf boleh diberi tugasan');
+        assert.deepEqual(await page.$$eval('#staf-rows .tg-staf-badge', b => b.map(x => x.textContent)), ['Tiada tugasan aktif', 'Tiada tugasan aktif']);
+        await page.click('#staf-add');
+        await page.fill('#staf-rows .tg-staf-row:nth-child(3) .tg-staf-nama', 'Siti Nur');
+        assert.equal(await page.isVisible('#staf-rows .tg-staf-row:nth-child(3) .tg-staf-nota'), true, 'no email yet: warned');
+        await page.fill('#staf-rows .tg-staf-row:nth-child(3) .tg-staf-emel', 'bukan-emel');
+        await page.click('#staf-modal .form-sheet-save'); await page.waitForTimeout(400);
         assert.match(await toast(page), /tidak sah/);
-        await page.fill('#tugasan-staf-rows .tg-staf-row:nth-child(3) .tg-staf-emel', 'Siti@UPSI.edu.my');
-        await page.selectOption('#tugasan-rows .tg-row:nth-child(1) .tg-pic', 'st-1');
-        await page.click('#tugasan-staf-save'); await page.waitForTimeout(800);
+        await page.fill('#staf-rows .tg-staf-row:nth-child(3) .tg-staf-emel', 'Siti@UPSI.edu.my');
+        await shot(page, 'tugasan-staf');
+        await page.click('#staf-modal .form-sheet-save'); await page.waitForTimeout(800);
         assert.match(await toast(page), /Senarai staf disimpan/);
+        assert.equal(await page.$eval('#staf-modal', m => m.classList.contains('is-open')), false);
         const staf = await page.evaluate(() => window.__tx.filter(t => t.k === 'tugasan/staf').pop().d.staf);
         assert.deepEqual(staf.map(s => [s.nama, s.emel]), [['Aminah Yusof', 'aminah@upsi.edu.my'], ['Hafiz Rahman', 'hafiz@upsi.edu.my'], ['Siti Nur', 'siti@upsi.edu.my']]);
-        assert.equal(await page.inputValue('#tugasan-rows .tg-row:nth-child(1) .tg-pic'), 'st-1', 'choice kept after the staff save');
-        assert.equal(await page.$$eval('#tugasan-rows .tg-row:nth-child(2) .tg-pic option', o => o.length), 4);
+        assert.equal(await page.inputValue(`${R}:nth-child(1) .tg-pic`), 'st-1', 'choice kept after the staff save');
+        assert.equal(await page.$$eval(`${R}:nth-child(2) .tg-pic option`, o => o.length), 4);
         await page.keyboard.press('Escape'); await page.waitForTimeout(300);
         assert.deepEqual(page.__errors, []);
         await ctx.close();
 
-        // Staff list easy to reach: no banner while staff exist, the link under PIC opens the list
-        ({ ctx, page } = await open({ admin: true, tugasan: true }));
-        await page.click('.admin-row[data-kpi-id=kembara] .admin-primary-btn'); await page.waitForTimeout(1200);
-        await page.click('#details-list li:nth-child(1) .tugasan-chip'); await page.waitForTimeout(600);
-        assert.equal(await page.isVisible('#tugasan-staf-empty'), false);
-        assert.equal(await page.$eval('#tugasan-staf', d => d.open), false);
-        await page.click('#tugasan-rows .tg-row:nth-child(2) .tg-staf-link'); await page.waitForTimeout(700);
-        assert.equal(await page.$eval('#tugasan-staf', d => d.open), true);
-        assert.ok(await page.$eval('#tugasan-staf', d => { const r = d.getBoundingClientRect(); return r.top >= 0 && r.top < innerHeight; }), 'scrolled to the staff list');
-        await noWrites(page);
-        await ctx.close();
-
-        // No staff yet: banner at the top; its button opens the list with an empty row ready
+        // No staff yet: note at the top; its button opens Senarai staf with an empty row ready
         ({ ctx, page } = await open({ admin: true }));
         await page.click('.admin-row[data-kpi-id=kembara] .admin-primary-btn'); await page.waitForTimeout(1200);
         await page.click('#details-list li:nth-child(1) .tugasan-chip'); await page.waitForTimeout(600);
-        assert.equal(await page.isVisible('#tugasan-staf-empty'), true);
-        assert.match(await page.textContent('#tugasan-staf-empty'), /Senarai staf masih kosong/);
+        assert.equal(await page.isVisible(`${M} .tg-staf-empty`), true);
+        assert.match(await page.textContent(`${M} .tg-staf-empty`), /Senarai staf masih kosong/);
         await shot(page, 'tugasan-staf-kosong');
-        await page.click('#tugasan-staf-go'); await page.waitForTimeout(700);
-        assert.equal(await page.$$eval('#tugasan-staf-rows .tg-staf-row', r => r.length), 1);
+        await page.click(`${M} .tg-staf-go`); await page.waitForTimeout(700);
+        assert.equal(await page.textContent('#staf-modal-subtitle'), 'Belum ada staf');
+        assert.equal(await page.$$eval('#staf-rows .tg-staf-row', r => r.length), 1);
         assert.equal(await page.evaluate(() => document.activeElement.classList.contains('tg-staf-nama')), true);
-        await page.click('#tugasan-staf-go'); await page.waitForTimeout(300);
-        assert.equal(await page.$$eval('#tugasan-staf-rows .tg-staf-row', r => r.length), 1, 'no second blank row');
-        await page.fill('#tugasan-staf-rows .tg-staf-nama', 'Siti Nur');
-        await page.fill('#tugasan-staf-rows .tg-staf-emel', 'siti@upsi.edu.my');
-        await page.click('#tugasan-staf-save'); await page.waitForTimeout(800);
-        assert.equal(await page.isVisible('#tugasan-staf-empty'), false, 'banner gone once staff exist');
-        assert.equal(await page.$$eval('#tugasan-rows .tg-row:nth-child(1) .tg-pic option', o => o.map(x => x.textContent)).then(x => x.join('|')), 'Belum ditetapkan|Siti Nur');
+        await page.click('#staf-add'); await page.waitForTimeout(200);
+        assert.equal(await page.$$eval('#staf-rows .tg-staf-row', r => r.length), 1, 'no second blank row');
+        await page.fill('#staf-rows .tg-staf-nama', 'Siti Nur');
+        await page.fill('#staf-rows .tg-staf-emel', 'siti@upsi.edu.my');
+        await page.click('#staf-modal .form-sheet-save'); await page.waitForTimeout(800);
+        assert.equal(await page.isVisible(`${M} .tg-staf-empty`), false, 'note gone once staff exist');
+        assert.equal(await page.$$eval(`${R}:nth-child(1) .tg-pic option`, o => o.map(x => x.textContent)).then(x => x.join('|')), 'Belum ditetapkan|Siti Nur');
         assert.deepEqual(page.__errors, []);
         await ctx.close();
 
@@ -693,9 +701,9 @@ const scenarios = {
         ({ ctx, page } = await open({ admin: true, tugasan: true, rulesOpen: true }));
         await page.click('.admin-row[data-kpi-id=kembara] .admin-primary-btn'); await page.waitForTimeout(1200);
         await page.click('#details-list li:nth-child(1) .tugasan-chip'); await page.waitForTimeout(600);
-        assert.equal(await page.isVisible('#tugasan-rules-warn'), true);
-        assert.match(await page.textContent('#tugasan-rules-warn'), /Firebase Console/);
-        await page.click('#tugasan-modal .form-sheet-save'); await page.waitForTimeout(500);
+        assert.equal(await page.isVisible(`${M} .tg-rules-warn`), true);
+        assert.match(await page.textContent(`${M} .tg-rules-warn`), /Firebase Console/);
+        await page.click(`${M} .form-sheet-save`); await page.waitForTimeout(500);
         assert.match(await toast(page), /peraturan keselamatan tugasan belum diterbitkan/);
         await noWrites(page);
         await ctx.close();
@@ -718,6 +726,122 @@ const scenarios = {
         });
         assert.deepEqual(fit, { panel: 360, cut: 0, narrow: 0, scroll: 0 });
         await shot(page, 'tugasan-phone');
+        await ctx.close();
+    },
+
+    // The admin-only Tugasan tab (canvas Tugasan-*): cards, robot line,
+    // Ikut program with the desktop panel, Ikut PIC, and on phones the sheet
+    async 'tugasan tab'() {
+        const M = '#tugasan-modal';
+        const R = `${M} .tg-rows .tg-row`;
+        // Guests: no tab, and the view cannot be opened
+        let { ctx, page } = await open({ tugasan: true });
+        assert.equal(await page.$$eval('.tugasan-nav', n => n.filter(x => !x.classList.contains('hidden')).length), 0);
+        await page.evaluate(() => window.switchView('tugasan')); await page.waitForTimeout(300);
+        assert.equal(await page.isVisible('#view-tugasan'), false);
+        assert.equal(await page.isVisible('#view-dashboard'), true);
+        await ctx.close();
+
+        // Admin desktop
+        ({ ctx, page } = await open({ admin: true, tugasan: true }));
+        assert.equal(await page.textContent('#main-nav .tugasan-nav-badge'), '1');
+        await page.click('#main-nav [data-view=tugasan]'); await page.waitForTimeout(1200);
+        assert.equal(await page.isVisible('#view-tugasan'), true);
+        const cards = () => page.$$eval('.tgv-card', c => c.map(x => [x.dataset.card, x.querySelector('.tgv-card-num').textContent]));
+        assert.deepEqual(await cards(), [['lewat', '1'], ['belum', '0'], ['selesai', '2'], ['agih', '0']]);
+        assert.match(await page.textContent('.tgv-robot'), /^Robot aktif\. Terakhir berjalan 29\/10\/2026, \d{2}:\d{2}\. Ia mencipta folder/);
+        const progs = () => page.$$eval('.tgv-prog', p => p.map(x => [x.querySelector('.tgv-prog-name').textContent, x.querySelector('.tgv-chip').textContent]));
+        assert.deepEqual(await progs(), [['Kembara Alumni Johor', '1 lewat'], ['Kembara Alumni Sabah', 'Tiada tugasan']]);
+        assert.match(await page.textContent('.tgv-prog:nth-child(1) .tgv-prog-meta, .tgv-list li:nth-child(1) .tgv-prog-meta'), /^Kembara Alumni · 20\/06\/2026 hingga 21\/06\/2026 · Dokumen 2\/3$/);
+        // The first programme is open in the panel, as a table
+        assert.equal(await page.textContent('#tgv-panel-title'), 'Kembara Alumni Johor');
+        assert.equal(await page.getAttribute('.tgv-folder-btn', 'href'), 'https://drive.google.com/drive/folders/F2');
+        assert.equal(await page.isVisible('.tgv-panel .tg-thead'), true);
+        assert.equal(await page.$$eval('.tgv-panel .tg-row', r => r.length), 3);
+        const rowTops = await page.$$eval('.tgv-panel .tg-row:nth-child(1) :is(.tg-jenis, .tg-pic, .tg-due, .tg-link)', els => els.map(e => Math.round(e.getBoundingClientRect().top)));
+        assert.equal(new Set(rowTops).size, 1, 'a task is one table row');
+        await shot(page, 'tugasan-tab-desktop', true);
+        // Cards filter the list, and toggle off again
+        await page.click('.tgv-card[data-card=selesai]'); await page.waitForTimeout(200);
+        assert.deepEqual(await progs(), []);
+        assert.match(await page.textContent('.tgv-list-col .tgv-empty'), /Tiada program dalam tapisan ini/);
+        await page.click('.tgv-card[data-card=selesai]'); await page.waitForTimeout(200);
+        assert.equal((await progs()).length, 2);
+        // Leaving an edited panel asks first
+        await page.click('.tgv-list li:nth-child(2) .tgv-prog'); await page.waitForTimeout(400);
+        assert.equal(await page.textContent('#tgv-panel-title'), 'Kembara Alumni Sabah');
+        await page.selectOption('.tgv-panel .tg-row:nth-child(1) .tg-pic', 'st-2');
+        await page.click('.tgv-list li:nth-child(1) .tgv-prog'); await page.waitForTimeout(300);
+        assert.equal(await page.isVisible('#confirm-modal'), true);
+        await page.click('#confirm-modal-cancel-btn'); await page.waitForTimeout(200);
+        assert.equal(await page.textContent('#tgv-panel-title'), 'Kembara Alumni Sabah');
+        assert.equal(await page.inputValue('.tgv-panel .tg-row:nth-child(1) .tg-pic'), 'st-2', 'edit kept');
+        await page.click('.tgv-list li:nth-child(1) .tgv-prog'); await page.waitForTimeout(300);
+        await page.click('#confirm-modal-ok-btn'); await page.waitForTimeout(400);
+        assert.equal(await page.textContent('#tgv-panel-title'), 'Kembara Alumni Johor');
+        await noWrites(page);
+
+        // Ikut PIC
+        await page.click('.tgv-seg [data-mode=pic]'); await page.waitForTimeout(300);
+        const pics = () => page.$$eval('.tgv-pic', c => c.map(x => [x.querySelector('h3').textContent, x.querySelector('.tgv-pic-head .tgv-chip').textContent]));
+        assert.deepEqual(await pics(), [['Hafiz Rahman', '1 lewat'], ['Aminah Yusof', 'Semua selesai']]);
+        assert.deepEqual(await page.$$eval('.tgv-pic:nth-child(1) .tgv-task', t => t.map(x => x.innerText.replace(/\s+/g, ' ').trim())),
+            ['Laporan Kembara Alumni Johor Lewat 116 hari 05/07/2026']);
+        assert.equal(await page.$$eval('.tgv-pic:nth-child(2) .tgv-task', t => t.length), 0, 'done tasks hidden');
+        await page.click('.tgv-pic:nth-child(2) [data-toggle]'); await page.waitForTimeout(200);
+        assert.equal(await page.$$eval('.tgv-pic:nth-child(2) .tgv-task', t => t.length), 2);
+        await page.click('.tgv-filter[data-pic-filter=lewat]'); await page.waitForTimeout(200);
+        assert.deepEqual((await pics()).map(p => p[0]), ['Hafiz Rahman']);
+        await shot(page, 'tugasan-tab-pic', true);
+        // A task opens its programme in the panel
+        await page.click('.tgv-pic:nth-child(1) .tgv-task'); await page.waitForTimeout(400);
+        assert.equal(await page.getAttribute('.tgv-seg [data-mode=program]', 'aria-pressed'), 'true');
+        assert.equal(await page.textContent('#tgv-panel-title'), 'Kembara Alumni Johor');
+
+        // Saving from the panel: one write, counts and badge follow
+        await page.fill('.tgv-panel .tg-row:nth-child(2) .tg-link', 'https://drive.google.com/file/d/laporan-johor');
+        await page.click('.tgv-panel .tg-save'); await page.waitForTimeout(800);
+        assert.match(await toast(page), /Tugasan disimpan/);
+        assert.equal(await page.evaluate(() => window.__tx.filter(t => t.k === 'tugasan/2026').length), 1);
+        assert.deepEqual(await cards(), [['lewat', '0'], ['belum', '0'], ['selesai', '3'], ['agih', '0']]);
+        assert.equal(await page.isVisible('#main-nav .tugasan-nav-badge'), false);
+        assert.deepEqual(page.__errors, []);
+        await ctx.close();
+
+        // Programmes near today with no tasks are "Belum diagih"; Perlu tindakan opens that filter
+        ({ ctx, page } = await open({ admin: true, tugasan: true, todos: true }));
+        await page.click('.admin-todo-row[data-todo=tugasan-agih] .admin-todo-action'); await page.waitForTimeout(1500);
+        assert.equal(await page.getAttribute('.tgv-filter[data-filter=agih]', 'aria-pressed'), 'true');
+        assert.deepEqual(await progs(), [['Kembara Alumni Perak', 'Belum diagih']]);
+        assert.equal(await page.textContent('.tgv-card[data-card=agih] .tgv-card-num'), '1');
+        await ctx.close();
+
+        // Phone: bottom tab, list only, a row opens the full-page sheet;
+        // Senarai staf stacks on top and Back closes one sheet at a time
+        ({ ctx, page } = await open({ admin: true, tugasan: true, mobile: true }));
+        await page.setViewportSize({ width: 360, height: 800 });
+        assert.equal(await page.textContent('#bottom-nav .tugasan-nav-badge'), '1');
+        await page.click('#bottom-nav [data-view=tugasan]'); await page.waitForTimeout(1200);
+        assert.equal(await page.isVisible('.tgv-panel'), false);
+        const fit = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+        assert.equal(fit, 0, 'no sideways scroll');
+        await shot(page, 'tugasan-tab-phone', true);
+        await page.click('.tgv-list li:nth-child(1) .tgv-prog'); await page.waitForTimeout(600);
+        assert.equal(await page.isVisible(M), true);
+        assert.equal(await page.textContent('#tugasan-modal-subtitle'), 'Kembara Alumni Johor');
+        await page.click(`${R}:nth-child(1) .tg-staf-link`); await page.waitForTimeout(500);
+        assert.equal(await page.isVisible('#staf-modal'), true);
+        await page.goBack(); await page.waitForTimeout(500);
+        assert.equal(await page.isVisible('#staf-modal'), false, 'Back closes Senarai staf');
+        assert.equal(await page.isVisible(M), true, 'the task form stays');
+        await page.goBack(); await page.waitForTimeout(500);
+        assert.equal(await page.isVisible(M), false);
+        assert.equal(await page.isVisible('#view-tugasan'), true, 'still in the app');
+        await page.click('.tgv-seg [data-mode=pic]'); await page.waitForTimeout(300);
+        assert.equal(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth), 0);
+        await shot(page, 'tugasan-tab-phone-pic', true);
+        await noWrites(page);
+        assert.deepEqual(page.__errors, []);
         await ctx.close();
     },
 

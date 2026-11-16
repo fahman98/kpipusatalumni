@@ -11,11 +11,13 @@
 //   3. Current year only: no upcoming Takwim activity (next year's takwim
 //      counts too, so December does not raise a false alarm).
 //   4. Tugasan dokumen (tugasan.js): tasks past their due date and not done,
-//      and programmes near today (30 days either side) with no tasks yet.
+//      and programmes near today (30 days either side) with no tasks yet;
+//      their buttons open the Tugasan tab filtered. Also sets the tab's badge.
 
 import { getQuarterOnce, getTakwimEvents, kpiDataCache } from './api.js';
 import { escapeHtml, showDetailsModal } from './ui.js';
-import { tugasanOverview } from './tugasan.js';
+import { tugasanOverview, setTugasanBadge } from './tugasan.js';
+import { showTugasan } from './tugasan-view.js';
 
 const BULAN_FULL = ['', 'Januari', 'Februari', 'Mac', 'April', 'Mei', 'Jun', 'Julai', 'Ogos', 'September', 'Oktober', 'November', 'Disember'];
 const KEMBARA_ID = 'kembara';
@@ -113,11 +115,8 @@ async function takwimTodo(year, today) {
 async function tugasanTodos(q4, year, today) {
     const ov = await tugasanOverview(q4, year, today);
     if (!ov) return [];   // unreadable: say nothing
+    setTugasanBadge(ov.late.length);
     const out = [];
-    const firstQuarter = (items) => {
-        const m = Math.min(...items.map(it => parseInt(String(it.tarikh).slice(5, 7), 10) || 12));
-        return quarterOfMonth(m);
-    };
     if (ov.late.length) {
         const one = ov.late[0];
         let detail;
@@ -132,7 +131,7 @@ async function tugasanTodos(q4, year, today) {
             key: 'tugasan-lewat', icon: 'ph-clipboard-text',
             title: ov.late.length === 1 ? '1 tugasan dokumen lewat' : `${ov.late.length} tugasan dokumen lewat`,
             detail, action: 'Lihat tugasan',
-            run: () => openKembaraDetails(firstQuarter(ov.late.map(l => l.item)))
+            run: () => showTugasan({ filter: 'lewat' })
         });
     }
     if (ov.unassigned.length) {
@@ -144,7 +143,7 @@ async function tugasanTodos(q4, year, today) {
                 ? `${first.name}, ${isoToDmy(first.tarikh)}.`
                 : `${ov.unassigned.length} program, antaranya ${first.name} (${isoToDmy(first.tarikh)}).`,
             action: 'Agih tugasan',
-            run: () => openKembaraDetails(firstQuarter(ov.unassigned))
+            run: () => showTugasan({ filter: 'agih' })
         });
     }
     return out;
