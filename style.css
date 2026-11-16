@@ -3473,3 +3473,11 @@ body.dark-mode .tg-awam-note[data-tone="ok"] { color: #86efac; }
 body.dark-mode .tg-awam-note[data-tone="bad"] { color: #fca5a5; }
 body.dark-mode .dok-awam { background: #111827; border-color: #1e40af; color: #bfdbfe; }
 .tg-editor:not(.is-wide) .tg-awam-label { flex-basis: 100%; }
+
+.tgv-prev-note {
+    margin: 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px;
+    padding: 10px 14px; border-radius: 12px; border: 1px solid #F3B8B2; background: #FDECEA; color: #7A1F18; font-size: 13px; line-height: 1.45;
+}
+.tgv-prev-note .tgv-link-btn { color: #B42E24; }
+body.dark-mode .tgv-prev-note { background: #450a0a; border-color: #7f1d1d; color: #fecaca; }
+body.dark-mode .tgv-prev-note .tgv-link-btn { color: #fca5a5; }

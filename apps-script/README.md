@@ -17,8 +17,13 @@ setiap program Kembara yang ada tugasan dalam Dashboard KPI, robot:
    Maklum balas, Gambar), dan menutupnya semula apabila tanda dibuang.
    Senarai kehadiran dan kertas kerja tidak boleh dipaparkan.
 
-Robot hanya membaca dan menulis koleksi `tugasan` (dan satu log dalam
-Sejarah Perubahan). Dokumen KPI tidak pernah disentuh. Kod ini disemak
+Robot menjaga tugasan tahun semasa, dan juga tahun lepas selagi masih ada
+tugasannya yang belum selesai (contoh laporan program Disember yang
+bertarikh akhir Januari). Tiada apa yang perlu diubah apabila tahun berganti.
+
+Robot hanya menulis ke koleksi `tugasan` (dan satu log dalam Sejarah
+Perubahan). Dokumen KPI hanya dibaca untuk melangkau program yang sudah
+dipadam, dan tidak pernah ditulis. Kod ini disemak
 oleh `node tests/robot.test.js` dengan Google palsu.
 
 ## Prasyarat

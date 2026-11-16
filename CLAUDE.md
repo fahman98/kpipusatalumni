@@ -79,7 +79,12 @@ descriptions of PR #2 to #8.
   `isPercentage` KPIs are not pro-rated. Shown % stays vs annual target.
 - Quarters not yet begun: tabs muted, history chart leaves them empty.
 - Reset / Salin Struktur act on the SELECTED year from the year before;
-  reset needs the year typed and downloads a JSON backup first.
+  reset needs the year typed and downloads a JSON backup first. Since
+  17/11/2026 the record lists of kembara / bicara / ziarah / pendanaan
+  (`RECORD_LIST_KPI_IDS` in cloneFromYear) start EMPTY in the new year
+  (they are that year's programmes / entries); other lists keep their names
+  with value 0. Year selector = last year, this year, next year (dynamic);
+  everything else is per year already, so a new year needs no code.
 - Admin session: SESSION persistence + idle logout after 30 min (warn at 28).
 - Full backup button reads years from `BACKUP_FIRST_YEAR` (2020) to next year.
 - Logos are 240px-tall 256-colour PNGs. App icon (since 01/11/2026): three
@@ -298,7 +303,11 @@ descriptions of PR #2 to #8.
   Drive folder per programme with a subfolder per task shared with the PIC,
   emails the PIC (on assignment, 3 days before due, late every 7 days max
   4; a moved due date restarts), and ticks Selesai + fills the link when a
-  file appears. It skips programmes no longer in `kpi-{year}/q4` (read
+  file appears. It looks after the current year AND last year while last
+  year still has work (`perluDiproses_`: an unfinished task or an awam tick
+  not yet matched), so a December programme's January deadline is not
+  dropped on 1 January; the Tugasan tab of the current year shows a note
+  "Tahun N masih ada n tugasan lewat" with a button to that year. It skips programmes no longer in `kpi-{year}/q4` (read
   only; unreadable q4 stops the run before any email). It writes ONLY `tugasan/{year}` (PATCH `programs` with an
   `updateTime` precondition, so an admin save mid-run wins and nothing is
   emailed), `tugasan/robot` `{ lastRun, ok, mesej }` and a ROBOT_TUGASAN

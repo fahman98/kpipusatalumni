@@ -444,8 +444,16 @@ const scenarios = {
         ({ ctx, page } = await open({ admin: true }));
         await page.selectOption('#year-selector', '2027'); await page.waitForTimeout(1500);
         assert.equal(await page.textContent('#clone-btn-label'), 'Salin Struktur 2026');
+        assert.match(await page.textContent('#empty-state-desc'), /senarai program dan rekod penjanaan bermula kosong/);
         await page.click('#clone-prev-year-btn'); await page.waitForTimeout(800);
         assert.deepEqual(await page.evaluate(() => window.__writes), ['kpi-2027/q1', 'kpi-2027/q2', 'kpi-2027/q3', 'kpi-2027/q4']);
+        // 2026's programmes and Penjanaan entries are records of 2026: not copied
+        const q4 = await page.evaluate(() => window.__batchData.find(w => w.k === 'kpi-2027/q4').d.kpis);
+        const items = (id) => q4.find(k => k.id === id).details.items;
+        assert.deepEqual(items('kembara'), []);
+        assert.deepEqual(items('pendanaan'), []);
+        assert.deepEqual(q4.map(k => k.id), ['pendaftaran', 'program', 'pendanaan', 'kepuasan', 'kembara', 'hebahan'], 'every KPI kept');
+        assert.ok(q4.every(k => k.value === 0), 'values start at 0');
         await ctx.close();
     },
 
@@ -806,6 +814,8 @@ const scenarios = {
         const cards = () => page.$$eval('.tgv-card', c => c.map(x => [x.dataset.card, x.querySelector('.tgv-card-num').textContent]));
         assert.deepEqual(await cards(), [['lewat', '1'], ['belum', '0'], ['selesai', '2'], ['agih', '0']]);
         assert.match(await page.textContent('.tgv-robot'), /^Robot aktif\. Terakhir berjalan 29\/10\/2026, \d{2}:\d{2}\. Ia mencipta folder/);
+        // Last year's late tasks are mentioned, with a way there
+        assert.match(await page.textContent('.tgv-prev-note'), /Tahun 2025 masih ada 1 tugasan lewat\./);
         const progs = () => page.$$eval('.tgv-prog', p => p.map(x => [x.querySelector('.tgv-prog-name').textContent, x.querySelector('.tgv-chip').textContent]));
         assert.deepEqual(await progs(), [['Kembara Alumni Johor', '1 lewat'], ['Kembara Alumni Sabah', 'Tiada tugasan']]);
         assert.match(await page.textContent('.tgv-prog:nth-child(1) .tgv-prog-meta, .tgv-list li:nth-child(1) .tgv-prog-meta'), /^Kembara Alumni · 20\/06\/2026 hingga 21\/06\/2026 · Dokumen 2\/3$/);
@@ -866,6 +876,17 @@ const scenarios = {
         assert.deepEqual(await cards(), [['lewat', '0'], ['belum', '0'], ['selesai', '3'], ['agih', '0']]);
         assert.equal(await page.isVisible('#main-nav .tugasan-nav-badge'), false);
         assert.deepEqual(page.__errors, []);
+        await ctx.close();
+
+        // "Lihat 2025" switches the year and stays on the tab
+        ({ ctx, page } = await open({ admin: true, tugasan: true }));
+        await page.click('#main-nav [data-view=tugasan]'); await page.waitForTimeout(1200);
+        await page.click('.tgv-prev-note [data-goto-year]'); await page.waitForTimeout(1800);
+        assert.equal(await page.inputValue('#year-selector'), '2025');
+        assert.equal(await page.isVisible('#view-tugasan'), true);
+        assert.equal(await page.textContent('.tgv .page-eyebrow'), 'Admin · Program 2025');
+        assert.equal(await page.$$eval('.tgv-prev-note', n => n.length), 0, 'no note for a past year');
+        await noWrites(page);
         await ctx.close();
 
         // Programmes near today with no tasks are "Belum diagih"; Perlu tindakan opens that filter

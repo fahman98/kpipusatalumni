@@ -2,7 +2,7 @@
 // Stands in for the Firebase SDK (firebase-app.js) during browser tests, so
 // the app runs against sample data and NOTHING reaches the live Firestore.
 // Every write is recorded on window for the tests to inspect:
-//   window.__writes   batch.set paths (clone / reset)
+//   window.__writes   batch.set paths (clone / reset); __batchData their data
 //   window.__tx       transaction writes [{ k: 'kpi-2026/q1', d: {...} }]
 //   window.__audit    audit-log entries added
 //   window.__persist  auth.setPersistence() calls
@@ -113,6 +113,10 @@
                 { id: 'tg-2', jenis: 'Laporan', pic: 'st-2', tarikhAkhir: '2026-07-05', link: '', selesai: false },
                 { id: 'tg-3', jenis: 'Maklum balas', pic: 'st-1', tarikhAkhir: '2026-06-28', link: 'https://forms.gle/johor', selesai: true, awam: true }
             ] }] };
+        // Last year: one late task left (a December programme's report)
+        DATA['tugasan/2025'] = { programs: [{ key: 'n:Kembara Alumni Disember|2025-12-10', kpiId: 'kembara',
+            name: 'Kembara Alumni Disember', tarikh: '2025-12-10', tasks: [
+                { id: 'tg-9', jenis: 'Laporan', pic: 'st-2', tarikhAkhir: '2025-12-24', link: '', selesai: false }] }] };
         // Public copy of the documents the admin published (dokumen awam)
         DATA['dokumen-awam/2026'] = { programs: [{ key: 'n:Kembara Alumni Johor|2026-06-20', kpiId: 'kembara',
             name: 'Kembara Alumni Johor', tarikh: '2026-06-20', tarikhTamat: '2026-06-21',
@@ -122,6 +126,7 @@
     }
 
     window.__writes = [];
+    window.__batchData = [];
     window.__tx = [];
     window.__audit = [];
     window.__persist = [];
@@ -167,7 +172,11 @@
         }),
         batch: () => {
             const pending = [];
-            return { set(ref) { pending.push(ref._k); }, commit: async () => { window.__writes.push(...pending); } };
+            const data = [];
+            return {
+                set(ref, d) { pending.push(ref._k); data.push({ k: ref._k, d: JSON.parse(JSON.stringify(d)) }); },
+                commit: async () => { window.__writes.push(...pending); window.__batchData.push(...data); }
+            };
         }
     });
     firestore.FieldValue = { delete: () => null, serverTimestamp: () => null };

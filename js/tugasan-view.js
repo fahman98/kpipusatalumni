@@ -12,7 +12,7 @@
 // "Emel peringatan" button (the robot already reminds), app font instead of
 // Manrope, native date pickers, Butiran's "Dokumen" button stays.
 
-import { getQuarterOnce } from './api.js';
+import { getQuarterOnce, getTugasanYear } from './api.js';
 import { escapeHtml, showConfirmModal } from './ui.js';
 import {
     cache, loadTugasan, TUGASAN_KPI_IDS, findProgram, programKey, summarizeTasks,
@@ -26,7 +26,7 @@ const STATUS_ORDER = { lewat: 0, belum: 1, agih: 2, selesai: 3, tiada: 4 };
 const state = {
     container: null, year: null, q4: null, entries: [],
     mode: 'program', filter: 'semua', picFilter: 'semua',
-    selectedKey: null, expanded: new Set(), pending: null, token: 0
+    selectedKey: null, expanded: new Set(), pending: null, token: 0, prevLate: 0
 };
 
 // "Perlu tindakan" buttons: open the tab with a filter
@@ -57,8 +57,15 @@ export async function initTugasan(container, isAdmin, year) {
 
 async function reload() {
     const token = ++state.token;
-    const [data, q4] = await Promise.all([loadTugasan(true), getQuarterOnce('q4')]);
+    // In the current year, last year's late tasks still matter (a December
+    // programme's report is due in January): count them for a note
+    const thisYear = String(new Date().getFullYear());
+    const [data, q4, prev] = await Promise.all([loadTugasan(true), getQuarterOnce('q4'),
+        state.year === thisYear ? getTugasanYear(String(Number(thisYear) - 1)) : Promise.resolve(null)]);
     if (token !== state.token || !state.container) return;
+    const today = todayKey();
+    state.prevLate = Array.isArray(prev)
+        ? prev.reduce((n, p) => n + ((p && p.tasks) || []).filter(t => taskState(t, today) === 'lewat').length, 0) : 0;
     if (data.programs === null || data.staf === null) {
         state.container.innerHTML = `<div class="tgv-loading">Tugasan tidak dapat dibaca. Semak sambungan internet dan cuba lagi.</div>`;
         return;
@@ -339,6 +346,8 @@ function render() {
         </div>
         ${cardsHtml(t)}
         ${robotLine()}
+        ${state.prevLate ? `<p class="tgv-prev-note" role="status"><span>Tahun ${Number(state.year) - 1} masih ada <strong>${state.prevLate} tugasan lewat</strong>. Robot terus mengingatkan PIC sehingga selesai.</span>
+            <button type="button" class="tgv-link-btn" data-goto-year="${Number(state.year) - 1}">Lihat ${Number(state.year) - 1}</button></p>` : ''}
         <div class="tgv-seg" role="group" aria-label="Susun mengikut">
             <button type="button" data-mode="program" aria-pressed="${state.mode === 'program'}">Ikut program</button>
             <button type="button" data-mode="pic" aria-pressed="${state.mode === 'pic'}">Ikut PIC</button>
@@ -395,6 +404,12 @@ function onClick(ev) {
     const em = t.closest('[data-emel]');
     if (em) { openStafSheet({ focusId: em.dataset.emel }); return; }
     if (t.closest('[data-staf-add]')) { openStafSheet({ addRow: true }); return; }
+    const gy = t.closest('[data-goto-year]');
+    if (gy) {
+        const sel = document.getElementById('year-selector');
+        if (sel) { sel.value = gy.dataset.gotoYear; sel.dispatchEvent(new Event('change')); }
+        return;
+    }
     if (t.closest('[data-staf]')) { openStafSheet(); }
 }
 
