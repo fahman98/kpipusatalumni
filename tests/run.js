@@ -790,6 +790,10 @@ const scenarios = {
         assert.equal(await page.$$eval('.tgv-pic:nth-child(2) .tgv-task', t => t.length), 0, 'done tasks hidden');
         await page.click('.tgv-pic:nth-child(2) [data-toggle]'); await page.waitForTimeout(200);
         assert.equal(await page.$$eval('.tgv-pic:nth-child(2) .tgv-task', t => t.length), 2);
+        // Filters sit apart from the cards; "Lewat" is the label (owner's wording)
+        assert.deepEqual(await page.$$eval('.tgv-filter[data-pic-filter]', b => b.map(x => x.firstChild.textContent.trim())), ['Semua staf', 'Lewat', 'Tanpa tugasan']);
+        const gapPx = await page.evaluate(() => document.querySelector('.tgv-pics').getBoundingClientRect().top - document.querySelector('.tgv-body > .tgv-filters').getBoundingClientRect().bottom);
+        assert.ok(gapPx >= 12, `filters ${gapPx}px from the cards`);
         await page.click('.tgv-filter[data-pic-filter=lewat]'); await page.waitForTimeout(200);
         assert.deepEqual((await pics()).map(p => p[0]), ['Hafiz Rahman']);
         await shot(page, 'tugasan-tab-pic', true);

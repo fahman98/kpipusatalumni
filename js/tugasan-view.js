@@ -222,7 +222,7 @@ function programModeHtml() {
         state.selectedKey = selected ? selected.key : null;
     }
     const n = (f) => state.entries.filter(PROG_FILTERS[f]).length;
-    const chips = [['semua', 'Semua'], ['lewat', 'Ada lewat'], ['belum', 'Belum siap'], ['agih', 'Belum diagih'], ['selesai', 'Selesai']]
+    const chips = [['semua', 'Semua'], ['lewat', 'Lewat'], ['belum', 'Belum siap'], ['agih', 'Belum diagih'], ['selesai', 'Selesai']]
         .map(([k, label]) => `<button type="button" class="tgv-filter" data-filter="${k}" aria-pressed="${state.filter === k}">${label} <span>${n(k)}</span></button>`).join('');
     return `<div class="tgv-split">
         <section class="tgv-list-col" aria-labelledby="tgv-list-title">
@@ -313,7 +313,7 @@ function picModeHtml() {
     const groups = picGroups();
     const list = groups.filter(PIC_FILTERS[state.picFilter] || PIC_FILTERS.semua);
     const staffN = groups.filter(g => g.known).length;
-    const chips = [['semua', 'Semua staf', staffN], ['lewat', 'Ada lewat', groups.filter(PIC_FILTERS.lewat).length], ['kosong', 'Tanpa tugasan', groups.filter(PIC_FILTERS.kosong).length]]
+    const chips = [['semua', 'Semua staf', staffN], ['lewat', 'Lewat', groups.filter(PIC_FILTERS.lewat).length], ['kosong', 'Tanpa tugasan', groups.filter(PIC_FILTERS.kosong).length]]
         .map(([k, label, n]) => `<button type="button" class="tgv-filter" data-pic-filter="${k}" aria-pressed="${state.picFilter === k}">${label} <span>${n}</span></button>`).join('');
     const empty = !(cache.staf || []).length
         ? `<div class="tgv-empty tgv-empty-box"><p>Senarai staf masih kosong. Tambah staf dahulu supaya tugasan boleh diagih.</p><button type="button" class="tgv-outline-btn" data-staf-add="1">Tambah staf</button></div>`

@@ -3273,6 +3273,8 @@ body.dark-mode .admin-link-btn { color: #93c5fd; }
 .tgv-filter span { opacity: 0.75; }
 .tgv-filter[aria-pressed="true"] { border-color: #0E1A2B; background: #0E1A2B; color: #fff; }
 
+/* Filters sit 12px above the cards or list they filter (owner, 17/11/2026) */
+.tgv-body { display: flex; flex-direction: column; gap: 12px; }
 .tgv-split { display: flex; flex-direction: column; gap: 16px; }
 .tgv-list-col { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .tgv-h { margin: 0; font-size: 16px; font-weight: 800; }
