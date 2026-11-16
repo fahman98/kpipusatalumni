@@ -247,7 +247,7 @@ function prosesTahun_(t, tahun, programs, aktif, staf, drive, catat, hasil, emel
         if (emel && !task.selesai) {
           var jenisEmel = pilihEmel_(task, tr, emel, t.hariIni);
           if (jenisEmel) {
-            emelBaru.push({ tahun: tahun, jenis: jenisEmel, kepada: emel, nama: pic.nama, task: task, prog: prog, folderUrl: tr2.folderUrl || '' });
+            emelBaru.push({ tahun: tahun, hariIni: t.hariIni, jenis: jenisEmel, kepada: emel, nama: pic.nama, task: task, prog: prog, folderUrl: tr2.folderUrl || '' });
             if (jenisEmel === 'tugasan') tr2.emelTugasan = { emel: emel, pada: t.hariIni };
             if (jenisEmel === 'peringatan') tr2.peringatan = task.tarikhAkhir;
             if (jenisEmel === 'lewat') tr2.lewat = { tarikhAkhir: task.tarikhAkhir, pada: t.hariIni, kali: lewatKali_(tr, task) + 1 };
@@ -376,19 +376,30 @@ function isiEmel_(e) {
   var t = e.task, p = e.prog;
   var tarikhProg = dmy_(p.tarikh) + (p.tarikhTamat && p.tarikhTamat !== p.tarikh ? ' hingga ' + dmy_(p.tarikhTamat) : '');
   var akhir = t.tarikhAkhir ? dmy_(t.tarikhAkhir) : 'belum ditetapkan';
+  // Hari berbaki / hari lewat dikira daripada tarikh larian robot
+  var beza = e.hariIni && t.tarikhAkhir ? bezaHari_(e.hariIni, t.tarikhAkhir) : null;
   var subjek, pembuka;
   if (e.jenis === 'tugasan') {
     subjek = 'Tugasan dokumen: ' + t.jenis + ', ' + p.name;
     pembuka = 'Tuan/Puan telah ditetapkan sebagai PIC bagi dokumen berikut.';
   } else if (e.jenis === 'peringatan') {
     subjek = 'Peringatan: ' + t.jenis + ', ' + p.name + ' (tarikh akhir ' + akhir + ')';
-    pembuka = 'Ini peringatan mesra bahawa tarikh akhir dokumen berikut semakin hampir.';
+    pembuka = beza === null ? 'Ini peringatan mesra bahawa tarikh akhir dokumen berikut semakin hampir.'
+      : beza <= 0 ? 'Ini peringatan mesra bahawa tarikh akhir dokumen berikut ialah <b>hari ini</b>.'
+      : 'Ini peringatan mesra bahawa tarikh akhir dokumen berikut tinggal <b>' + beza + ' hari lagi</b>.';
   } else {
     subjek = 'Tugasan lewat: ' + t.jenis + ', ' + p.name;
-    pembuka = 'Dokumen berikut telah melepasi tarikh akhir dan belum diterima.';
+    pembuka = beza !== null && beza < 0
+      ? 'Dokumen berikut telah <b>lewat ' + (-beza) + ' hari</b> daripada tarikh akhir dan belum diterima. Mohon jasa baik Tuan/Puan untuk memuat naiknya secepat mungkin.'
+      : 'Dokumen berikut telah melepasi tarikh akhir dan belum diterima.';
   }
+  // Butang (gaya sebaris supaya kekal dalam Gmail / Outlook), dengan pautan
+  // biasa di bawahnya jika butang tidak dipaparkan
   var folder = e.folderUrl
-    ? '<p>Sila muat naik dokumen ke dalam folder ini:<br><a href="' + esc_(e.folderUrl) + '">' + esc_(e.folderUrl) + '</a></p>'
+    ? '<p>Sila muat naik dokumen ke dalam folder Google Drive berikut:</p>'
+      + '<p><a href="' + esc_(e.folderUrl) + '" style="display:inline-block;padding:10px 20px;background:#1747A6;color:#ffffff;'
+      + 'text-decoration:none;border-radius:6px;font-weight:bold">Buka folder Google Drive</a></p>'
+      + '<p style="font-size:12px;color:#5B6779">Jika butang tidak berfungsi, buka pautan ini: <a href="' + esc_(e.folderUrl) + '">' + esc_(e.folderUrl) + '</a></p>'
       + '<p>Status tugasan akan dikemas kini secara automatik setelah fail dimuat naik.</p>'
     : '';
   var html = '<p>Assalamualaikum dan salam sejahtera ' + esc_(e.nama || '') + ',</p>'

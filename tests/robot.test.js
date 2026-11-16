@@ -194,6 +194,8 @@ const cases = {
         assert.match(w.mails[0].htmlBody, /Tarikh akhir<\/b><\/td><td>19\/11\/2026/);
         assert.match(w.mails[0].htmlBody, /28\/11\/2026 hingga 29\/11\/2026/);
         assert.match(w.mails[0].htmlBody, /drive\.google\.com\/drive\/folders\//);
+        assert.match(w.mails[0].htmlBody, />Buka folder Google Drive<\/a>/);
+        assert.match(w.mails[0].htmlBody, /Jika butang tidak berfungsi/);
         assert.equal(w.mails[0].name, 'Pusat Alumni UPSI');
         const p = w.programs()[0];
         assert.match(p.robot.folderUrl, /folders\/F2$/);
@@ -362,6 +364,7 @@ const cases = {
         w.today = '2026-11-17';
         w.run();
         assert.deepEqual(w.mails.map(m => m.subject), ['Peringatan: Kertas kerja, Kembara Alumni Perak (tarikh akhir 19/11/2026)']);
+        assert.match(w.mails[0].htmlBody, /tinggal <b>2 hari lagi<\/b>/);
         w.today = '2026-11-18';
         w.run();
         assert.equal(w.mails.length, 1, 'once per due date');
@@ -376,6 +379,9 @@ const cases = {
         const days = ['2026-11-20', '2026-11-23', '2026-11-27', '2026-12-04', '2026-12-11', '2026-12-18', '2026-12-25'];
         const counts = days.map(d => { w.today = d; w.run(); return late(); });
         assert.deepEqual(counts, [1, 1, 2, 3, 4, 4, 4]);
+        const lateMails = w.mails.filter(m => m.subject.startsWith('Tugasan lewat: Kertas kerja'));
+        assert.match(lateMails[0].htmlBody, /<b>lewat 1 hari<\/b>/);
+        assert.match(lateMails[1].htmlBody, /<b>lewat 8 hari<\/b>/);
         // Admin moves the due date: a fresh reminder / late cycle
         const progs = w.programs();
         progs[0].tasks[0].tarikhAkhir = '2026-12-27';
