@@ -8,6 +8,7 @@ import {
     selectedYear
 } from './api.js';
 
+import { decorateProgramRows, TUGASAN_KPI_IDS } from './tugasan.js';
 import { statusTier, statusHex, statusBarClass, kpiStatusPct, isPacedKpi, getPaceFraction, STATUS_LABEL } from './status.js';
 
 const BULAN_MY = ['', 'Jan', 'Feb', 'Mac', 'Apr', 'Mei', 'Jun', 'Jul', 'Ogos', 'Sep', 'Okt', 'Nov', 'Dis'];
@@ -951,6 +952,7 @@ export function showDetailsModal(kpiId, triggerElement) {
         ordered.forEach(({ item, index }) => {
             const li = document.createElement('li');
             li.className = 'breakdown-item flex items-start gap-3 px-3 py-2.5';
+            li.dataset.index = String(index);
             const isEventRow = isCountKpi && showMonth;
             const tanggal = isEventRow && item.tarikh
                 ? formatTarikhRange(item.tarikh, item.tarikhTamat) : '';
@@ -1017,6 +1019,8 @@ export function showDetailsModal(kpiId, triggerElement) {
                         </button>
                     </div>`;
                 document.getElementById('add-program-btn').onclick = () => openProgramForm(kpi);
+                // Tugasan dokumen per programme (admin only, tugasan.js)
+                if (TUGASAN_KPI_IDS.has(kpi.id)) decorateProgramRows(kpi, detailsList);
             } else {
             detailsAddNewWrapper.innerHTML = `
                 <div class="add-new-form-wrapper border-t pt-4 mt-4">

@@ -1496,3 +1496,130 @@ export async function getPendanaanKpiTarget(year) {
         return 0;
     }
 }
+// =====================================================================
+// TUGASAN DOKUMEN (programme document tasks, phase 1: admin only)
+// Path: artifacts/{appId}/public/data/tugasan/
+//   {year}  { programs: [{ key, kpiId, name, tarikh, tarikhTamat?, tasks:
+//             [{ id, jenis, pic, tarikhAkhir, link, selesai, catatan? }],
+//             updatedAt }] }
+//   staf    { staf: [{ id, nama, emel }] }
+// A programme is matched to its Kembara record by `key` (tugasan.js
+// programKey). Nothing in the KPI documents changes. Unlike the dashboard
+// data this collection must NOT be public, so every save first checks that
+// the firestore.rules lock for it is live (see checkTugasanRules).
+// =====================================================================
+
+const tugasanRef = (docId) =>
+    db.collection(`artifacts/${getAppId()}/public/data/tugasan`).doc(String(docId));
+
+// One-off reads. null when unreadable, so callers can say nothing rather
+// than report "no tasks" wrongly.
+export async function getTugasanYear(year) {
+    try {
+        const snap = await tugasanRef(year).get();
+        const programs = snap.exists && Array.isArray(snap.data().programs) ? snap.data().programs : [];
+        return programs;
+    } catch (e) {
+        console.warn('getTugasanYear failed:', e);
+        return null;
+    }
+}
+
+export async function getStafList() {
+    try {
+        const snap = await tugasanRef('staf').get();
+        return snap.exists && Array.isArray(snap.data().staf) ? snap.data().staf : [];
+    } catch (e) {
+        console.warn('getStafList failed:', e);
+        return null;
+    }
+}
+
+// Is the admin-only rule for `tugasan` live? Asks Firestore as a guest
+// through a second, never-signed-in Firebase app: a refusal means the rule
+// is deployed. 'locked' | 'open' | 'unknown' (offline / other error).
+// Remembered once locked, since rules are not rolled back in practice.
+let tugasanRulesLocked = false;
+export async function checkTugasanRules() {
+    if (tugasanRulesLocked) return 'locked';
+    try {
+        let probe;
+        try { probe = firebase.app('tugasan-probe'); }
+        catch (_) { probe = firebase.initializeApp(firebaseConfig, 'tugasan-probe'); }
+        await probe.firestore()
+            .collection(`artifacts/${getAppId()}/public/data/tugasan`).doc('staf')
+            .get({ source: 'server' });
+        return 'open';
+    } catch (e) {
+        if (e && e.code === 'permission-denied') {
+            tugasanRulesLocked = true;
+            return 'locked';
+        }
+        console.warn('checkTugasanRules:', e);
+        return 'unknown';
+    }
+}
+
+async function tugasanSaveGuard() {
+    if (!isEditMode) return 'error';
+    if (!navigator.onLine) return 'offline';
+    const rules = await checkTugasanRules();
+    if (rules === 'open') return 'rules';
+    if (rules !== 'locked') return 'unknown';
+    return null;
+}
+
+// Replace one programme's tasks (insert when new). `program` carries key,
+// kpiId, name, tarikh, tarikhTamat and tasks. Returns 'ok' | 'offline' |
+// 'rules' | 'unknown' | 'error'; the caller shows the message.
+export async function saveProgramTugasan(year, program) {
+    const blocked = await tugasanSaveGuard();
+    if (blocked) return blocked;
+    showLoading('Menyimpan tugasan...');
+    try {
+        const ref = tugasanRef(year);
+        let before = null;
+        const clean = auditSafe({ ...program, updatedAt: new Date().toISOString() });
+        await db.runTransaction(async (t) => {
+            const doc = await t.get(ref);
+            const programs = doc.exists && Array.isArray(doc.data().programs) ? doc.data().programs.slice() : [];
+            const i = programs.findIndex(p => p && p.key === program.key);
+            before = i === -1 ? null : programs[i];
+            if (i === -1) programs.push(clean); else programs[i] = clean;
+            t.set(ref, { programs }, { merge: true });
+        });
+        await writeAuditLog('UPDATE_TUGASAN', {
+            year: String(year), kpiId: program.kpiId, name: program.name, key: program.key,
+            before, after: clean
+        });
+        return 'ok';
+    } catch (e) {
+        console.error('saveProgramTugasan error:', e);
+        return 'error';
+    } finally {
+        hideLoading();
+    }
+}
+
+export async function saveStafList(list) {
+    const blocked = await tugasanSaveGuard();
+    if (blocked) return blocked;
+    showLoading('Menyimpan senarai staf...');
+    try {
+        const ref = tugasanRef('staf');
+        let before = null;
+        const staf = auditSafe(list);
+        await db.runTransaction(async (t) => {
+            const doc = await t.get(ref);
+            before = doc.exists && Array.isArray(doc.data().staf) ? doc.data().staf : [];
+            t.set(ref, { staf }, { merge: true });
+        });
+        await writeAuditLog('UPDATE_STAF', { before, after: staf });
+        return 'ok';
+    } catch (e) {
+        console.error('saveStafList error:', e);
+        return 'error';
+    } finally {
+        hideLoading();
+    }
+}

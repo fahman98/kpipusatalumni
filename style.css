@@ -1521,6 +1521,94 @@ body.dark-mode .breakdown-hadir-chip {
 }
 body.dark-mode .breakdown-hadir-chip i { color: #93c5fd; }
 
+/* Tugasan dokumen button on Kembara rows (admin, tugasan.js) */
+.tugasan-chip {
+    display: inline-flex; align-items: center; gap: 6px; margin-top: 8px;
+    min-height: 32px; max-width: 100%; padding: 0 12px; border-radius: 999px;
+    border: 1px solid #BFD0EE; background: #F3F6FD; color: #1747A6;
+    font-size: 12px; font-weight: 700; line-height: 1.3; text-align: left; cursor: pointer;
+}
+.tugasan-chip i { font-size: 15px; flex-shrink: 0; }
+.tugasan-chip:hover { border-color: #1747A6; }
+.tugasan-chip[data-tone="none"] { border-style: dashed; background: #fff; }
+.tugasan-chip[data-tone="late"] { border-color: #F3B8B2; background: #FDECEA; color: #B42E24; }
+.tugasan-chip[data-tone="done"] { border-color: #A7DDBF; background: #E7F6EE; color: #17713F; }
+.tugasan-chip:disabled { cursor: default; color: #5B6779; border-color: #D3DAE5; background: #F3F5F9; }
+body.dark-mode .tugasan-chip { background: #172554; border-color: #1e40af; color: #bfdbfe; }
+body.dark-mode .tugasan-chip[data-tone="none"] { background: transparent; }
+body.dark-mode .tugasan-chip[data-tone="late"] { background: #450a0a; border-color: #7f1d1d; color: #fca5a5; }
+body.dark-mode .tugasan-chip[data-tone="done"] { background: #052e16; border-color: #166534; color: #86efac; }
+
+/* Tugasan sheet */
+#tugasan-modal .form-sheet-titles p { white-space: normal; overflow: visible; }
+.tg-warn {
+    padding: 12px 14px; border-radius: 12px; border: 1px solid #F5D08A;
+    background: #FFF3DF; color: #8F5300; font-size: 13px; font-weight: 600; line-height: 1.45;
+}
+.tg-warn.hidden { display: none; }
+.tg-rows { display: flex; flex-direction: column; gap: 12px; }
+.tg-row {
+    display: flex; flex-direction: column; gap: 12px; padding: 14px;
+    border: 1px solid #D3DAE5; border-radius: 14px; background: #fff;
+}
+.tg-row-head { display: flex; align-items: center; gap: 8px; }
+.tg-row-head .tg-jenis { flex: 1; min-width: 0; font-weight: 800; }
+.tg-row-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.tg-state {
+    flex-shrink: 0; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 800;
+    background: #F3F5F9; color: #5B6779;
+}
+.tg-state[data-state="lewat"] { background: #FDECEA; color: #B42E24; }
+.tg-state[data-state="selesai"] { background: #E7F6EE; color: #17713F; }
+.tg-remove, .tg-staf-remove {
+    width: 44px; height: 44px; flex-shrink: 0; border: 0; border-radius: 10px;
+    background: transparent; color: #B42E24; display: inline-flex; align-items: center; justify-content: center;
+}
+.tg-remove:hover, .tg-staf-remove:hover { background: #FDECEA; }
+.tg-link-wrap { display: flex; gap: 8px; align-items: stretch; }
+.tg-link-wrap .tg-link { flex: 1; min-width: 0; }
+.tg-open {
+    flex-shrink: 0; display: inline-flex; align-items: center; padding: 0 14px; border-radius: 12px;
+    background: #E8EEFA; color: #1747A6; font-size: 14px; font-weight: 800; text-decoration: none;
+}
+.tg-open.hidden { display: none; }
+.tg-done-label { display: inline-flex; align-items: center; gap: 10px; min-height: 32px; font-size: 14px; font-weight: 700; color: #0E1A2B; cursor: pointer; }
+.tg-done-label input { width: 20px; height: 20px; accent-color: #17713F; margin: 0; }
+.tg-add {
+    width: 100%; min-height: 48px; border: 1px dashed #1747A6; border-radius: 12px;
+    background: #fff; color: #1747A6; font-size: 14px; font-weight: 800;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+}
+.tg-add:hover { background: #F3F6FD; }
+.tg-add-sm { width: auto; min-height: 44px; padding: 0 16px; }
+.tg-staf { border: 1px solid #D3DAE5; border-radius: 14px; }
+.tg-staf summary { padding: 14px; font-size: 14px; font-weight: 800; color: #0E1A2B; cursor: pointer; }
+.tg-staf-body { display: flex; flex-direction: column; gap: 12px; padding: 0 14px 14px; }
+.tg-staf-rows { display: flex; flex-direction: column; gap: 10px; }
+.tg-staf-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px; gap: 8px; align-items: center; }
+.tg-staf-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; }
+.tg-staf-save {
+    min-height: 44px; padding: 0 16px; border: 0; border-radius: 12px;
+    background: #1747A6; color: #fff; font-size: 14px; font-weight: 800;
+}
+.tg-staf-save:hover { background: #0F2F6E; }
+@media (max-width: 639px) {
+    /* PIC and due date each get the full width (two columns cut the text) */
+    .tg-row .fs-two { grid-template-columns: minmax(0, 1fr); }
+    .tg-staf-row { grid-template-columns: minmax(0, 1fr) 44px; }
+    .tg-staf-row .tg-staf-emel { grid-column: 1; grid-row: 2; }
+    .tg-staf-row .tg-staf-remove { grid-column: 2; grid-row: 1; }
+}
+body.dark-mode .tg-row, body.dark-mode .tg-staf, body.dark-mode .tg-add { background: #111827; border-color: #4b5563; }
+body.dark-mode .tg-add { color: #93c5fd; border-color: #60a5fa; }
+body.dark-mode .tg-staf summary, body.dark-mode .tg-done-label { color: #f3f4f6; }
+body.dark-mode .tg-state { background: #374151; color: #d1d5db; }
+body.dark-mode .tg-state[data-state="lewat"] { background: #450a0a; color: #fca5a5; }
+body.dark-mode .tg-state[data-state="selesai"] { background: #052e16; color: #86efac; }
+body.dark-mode .tg-open { background: #1e3a8a; color: #dbeafe; }
+body.dark-mode .tg-warn { background: #451a03; border-color: #92400e; color: #fcd34d; }
+body.dark-mode .tg-staf-save { background: #1d4ed8; }
+
 /* Total attendance banner under the Kembara breakdown list */
 #details-summary {
     display: flex;

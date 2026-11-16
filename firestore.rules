@@ -13,6 +13,7 @@ rules_version = '2';
 //     artifacts/{appId}/public/data/
 //         ├─ kpi-{year}/{q1..q4}      ← KPI dashboard
 //         ├─ takwim-{year}/main       ← activity calendar
+//         ├─ tugasan/{year}, staf     ← document tasks per programme (admin only)
 //         └─ audit-logs/{autoId}      ← admin action trail
 //
 // Deploy: Firebase Console → Firestore Database → Rules → paste → Publish
@@ -34,6 +35,11 @@ service cloud.firestore {
     // it; meta / any other collection is exempt.
     function validShape(collection) {
       return kpiShape(collection) && takwimShape(collection);
+    }
+
+    // Collections that are never public; each has its own rule below.
+    function isPrivate(collection) {
+      return collection == 'audit-logs' || collection == 'tugasan';
     }
 
     function kpiShape(collection) {
@@ -60,18 +66,27 @@ service cloud.firestore {
         allow update, delete: if false;   // immutable once written
       }
 
+      // ----- Programme document tasks: admin only (read AND write) ------
+      // Staff names, emails, due dates and Drive links are internal, so this
+      // collection is NOT public like the dashboard data. The app checks that
+      // this rule is live (a guest read must be refused) before it saves.
+      match /tugasan/{docId} {
+        allow read, write: if isAdmin();
+      }
+
       // ----- KPI (kpi-YYYY), Takwim (takwim-YYYY) & any other public -----
       // collection: anyone may read; only the admin may write.
-      // (audit-logs is excluded here — it is governed solely by the rule above.)
+      // (audit-logs and tugasan are excluded here: each is governed solely by
+      // its own rule above.)
       match /{collection}/{docId} {
-        allow read:  if collection != 'audit-logs';
-        allow write: if isAdmin() && collection != 'audit-logs'
+        allow read:  if !isPrivate(collection);
+        allow write: if isAdmin() && !isPrivate(collection)
                      && validShape(collection);
 
         // Defensive: same policy for any nested subcollections.
         match /{sub=**} {
-          allow read:  if collection != 'audit-logs';
-          allow write: if isAdmin() && collection != 'audit-logs';
+          allow read:  if !isPrivate(collection);
+          allow write: if isAdmin() && !isPrivate(collection);
         }
       }
     }

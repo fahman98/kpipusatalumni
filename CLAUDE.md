@@ -20,7 +20,7 @@ descriptions of PR #2 to #8.
 - The owner cannot easily re-enter lost data. Never write to live Firestore
   from a session, and never press reset / delete in a live app.
 - Test with `tests/` (see `tests/README.md`): `cd tests && npm install`
-  once, then `node run.js` (29 scenarios, ~3 min) against `mock-firebase.js`,
+  once, then `node run.js` (30 scenarios, ~4 min) against `mock-firebase.js`,
   which records every write instead of sending it. Clock pinned to
   29/10/2026. Add a scenario to `tests/run.js` for each behaviour change;
   extend the mock's seed data rather than touching live data. The proxy
@@ -40,7 +40,8 @@ descriptions of PR #2 to #8.
 - `js/status.js` status tiers and pace logic. `js/charts.js` Chart.js.
 - `js/takwim.js`, `js/penjanaan.js` the two other tabs. `js/admin.js` login,
   logout, idle logout. `js/history.js` audit log viewer. `js/todo.js` admin
-  "Perlu tindakan" panel (read-only). `js/admin-table.js` admin desktop
+  "Perlu tindakan" panel (read-only). `js/tugasan.js` Tugasan dokumen per
+  Kembara programme (admin only). `js/admin-table.js` admin desktop
   table (borrows the hidden cards' buttons). `js/calendar.js` Takwim
   "Simpan ke kalendar" (Google link + .ics, read-only). `js/welcome.js`
   poster sambutan overlay (read-only). `js/auth.js` admin
@@ -57,6 +58,11 @@ descriptions of PR #2 to #8.
 - `takwim-{year}/main` `{ events: [{ id, title, date, dateTo, location,
   status, notes, createdAt }] }`. Events without a `status` key are legacy:
   the status word lives in `notes` (read via `eventStatus()/eventNotes()`).
+- `tugasan/{year}` `{ programs: [{ key, kpiId, name, tarikh, tarikhTamat?,
+  tasks: [{ id, jenis, pic, tarikhAkhir, link, selesai }], updatedAt }] }`
+  and `tugasan/staf` `{ staf: [{ id, nama, emel }] }`: ADMIN-ONLY read and
+  write (rules `isPrivate`), never inside the public KPI docs. `key` =
+  `id:{item.id}`, or `n:{name}|{tarikh}` for records saved without an id.
 - `meta/{year}` `{ label }` last-updated footer. `audit-logs/{auto}` admin
   read-only, append-only. Since 29/10/2026 entries carry `deleted` / `before`
   snapshots and `oldValue`; older ones only ids.
@@ -224,6 +230,22 @@ descriptions of PR #2 to #8.
   `images/sambutan-audit-2026.webp` (owner approved the auditor's name and
   photo). After the visit, delete that image (still reachable by URL) and
   the `WELCOME` entry or point it at the next poster.
+
+- Tugasan dokumen, phase 1 (since 15/11/2026, `js/tugasan.js`): admin
+  Butiran Kembara rows get a "Dokumen x/y" / "Agih tugasan" button opening a
+  form sheet: tasks (Kertas kerja, Laporan, Maklum balas suggested; also
+  Gambar, Senarai kehadiran, Lain-lain) with PIC from the staff list, due
+  date (suggested: kertas kerja 14 days before, laporan 14 / maklum balas 7
+  days after), Google Drive link (http(s) only, pasting one ticks Selesai)
+  and Selesai; plus an editable "Senarai staf" (name + UPSI email for phase
+  2). Files stay in Drive. Saves are refused until the admin-only rule for
+  `tugasan` is live: `checkTugasanRules` reads `tugasan/staf` as a guest
+  through a second, never-signed-in Firebase app and needs permission-denied.
+  Logged as UPDATE_TUGASAN / UPDATE_STAF. "Perlu tindakan" adds overdue tasks
+  (per PIC) and programmes within 30 days either side of today with no tasks.
+  Mock flags `tugasan` (seed: two staff, Johor with a late Laporan) and
+  `rulesOpen` (rules not deployed). Phase 2 (agreed, not built): staff sign
+  in with their UPSI Google account and fill in only their own tasks.
 
 ## Ideas not done yet
 - Restore from the downloaded JSON backup file (needs careful design, it
