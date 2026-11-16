@@ -23,11 +23,14 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // The single admin account permitted to modify data. Guests authenticate
-    // anonymously (no email claim) and therefore can never satisfy this.
+    // The admin accounts permitted to modify data (mirrors js/auth.js
+    // ADMIN_EMAILS): the unit account and a second admin. Guests
+    // authenticate anonymously (no email claim) and can never satisfy this.
+    // A new address here must already exist in Firebase Authentication
+    // BEFORE these rules are published, or anyone could sign up with it.
     function isAdmin() {
       return request.auth != null
-        && request.auth.token.email == 'alumni@upsi.edu.my';
+        && request.auth.token.email in ['alumni@upsi.edu.my', 'fahman@upsi.edu.my'];
     }
 
     // Shape guard for the collections the dashboard renders: the list field the

@@ -8,12 +8,14 @@
 //   window.__persist  auth.setPersistence() calls
 // Flags read at load (set with page.addInitScript):
 //   window.__ADMIN    sign in as the admin instead of an anonymous guest
+//   window.__ADMIN_EMAIL  that signed-in account's email (default alumni@)
 //   window.__WITH2025 also seed kpi-2025 (default: only 2026 has data)
 //   window.__TODOS    data that raises every "Perlu tindakan" reminder: a
 //                     finished Kembara with no attendance, no Penjanaan record
 //                     in Q4, and no upcoming Takwim activity
 //   window.__TUGASAN  seed tugasan dokumen: two staff and Kembara Johor's
-//                     tasks (one late: Laporan, due 05/07/2026)
+//                     tasks (one late: Laporan, due 05/07/2026), with the
+//                     Apps Script robot's state (folders) and last run
 //   window.__RULES_OPEN  the guest probe of `tugasan` is NOT refused, i.e.
 //                     the new firestore.rules are not deployed yet
 // Writes to tugasan/* inside a transaction also update the seed, so the app
@@ -103,11 +105,15 @@
         ] };
         DATA['tugasan/2026'] = { programs: [{
             key: 'n:Kembara Alumni Johor|2026-06-20', kpiId: 'kembara', name: 'Kembara Alumni Johor',
-            tarikh: '2026-06-20', tarikhTamat: '2026-06-21', tasks: [
-                { id: 'tg-1', jenis: 'Kertas kerja', pic: 'st-1', tarikhAkhir: '2026-06-06', link: 'https://drive.google.com/file/d/kk-johor', selesai: true },
+            tarikh: '2026-06-20', tarikhTamat: '2026-06-21',
+            robot: { folderId: 'F2', folderUrl: 'https://drive.google.com/drive/folders/F2' }, tasks: [
+                { id: 'tg-1', jenis: 'Kertas kerja', pic: 'st-1', tarikhAkhir: '2026-06-06', link: 'https://drive.google.com/file/d/kk-johor', selesai: true,
+                  robot: { folderId: 'F3', folderUrl: 'https://drive.google.com/drive/folders/F3', selesaiAuto: true, emelTugasan: { emel: 'aminah@upsi.edu.my', pada: '2026-05-20' } } },
                 { id: 'tg-2', jenis: 'Laporan', pic: 'st-2', tarikhAkhir: '2026-07-05', link: '', selesai: false },
                 { id: 'tg-3', jenis: 'Maklum balas', pic: 'st-1', tarikhAkhir: '2026-06-28', link: 'https://forms.gle/johor', selesai: true }
             ] }] };
+        // Last run of the Apps Script robot (apps-script/Robot.gs)
+        DATA['tugasan/robot'] = { lastRun: '2026-10-29T04:05:00Z', ok: true, mesej: '' };
     }
 
     window.__writes = [];
@@ -163,7 +169,7 @@
 
     const signedOut = (() => { try { return !!sessionStorage.getItem('mockSignedOut'); } catch (_) { return false; } })();
     const user = (window.__ADMIN && !signedOut)
-        ? { isAnonymous: false, uid: 'adm', email: 'alumni@upsi.edu.my' }
+        ? { isAnonymous: false, uid: 'adm', email: window.__ADMIN_EMAIL || 'alumni@upsi.edu.my' }
         : { isAnonymous: true, uid: 'anon' };
 
     const auth = () => ({

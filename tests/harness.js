@@ -33,7 +33,8 @@ function startServer() {
 }
 
 // opts:
-//   admin, with2025,     mock flags (see mock-firebase.js)
+//   admin, with2025,     mock flags (see mock-firebase.js); adminEmail sets
+//                        the signed-in account's email
 //   todos, tugasan,
 //   rulesOpen
 //   mobile               390x844 touch viewport instead of 1366x900
@@ -46,7 +47,7 @@ function startServer() {
 //   path                 URL path + query to open (default '/')
 async function openApp(browser, base, opts = {}) {
     const {
-        admin = false, with2025 = false, todos = false, tugasan = false, rulesOpen = false, mobile = false, time = DEFAULT_TIME,
+        admin = false, adminEmail = null, with2025 = false, todos = false, tugasan = false, rulesOpen = false, mobile = false, time = DEFAULT_TIME,
         clock = 'fixed', blockFirebase = false, dark = false, userAgent = undefined, path: urlPath = '/'
     } = opts;
     const ctx = await browser.newContext({
@@ -57,9 +58,10 @@ async function openApp(browser, base, opts = {}) {
         // A registered sw.js would serve later requests itself, around these routes
         serviceWorkers: 'block'
     });
-    await ctx.addInitScript(([a, w, t, g, r]) => {
+    await ctx.addInitScript(([a, w, t, g, r, e]) => {
         window.__ADMIN = a; window.__WITH2025 = w; window.__TODOS = t; window.__TUGASAN = g; window.__RULES_OPEN = r;
-    }, [admin, with2025, todos, tugasan, rulesOpen]);
+        if (e) window.__ADMIN_EMAIL = e;
+    }, [admin, with2025, todos, tugasan, rulesOpen, adminEmail]);
     await ctx.route('**/*', async (route) => {
         const u = route.request().url();
         if (u === base + '/' || u.startsWith(base + '/index.html')) {

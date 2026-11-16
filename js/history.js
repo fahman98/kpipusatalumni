@@ -41,6 +41,7 @@ const ACTIONS = {
     RESTORE_TAKWIM:       { label: 'Pulihkan aktiviti Takwim',   icon: 'fa-undo',         tone: 'add' },
     UPDATE_TUGASAN:       { label: 'Kemas kini tugasan dokumen', icon: 'fa-clipboard-list', tone: 'edit' },
     UPDATE_STAF:          { label: 'Kemas kini senarai staf',    icon: 'fa-user-friends', tone: 'edit' },
+    ROBOT_TUGASAN:        { label: 'Robot tugasan dokumen',      icon: 'fa-robot',        tone: 'edit' },
 };
 const BREAKDOWN_ACTIONS = {
     add:    { label: 'Tambah butiran', icon: 'fa-plus',      tone: 'add' },
@@ -144,6 +145,11 @@ function describe(entry) {
             const tasks = (d.after && Array.isArray(d.after.tasks)) ? d.after.tasks : [];
             const done = tasks.filter(t => t && t.selesai).length;
             return [d.name || '', `${done}/${tasks.length} tugasan selesai`];
+        }
+        case 'ROBOT_TUGASAN': {
+            const done = Array.isArray(d.selesai) ? d.selesai : [];
+            const mails = Array.isArray(d.emel) ? d.emel.length : 0;
+            return [done.length ? `Selesai: ${done.join('; ')}` : 'Tiada tugasan baharu selesai', `${mails} emel dihantar kepada PIC`];
         }
         case 'UPDATE_STAF':
             return [`${Array.isArray(d.after) ? d.after.length : 0} staf dalam senarai`];

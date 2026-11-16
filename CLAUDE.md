@@ -20,7 +20,7 @@ descriptions of PR #2 to #8.
 - The owner cannot easily re-enter lost data. Never write to live Firestore
   from a session, and never press reset / delete in a live app.
 - Test with `tests/` (see `tests/README.md`): `cd tests && npm install`
-  once, then `node run.js` (30 scenarios, ~4 min) against `mock-firebase.js`,
+  once, then `node run.js` (31 scenarios, ~4 min) against `mock-firebase.js`,
   which records every write instead of sending it. Clock pinned to
   29/10/2026. Add a scenario to `tests/run.js` for each behaviour change;
   extend the mock's seed data rather than touching live data. The proxy
@@ -45,7 +45,11 @@ descriptions of PR #2 to #8.
   table (borrows the hidden cards' buttons). `js/calendar.js` Takwim
   "Simpan ke kalendar" (Google link + .ics, read-only). `js/welcome.js`
   poster sambutan overlay (read-only). `js/auth.js` admin
-  allow-list (`alumni@upsi.edu.my`, mirrored in `firestore.rules`).
+  allow-list `ADMIN_EMAILS` (`alumni@upsi.edu.my` unit account +
+  `fahman@upsi.edu.my`, the owner's own, since 16/11/2026; mirrored in
+  `firestore.rules`). A new admin email must exist in Firebase Auth
+  before the rules naming it are published (else anyone could sign up
+  with it). Owner chose to keep alumni@ so the unit never loses access.
 
 ## Data model (`artifacts/{appId}/public/data/...`)
 - `kpi-{year}/q1..q4` `{ title, subtitle, kpis: [...], footerDate }`. Values
@@ -205,6 +209,7 @@ descriptions of PR #2 to #8.
    `node .github/scripts/check-refs.mjs`, `node .github/scripts/check-rules.mjs`,
    and confirm the Tailwind output matches.
 4. `node tests/run.js` passes; `--shots` for desktop / phone screenshots.
+   `node tests/robot.test.js` when `apps-script/Robot.gs` changes.
 
 ## Git workflow
 - Work on the session's branch, open a PR only when asked. On "merge bro":
@@ -244,8 +249,26 @@ descriptions of PR #2 to #8.
   Logged as UPDATE_TUGASAN / UPDATE_STAF. "Perlu tindakan" adds overdue tasks
   (per PIC) and programmes within 30 days either side of today with no tasks.
   Mock flags `tugasan` (seed: two staff, Johor with a late Laporan) and
-  `rulesOpen` (rules not deployed). Phase 2 (agreed, not built): staff sign
-  in with their UPSI Google account and fill in only their own tasks.
+  `rulesOpen` (rules not deployed).
+- Phase 2 = the robot (owner chose it over staff logins, 16/11/2026):
+  `apps-script/Robot.gs` (+ `appsscript.json`, setup guide `README.md`,
+  not deployed by Vercel) runs daily under the owner's own UPSI Google
+  account (fahman@upsi.edu.my, whose Drive holds the folder), which must
+  be Owner / Editor of
+  the Firebase project; replies go to EMEL_BALAS. It creates a
+  Drive folder per programme with a subfolder per task shared with the PIC,
+  emails the PIC (on assignment, 3 days before due, late every 7 days max
+  4; a moved due date restarts), and ticks Selesai + fills the link when a
+  file appears. It writes ONLY `tugasan/{year}` (PATCH `programs` with an
+  `updateTime` precondition, so an admin save mid-run wins and nothing is
+  emailed), `tugasan/robot` `{ lastRun, ok, mesej }` and a ROBOT_TUGASAN
+  audit entry; IAM access bypasses rules, so `assertLaluanTugasan_` guards
+  paths. State lives under `robot` on the programme / task; `saveProgramTugasan`
+  (`keepRobotState`) carries it over because the form never shows it.
+  Script property MOD_UJI=YA = log only. Tested by `node tests/robot.test.js`
+  (fake Firestore REST / Drive / Mail; also in CI). The owner installs it by
+  hand; whether Firestore accepts the script's OAuth token
+  (X-Goog-User-Project header) is not verified live yet.
 
 ## Ideas not done yet
 - Restore from the downloaded JSON backup file (needs careful design, it

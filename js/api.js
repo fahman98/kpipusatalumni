@@ -1535,6 +1535,17 @@ export async function getStafList() {
     }
 }
 
+// Last run of the Apps Script robot: { lastRun, ok, mesej } or null
+export async function getRobotStatus() {
+    try {
+        const snap = await tugasanRef('robot').get();
+        return snap.exists ? snap.data() : null;
+    } catch (e) {
+        console.warn('getRobotStatus failed:', e);
+        return null;
+    }
+}
+
 // Is the admin-only rule for `tugasan` live? Asks Firestore as a guest
 // through a second, never-signed-in Firebase app: a refusal means the rule
 // is deployed. 'locked' | 'open' | 'unknown' (offline / other error).
@@ -1569,9 +1580,26 @@ async function tugasanSaveGuard() {
     return null;
 }
 
+// The Apps Script robot (apps-script/Robot.gs) keeps its own state under
+// `robot` on the programme (its Drive folder) and on each task (subfolder,
+// emails sent). The form never shows it, so a save carries the stored copy
+// over: tasks match by id, a removed task drops its state with it.
+function keepRobotState(before, next) {
+    if (!before) return next;
+    const out = { ...next };
+    if (before.robot && !out.robot) out.robot = before.robot;
+    const prevTasks = new Map((before.tasks || []).map(t => [t && t.id, t]));
+    out.tasks = (next.tasks || []).map(t => {
+        const prev = prevTasks.get(t.id);
+        return prev && prev.robot && !t.robot ? { ...t, robot: prev.robot } : t;
+    });
+    return out;
+}
+
 // Replace one programme's tasks (insert when new). `program` carries key,
-// kpiId, name, tarikh, tarikhTamat and tasks. Returns 'ok' | 'offline' |
-// 'rules' | 'unknown' | 'error'; the caller shows the message.
+// kpiId, name, tarikh, tarikhTamat and tasks. Returns the programme as
+// stored (with the robot's state) on success, else 'offline' | 'rules' |
+// 'unknown' | 'error'; the caller shows the message.
 export async function saveProgramTugasan(year, program) {
     const blocked = await tugasanSaveGuard();
     if (blocked) return blocked;
@@ -1579,20 +1607,23 @@ export async function saveProgramTugasan(year, program) {
     try {
         const ref = tugasanRef(year);
         let before = null;
+        let saved = null;
         const clean = auditSafe({ ...program, updatedAt: new Date().toISOString() });
         await db.runTransaction(async (t) => {
             const doc = await t.get(ref);
             const programs = doc.exists && Array.isArray(doc.data().programs) ? doc.data().programs.slice() : [];
             const i = programs.findIndex(p => p && p.key === program.key);
             before = i === -1 ? null : programs[i];
-            if (i === -1) programs.push(clean); else programs[i] = clean;
+            const merged = keepRobotState(before, clean);
+            if (i === -1) programs.push(merged); else programs[i] = merged;
+            saved = merged;
             t.set(ref, { programs }, { merge: true });
         });
         await writeAuditLog('UPDATE_TUGASAN', {
             year: String(year), kpiId: program.kpiId, name: program.name, key: program.key,
-            before, after: clean
+            before, after: saved
         });
-        return 'ok';
+        return saved;
     } catch (e) {
         console.error('saveProgramTugasan error:', e);
         return 'error';
