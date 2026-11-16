@@ -1429,7 +1429,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const descEl = getEl('empty-state-desc');
         if (isEditMode) {
             if (titleEl) titleEl.textContent = `Tiada Data Untuk Tahun ${y}`;
-            if (descEl) descEl.textContent = `Tahun ${y} belum mempunyai sebarang KPI. Salin struktur dari ${cloneSourceYear()} (semua nilai bermula dengan 0) atau mula kosong.`;
+            if (descEl) descEl.textContent = `Tahun ${y} belum mempunyai sebarang KPI. Salin struktur dari ${cloneSourceYear()} (semua nilai bermula dengan 0; senarai program dan rekod penjanaan bermula kosong) atau mula kosong.`;
         } else {
             if (titleEl) titleEl.textContent = `Data KPI ${y} Belum Tersedia`;
             if (descEl) descEl.textContent = `Data prestasi bagi tahun ${y} belum dimasukkan. Sila pilih tahun lain atau semak semula kemudian.`;

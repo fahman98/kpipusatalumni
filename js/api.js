@@ -493,7 +493,8 @@ export function deleteKpi(kpiId) {
 // 4. CLONE FROM PREVIOUS YEAR
 //
 // Copies the KPI structure of `sourceYear` into the year currently selected,
-// with every value reset to 0. This OVERWRITES the target year's quarter
+// with every value reset to 0 and the record lists (programmes, Penjanaan
+// entries) left empty. This OVERWRITES the target year's quarter
 // documents, so it guards against the ways it used to destroy data:
 //   - the target year is captured once, up front: switching the year selector
 //     while the reads are in flight can no longer redirect the write;
@@ -534,7 +535,11 @@ export async function cloneFromYear(sourceYear, options = {}) {
             }
         }
 
-        // Reset values to 0 for new year
+        // Reset values to 0 for new year. Lists of RECORDS (each programme of
+        // Kembara / Bicara / Ziarah, each Penjanaan entry) belong to the year
+        // they happened in, so they start empty; other lists are structure
+        // (names to fill in) and keep their names with value 0.
+        const RECORD_LIST_KPI_IDS = new Set(['kembara', 'bicara', 'ziarah', 'pendanaan']);
         // Helper to reset item values recursively
         const resetItemValues = (items) => {
             return items.map(item => {
@@ -557,7 +562,8 @@ export async function cloneFromYear(sourceYear, options = {}) {
                 value: 0,
                 details: k.details ? {
                     ...k.details,
-                    items: k.details.items ? resetItemValues(k.details.items) : [],
+                    items: (k.details.items && !(k.details.type === 'breakdownList' && RECORD_LIST_KPI_IDS.has(k.id)))
+                        ? resetItemValues(k.details.items) : [],
                     achieved: []
                 } : null
             }));

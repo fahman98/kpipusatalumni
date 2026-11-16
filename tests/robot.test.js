@@ -293,6 +293,35 @@ const cases = {
         assert.ok(res.ringkasan.some(l => l.includes('[MOD UJI] Akan buka perkongsian umum fail laporanPerakFileId')));
     },
 
+    'new year: last year\'s unfinished tasks are still looked after'() {
+        const dis = Object.assign(PERAK(), { name: 'Kembara Alumni Disember', tarikh: '2026-12-15', tarikhTamat: '2026-12-15' });
+        dis.tasks = [
+            { id: 'tg-1', jenis: 'Kertas kerja', pic: 'st-1', tarikhAkhir: '2026-12-01', link: 'https://drive.google.com/file/d/x/view', selesai: true },
+            { id: 'tg-2', jenis: 'Laporan', pic: 'st-2', tarikhAkhir: '2026-12-29', link: '', selesai: false }
+        ];
+        const w = makeWorld({ programs: [dis], staf: STAF });
+        w.today = '2027-01-05';
+        const res = w.run();
+        assert.equal(res.ralat, undefined, res.ralat);
+        assert.ok(res.ringkasan.includes('Tahun 2026: masih ada tugasan yang perlu dijaga.'));
+        assert.ok(res.ringkasan.includes('Tiada program bertugasan bagi tahun 2027.'));
+        assert.deepEqual(w.created.slice(0, 2), ['2026', '2026-12-15 Kembara Alumni Disember'], 'filed under last year');
+        // First the assignment email, the next run the late one
+        assert.deepEqual(w.mails.map(m => m.subject), ['Tugasan dokumen: Laporan, Kembara Alumni Disember']);
+        w.today = '2027-01-06'; w.run();
+        assert.equal(w.mails[1].subject, 'Tugasan lewat: Laporan, Kembara Alumni Disember');
+        // The file arrives: ticked in 2026's record
+        w.folders[w.drive._byName('Laporan')].files.push({ id: 'lap-dis', name: 'Laporan.pdf' });
+        w.today = '2027-01-08'; w.run();
+        assert.equal(w.programs()[0].tasks[1].selesai, true);
+        // Nothing left to do for 2026: it is no longer read
+        w.requests.length = 0;
+        w.today = '2027-01-09'; const r4 = w.run();
+        assert.ok(!r4.ringkasan.some(l => l.startsWith('Tahun 2026')));
+        assert.ok(!w.requests.some(r => r.url.includes('kpi-2026')), 'last year\'s KPI list not even read');
+        kpiUntouched(w);
+    },
+
     'second run the same day changes nothing'() {
         const w = makeWorld({ programs: [PERAK()], staf: STAF });
         w.run();

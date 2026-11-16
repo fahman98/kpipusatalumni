@@ -18,6 +18,8 @@
  *      tanda itu dibuang.
  *
  * KESELAMATAN DATA
+ * - Robot menjaga tahun semasa, dan tahun lepas selagi ada tugasannya yang
+ *   belum selesai (program Disember yang tarikh akhirnya Januari).
  * - Robot MENULIS ke koleksi `tugasan` sahaja (lihat assertLaluanTugasan_).
  *   Dokumen KPI hanya DIBACA (kpi-{tahun}/q4) untuk melangkau program yang
  *   sudah dipadam daripada Kembara; ia tidak pernah ditulis.
@@ -105,24 +107,75 @@ function tahunIni_(hariIni) { return hariIni.slice(0, 4); }
 function laksana_(t) {
   var log = [];
   var catat = function (m) { log.push(m); };
-  var tahun = tahunIni_(t.hariIni);
-  var laluan = laluanTugasan_(tahun);
+  var tahunIni = tahunIni_(t.hariIni);
+  var tahunLepas = String(Number(tahunIni) - 1);
   var hasil = { ringkasan: log, selesai: [], emel: [], ditulis: false };
   try {
-    var doc = fsGet_(laluan);
     var stafDoc = fsGet_(laluanTugasan_('staf'));
     var staf = stafDoc && Array.isArray(stafDoc.data.staf) ? stafDoc.data.staf : [];
-    var programs = doc && Array.isArray(doc.data.programs) ? doc.data.programs : [];
-    if (!programs.length) catat('Tiada program bertugasan bagi tahun ' + tahun + '.');
-    // Program yang masih ada dalam senarai KPI (dibaca sahaja). Jika tidak
-    // dapat dibaca, fsGet_ membaling ralat dan larian berhenti tanpa emel.
-    var aktif = programs.length ? programAktif_(tahun) : {};
-
     var drive = driveOps_(t, catat);
-    var emelBaru = [];
-    var berubah = false;
-    var folderTahun = null;
 
+    // Tahun lepas dahulu, selagi ada tugasannya yang belum selesai (contoh
+    // laporan program Disember yang bertarikh akhir Januari): selepas
+    // 1 Januari robot terus mengingatkan PIC dan menanda selesai.
+    [tahunLepas, tahunIni].forEach(function (tahun) {
+      var laluan = laluanTugasan_(tahun);
+      var doc = fsGet_(laluan);
+      var programs = doc && Array.isArray(doc.data.programs) ? doc.data.programs : [];
+      if (tahun === tahunLepas) {
+        if (!perluDiproses_(programs)) return;
+        catat('Tahun ' + tahun + ': masih ada tugasan yang perlu dijaga.');
+      } else if (!programs.length) {
+        catat('Tiada program bertugasan bagi tahun ' + tahun + '.');
+        return;
+      }
+      // Program yang masih ada dalam senarai KPI (dibaca sahaja). Jika tidak
+      // dapat dibaca, fsGet_ membaling ralat dan larian berhenti tanpa emel.
+      var aktif = programAktif_(tahun);
+      var emelBaru = [];
+      var berubah = prosesTahun_(t, tahun, programs, aktif, staf, drive, catat, hasil, emelBaru);
+
+      // Simpan dahulu, kemudian emel tahun ini: jika simpanan ditolak (admin
+      // sedang menyimpan), tiada emel dihantar dan larian esok mencuba semula
+      if (berubah) {
+        if (t.modUji) catat('[MOD UJI] Akan menyimpan perubahan ke tugasan/' + tahun + '.');
+        else {
+          fsPatchPrograms_(laluan, programs, doc ? doc.updateTime : null);
+          hasil.ditulis = true;
+          catat('Disimpan ke tugasan/' + tahun + '.');
+        }
+      }
+      hantarEmel_(t, emelBaru, hasil, catat);
+    });
+
+    if (!t.modUji) {
+      if (hasil.ditulis && (hasil.selesai.length || hasil.emel.length)) {
+        fsAuditLog_(tahunIni, { selesai: hasil.selesai, emel: hasil.emel });
+      }
+      fsSetRobotStatus_({ lastRun: new Date().toISOString(), ok: true, mesej: '' });
+    }
+    catat('Robot selesai: ' + hasil.selesai.length + ' tugasan ditanda selesai, ' + hasil.emel.length + ' emel.');
+  } catch (err) {
+    catat('RALAT: ' + err.message);
+    if (!t.modUji) {
+      try { fsSetRobotStatus_({ lastRun: new Date().toISOString(), ok: false, mesej: String(err.message).slice(0, 200) }); } catch (_) {}
+      if (t.emelAdmin) {
+        try {
+          MailApp.sendEmail({ to: t.emelAdmin, subject: 'Robot tugasan dokumen gagal', name: ROBOT.NAMA_PENGIRIM,
+            htmlBody: '<p>Robot tugasan dokumen gagal berjalan:</p><p><b>' + esc_(err.message) + '</b></p><p>Larian seterusnya akan mencuba semula.</p>' });
+        } catch (_) {}
+      }
+    }
+    hasil.ralat = err.message;
+  }
+  return hasil;
+}
+
+// Satu tahun: folder, perkongsian, tanda selesai, dokumen awam dan emel
+// yang perlu dihantar (dikumpul dalam emelBaru). true jika data berubah.
+function prosesTahun_(t, tahun, programs, aktif, staf, drive, catat, hasil, emelBaru) {
+  var berubah = false;
+  var folderTahun = null;
     programs.forEach(function (prog) {
       var tasks = Array.isArray(prog.tasks) ? prog.tasks : [];
       if (!tasks.length) return;
@@ -194,7 +247,7 @@ function laksana_(t) {
         if (emel && !task.selesai) {
           var jenisEmel = pilihEmel_(task, tr, emel, t.hariIni);
           if (jenisEmel) {
-            emelBaru.push({ jenis: jenisEmel, kepada: emel, nama: pic.nama, task: task, prog: prog, folderUrl: tr2.folderUrl || '' });
+            emelBaru.push({ tahun: tahun, jenis: jenisEmel, kepada: emel, nama: pic.nama, task: task, prog: prog, folderUrl: tr2.folderUrl || '' });
             if (jenisEmel === 'tugasan') tr2.emelTugasan = { emel: emel, pada: t.hariIni };
             if (jenisEmel === 'peringatan') tr2.peringatan = task.tarikhAkhir;
             if (jenisEmel === 'lewat') tr2.lewat = { tarikhAkhir: task.tarikhAkhir, pada: t.hariIni, kali: lewatKali_(tr, task) + 1 };
@@ -205,50 +258,35 @@ function laksana_(t) {
       });
     });
 
-    // Simpan dahulu, kemudian emel: jika simpanan ditolak (admin sedang
-    // menyimpan), tiada emel dihantar dan larian esok mencuba semula
-    if (berubah) {
-      if (t.modUji) catat('[MOD UJI] Akan menyimpan perubahan ke tugasan/' + tahun + '.');
-      else {
-        fsPatchPrograms_(laluan, programs, doc ? doc.updateTime : null);
-        hasil.ditulis = true;
-        catat('Disimpan ke tugasan/' + tahun + '.');
-      }
-    }
-    emelBaru.forEach(function (e) {
-      var isi = isiEmel_(e);
-      if (t.modUji) { catat('[MOD UJI] Akan emel ' + e.kepada + ': ' + isi.subjek); return; }
-      try {
-        var mesej = { to: e.kepada, subject: isi.subjek, htmlBody: isi.html, name: ROBOT.NAMA_PENGIRIM };
-        if (t.emelBalas) mesej.replyTo = t.emelBalas;
-        MailApp.sendEmail(mesej);
-        hasil.emel.push(e.jenis + ' ' + e.kepada);
-        catat('Emel ' + e.jenis + ': ' + e.kepada + ' (' + e.task.jenis + ', ' + e.prog.name + ').');
-      } catch (err) {
-        catat('Emel gagal ke ' + e.kepada + ': ' + err.message);
-      }
+  return berubah;
+}
+
+// Tahun lepas hanya diproses jika masih ada kerja: tugasan belum selesai,
+// atau tanda "Paparkan kepada umum" yang perkongsiannya belum sepadan
+function perluDiproses_(programs) {
+  return programs.some(function (p) {
+    return (p.tasks || []).some(function (task) {
+      var r = (task.robot && task.robot.awam) || null;
+      var mahu = !!(task.awam && task.selesai && task.link && AWAM_JENIS_.indexOf(task.jenis) !== -1);
+      return !task.selesai || (mahu && !(r && r.link === task.link)) || (!mahu && !!r);
     });
-    if (!t.modUji) {
-      if (hasil.ditulis && (hasil.selesai.length || hasil.emel.length)) {
-        fsAuditLog_(tahun, { selesai: hasil.selesai, emel: hasil.emel });
-      }
-      fsSetRobotStatus_({ lastRun: new Date().toISOString(), ok: true, mesej: '' });
+  });
+}
+
+function hantarEmel_(t, emelBaru, hasil, catat) {
+  emelBaru.forEach(function (e) {
+    var isi = isiEmel_(e);
+    if (t.modUji) { catat('[MOD UJI] Akan emel ' + e.kepada + ': ' + isi.subjek); return; }
+    try {
+      var mesej = { to: e.kepada, subject: isi.subjek, htmlBody: isi.html, name: ROBOT.NAMA_PENGIRIM };
+      if (t.emelBalas) mesej.replyTo = t.emelBalas;
+      MailApp.sendEmail(mesej);
+      hasil.emel.push(e.jenis + ' ' + e.kepada);
+      catat('Emel ' + e.jenis + ': ' + e.kepada + ' (' + e.task.jenis + ', ' + e.prog.name + ').');
+    } catch (err) {
+      catat('Emel gagal ke ' + e.kepada + ': ' + err.message);
     }
-    catat('Robot selesai: ' + hasil.selesai.length + ' tugasan ditanda selesai, ' + hasil.emel.length + ' emel.');
-  } catch (err) {
-    catat('RALAT: ' + err.message);
-    if (!t.modUji) {
-      try { fsSetRobotStatus_({ lastRun: new Date().toISOString(), ok: false, mesej: String(err.message).slice(0, 200) }); } catch (_) {}
-      if (t.emelAdmin) {
-        try {
-          MailApp.sendEmail({ to: t.emelAdmin, subject: 'Robot tugasan dokumen gagal', name: ROBOT.NAMA_PENGIRIM,
-            htmlBody: '<p>Robot tugasan dokumen gagal berjalan:</p><p><b>' + esc_(err.message) + '</b></p><p>Larian seterusnya akan mencuba semula.</p>' });
-        } catch (_) {}
-      }
-    }
-    hasil.ralat = err.message;
-  }
-  return hasil;
+  });
 }
 
 // 'tugasan' | 'peringatan' | 'lewat' | null
