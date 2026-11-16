@@ -20,7 +20,7 @@
 
 import {
     getTugasanYear, getStafList, getRobotStatus, saveProgramTugasan, saveStafList,
-    checkTugasanRules, selectedYear
+    checkTugasanRules, selectedYear, AWAM_JENIS, getDokumenAwam
 } from './api.js';
 import {
     escapeHtml, formSheetHtml, closeFormSheet, openModal, showToastNotification
@@ -195,9 +195,45 @@ export async function decorateProgramRows(kpi, listEl) {
             btn.dataset.tone = tone;
             btn.setAttribute('aria-label', `Tugasan dokumen ${item.name}: ${label}`);
             btn.innerHTML = `<i class="ph-duotone ph-clipboard-text" aria-hidden="true"></i><span>${escapeHtml(label)}</span>`;
-            btn.addEventListener('click', () => openTugasanSheet(kpi, item, () => decorateProgramRows(kpi, listEl)));
+            btn.addEventListener('click', () => openTugasanSheet(kpi, item, () => {
+                decorateProgramRows(kpi, listEl);
+                decoratePublicDocs(kpi, listEl);
+            }));
         }
         host.appendChild(btn);
+    });
+}
+
+// ---- Public documents in Butiran (everyone) -----------------------------
+// Each programme row lists the documents the admin chose to publish, read
+// from the public dokumen-awam/{year} copy (never from tugasan).
+const pubCache = { year: null, programs: null };
+document.addEventListener('tugasan-saved', () => { pubCache.year = null; });
+
+export async function decoratePublicDocs(kpi, listEl) {
+    if (!kpi || !TUGASAN_KPI_IDS.has(kpi.id) || !listEl) return;
+    const year = String(selectedYear);
+    if (pubCache.year !== year) {
+        pubCache.programs = await getDokumenAwam(year);
+        pubCache.year = year;
+    }
+    if (String(selectedYear) !== year || !listEl.isConnected || !Array.isArray(pubCache.programs)) return;
+    const items = (kpi.details && kpi.details.items) || [];
+    listEl.querySelectorAll('li.breakdown-item[data-index]').forEach(li => {
+        const item = items[parseInt(li.dataset.index, 10)];
+        li.querySelector('.dok-awam-row')?.remove();
+        if (!item) return;
+        const prog = findProgram(pubCache.programs, item, kpi.id);
+        const docs = (prog && Array.isArray(prog.docs) ? prog.docs : []).filter(d => safeLink(d.link));
+        if (!docs.length) return;
+        const host = li.querySelector('.min-w-0');
+        if (!host) return;
+        const row = document.createElement('div');
+        row.className = 'dok-awam-row';
+        row.innerHTML = docs.map(d => `<a class="dok-awam" href="${escapeHtml(safeLink(d.link))}" target="_blank" rel="noopener noreferrer" aria-label="${escapeHtml(`${d.jenis} ${item.name || ''} (dibuka dalam tab baharu)`)}">`
+            + `<i class="ph-duotone ${d.jenis === 'Gambar' ? 'ph-images' : d.jenis === 'Maklum balas' ? 'ph-chat-circle-text' : 'ph-file-text'}" aria-hidden="true"></i>${escapeHtml(d.jenis)}</a>`).join('');
+        const chip = host.querySelector('.tugasan-chip');
+        if (chip) host.insertBefore(row, chip); else host.appendChild(row);
     });
 }
 
@@ -275,19 +311,58 @@ function taskRowHtml(t, staf, inst) {
                     <a class="tg-open${href ? '' : ' hidden'}" href="${escapeHtml(href || '#')}" target="_blank" rel="noopener noreferrer">Buka</a>
                 </div>
                 ${robotHint(t)}
+                <p class="tg-awam-note${t.awam ? '' : ' hidden'}" data-tone="${awamTone(t)}" data-link="${escapeHtml(t.link || '')}">${escapeHtml(awamNote(t))}</p>
             </div>
             <div class="tg-row-foot">
                 <label class="tg-done-label"><input type="checkbox" class="tg-done"${t.selesai ? ' checked data-touched="1"' : ''}> Selesai</label>
                 <span class="tg-state" data-state="${state}">${escapeHtml(stateText(t))}</span>
+                <label class="tg-awam-label${AWAM_JENIS.includes(t.jenis) ? '' : ' hidden'}" title="Hanya dokumen yang selesai dan ada pautan boleh dipaparkan">
+                    <input type="checkbox" class="tg-awam"${t.awam && canPublish(t) ? ' checked' : ''}${canPublish(t) ? '' : ' disabled'}>
+                    <span class="tg-awam-long">Paparkan kepada umum</span><span class="tg-awam-short">Umum</span>
+                </label>
             </div>
         </div>`;
 }
 
+// "Paparkan kepada umum": only finished Laporan / Maklum balas / Gambar
+// with a link. Attendance lists and kertas kerja never (personal data,
+// budgets); api.js enforces the same rule when it writes the public copy.
+function canPublish(t) {
+    return !!(t && AWAM_JENIS.includes(t.jenis) && t.selesai && safeLink(t.link));
+}
+
+// What has happened to the file's sharing (the robot opens it the next morning)
+function awamNote(t) {
+    const r = t && t.robot && t.robot.awam;
+    if (r && r.link === t.link && r.status === 'dibuka') return 'Dipaparkan kepada umum. Fail boleh dibuka oleh sesiapa yang ada pautan.';
+    if (r && r.link === t.link && r.status === 'gagal') return `Dipaparkan kepada umum, tetapi fail belum boleh dibuka oleh umum: ${r.mesej || 'perkongsian gagal'}.`;
+    return 'Dipaparkan kepada umum. Robot akan membuka perkongsian fail ini pada larian pagi esok.';
+}
+function awamTone(t) {
+    const r = t && t.robot && t.robot.awam;
+    return r && r.link === t.link ? (r.status === 'dibuka' ? 'ok' : 'bad') : 'wait';
+}
+
 function refreshRowState(row) {
-    const t = { selesai: row.querySelector('.tg-done').checked, tarikhAkhir: row.querySelector('.tg-due').value };
+    const t = {
+        selesai: row.querySelector('.tg-done').checked, tarikhAkhir: row.querySelector('.tg-due').value,
+        jenis: row.querySelector('.tg-jenis').value, link: row.querySelector('.tg-link').value.trim()
+    };
     const pill = row.querySelector('.tg-state');
     pill.dataset.state = taskState(t);
     pill.textContent = stateText(t);
+    // The public tick only for kinds that may be published, once finished with a link
+    const awam = row.querySelector('.tg-awam');
+    row.querySelector('.tg-awam-label').classList.toggle('hidden', !AWAM_JENIS.includes(t.jenis));
+    awam.disabled = !canPublish(t);
+    if (awam.disabled) awam.checked = false;
+    const note = row.querySelector('.tg-awam-note');
+    const was = note.dataset.link;
+    note.classList.toggle('hidden', !awam.checked);
+    if (awam.checked && was !== t.link) {
+        note.dataset.tone = 'wait';
+        note.textContent = awamNote({ link: t.link });
+    }
 }
 
 function readRows(root) {
@@ -297,7 +372,8 @@ function readRows(root) {
         pic: row.querySelector('.tg-pic').value,
         tarikhAkhir: row.querySelector('.tg-due').value,
         link: row.querySelector('.tg-link').value.trim(),
-        selesai: row.querySelector('.tg-done').checked
+        selesai: row.querySelector('.tg-done').checked,
+        awam: row.querySelector('.tg-awam').checked && !row.querySelector('.tg-awam').disabled
     }));
 }
 
@@ -457,6 +533,7 @@ export async function saveEditor(root) {
     if (i === -1) list.push(res); else list[i] = res;
     cache.programs = list;
     delete root.dataset.dirty;
+    pubCache.year = null;   // the public copy may have changed with this save
     showToastNotification('Tugasan disimpan.', 'success');
     if (ctx.onSaved) ctx.onSaved(res);
     document.dispatchEvent(new CustomEvent('tugasan-saved'));

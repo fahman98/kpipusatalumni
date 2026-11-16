@@ -11,7 +11,11 @@
  *   2. mengemel PIC apabila ditetapkan sebagai PIC (sekali), 3 hari sebelum
  *      tarikh akhir (sekali) dan apabila lewat (setiap 7 hari, maksimum 4);
  *   3. menanda tugasan "Selesai" apabila ada fail dalam subfolder PIC, dan
- *      mengisi pautan fail itu dalam dashboard.
+ *      mengisi pautan fail itu dalam dashboard;
+ *   4. membuka perkongsian fail kepada "sesiapa yang ada pautan" (lihat
+ *      sahaja) bagi dokumen yang admin tandakan "Paparkan kepada umum"
+ *      (Laporan, Maklum balas, Gambar), dan menutupnya semula apabila
+ *      tanda itu dibuang.
  *
  * KESELAMATAN DATA
  * - Robot MENULIS ke koleksi `tugasan` sahaja (lihat assertLaluanTugasan_).
@@ -163,6 +167,29 @@ function laksana_(t) {
           }
         }
 
+        // Dokumen awam: buka / tutup perkongsian fail yang admin pilih
+        var mahuAwam = !!(task.awam && task.selesai && task.link && AWAM_JENIS_.indexOf(task.jenis) !== -1);
+        var awamLama = tr.awam || null;
+        if (awamLama && awamLama.status === 'dibuka' && (!mahuAwam || awamLama.link !== task.link)) {
+          var tutup = drive.awam(awamLama.id, false);
+          if (tutup.ok) catat('Perkongsian umum ditutup: ' + task.jenis + ', ' + prog.name + '.');
+          else catat('Gagal menutup perkongsian umum ' + task.jenis + ', ' + prog.name + ': ' + tutup.mesej);
+          delete tr2.awam;
+        }
+        if (!mahuAwam && tr2.awam) delete tr2.awam;
+        if (mahuAwam && !(tr2.awam && tr2.awam.link === task.link)) {
+          var idFail = idDrive_(task.link);
+          if (!idFail) {
+            tr2.awam = { status: 'gagal', link: task.link, mesej: 'pautan ini bukan fail Google Drive, buka perkongsiannya sendiri' };
+            catat('Tidak dapat membuka kepada umum (bukan fail Drive): ' + task.jenis + ', ' + prog.name + '.');
+          } else {
+            var buka = drive.awam(idFail, true);
+            tr2.awam = buka.ok ? { status: 'dibuka', link: task.link, id: idFail }
+              : { status: 'gagal', link: task.link, id: idFail, mesej: buka.mesej };
+            catat((buka.ok ? 'Dibuka kepada umum: ' : 'Gagal membuka kepada umum: ') + task.jenis + ', ' + prog.name + (buka.ok ? '.' : ' (' + buka.mesej + ').'));
+          }
+        }
+
         // Emel kepada PIC
         if (emel && !task.selesai) {
           var jenisEmel = pilihEmel_(task, tr, emel, t.hariIni);
@@ -249,6 +276,16 @@ function pilihEmel_(task, tr, emel, hariIni) {
 // jika admin melanjutkan tarikh akhir)
 function lewatKali_(tr, task) {
   return tr.lewat && tr.lewat.tarikhAkhir === task.tarikhAkhir ? (tr.lewat.kali || 0) : 0;
+}
+
+var AWAM_JENIS_ = ['Laporan', 'Maklum balas', 'Gambar'];
+
+// ID fail atau folder Google Drive / Docs daripada pautan; '' jika bukan Drive
+function idDrive_(url) {
+  var u = String(url || '');
+  if (!/^https:\/\/(drive|docs)\.google\.com\//i.test(u)) return '';
+  var m = /\/d\/([A-Za-z0-9_-]{10,})/.exec(u) || /\/folders\/([A-Za-z0-9_-]{10,})/.exec(u) || /[?&]id=([A-Za-z0-9_-]{10,})/.exec(u);
+  return m ? m[1] : '';
 }
 
 function bezaHari_(dari, ke) {
@@ -369,6 +406,20 @@ function driveOps_(t, catat) {
       if (uji) { catat('[MOD UJI] Akan kongsi folder ' + folder.url + ' dengan ' + emel); return; }
       try { folder._f.addEditor(emel); catat('Folder ' + folder._f.getName() + ' dikongsi dengan ' + emel + '.'); }
       catch (err) { catat('Gagal kongsi folder dengan ' + emel + ': ' + err.message); }
+    },
+    // Fail (atau folder) dibuka kepada sesiapa yang ada pautan, lihat sahaja;
+    // atau ditutup semula (kebenaran editor / PIC yang sedia ada kekal)
+    awam: function (id, buka) {
+      if (uji) { catat('[MOD UJI] Akan ' + (buka ? 'buka' : 'tutup') + ' perkongsian umum fail ' + id); return { ok: true }; }
+      try {
+        var f;
+        try { f = DriveApp.getFileById(id); } catch (_) { f = DriveApp.getFolderById(id); }
+        if (buka) f.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+        else f.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);
+        return { ok: true };
+      } catch (err) {
+        return { ok: false, mesej: String(err && err.message || err).slice(0, 150) };
+      }
     },
     failDalam: function (folder) {
       var out = [];

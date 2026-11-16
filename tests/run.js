@@ -729,6 +729,62 @@ const scenarios = {
         await ctx.close();
     },
 
+    // Dokumen awam: the admin publishes finished Laporan / Maklum balas /
+    // Gambar; everyone sees them on the programme in Butiran
+    async 'dokumen awam'() {
+        const M = '#tugasan-modal';
+        const R = `${M} .tg-rows .tg-row`;
+        const pubLinks = (page) => page.$$eval('#details-list li', li => li.map(x => [...x.querySelectorAll('.dok-awam')].map(a => [a.textContent.trim(), a.getAttribute('href'), a.getAttribute('target'), a.getAttribute('rel')])));
+        // Guests see the published document, nothing private
+        let { ctx, page } = await open({ tugasan: true });
+        await page.click('#pagination [data-quarter="2"]'); await page.waitForTimeout(1500);
+        await page.click('.kpi-card[data-kpi-id=kembara] .show-details-btn'); await page.waitForTimeout(1200);
+        assert.deepEqual(await pubLinks(page), [[], [['Maklum balas', 'https://forms.gle/johor', '_blank', 'noopener noreferrer']]]);
+        assert.equal(await page.$$eval('#details-list .tugasan-chip', b => b.length), 0);
+        await shot(page, 'dokumen-awam-tetamu');
+        await ctx.close();
+
+        // Admin
+        ({ ctx, page } = await open({ admin: true, tugasan: true }));
+        await page.click('#pagination [data-quarter="2"]'); await page.waitForTimeout(1500);
+        await page.click('.admin-row[data-kpi-id=kembara] .admin-primary-btn'); await page.waitForTimeout(1500);
+        assert.deepEqual(await pubLinks(page), [[], [['Maklum balas', 'https://forms.gle/johor', '_blank', 'noopener noreferrer']]]);
+        await page.click('#details-list li:nth-child(2) .tugasan-chip'); await page.waitForTimeout(500);
+        const awamState = () => page.$$eval(R, r => r.map(x => {
+            const l = x.querySelector('.tg-awam-label'), c = x.querySelector('.tg-awam');
+            return [x.querySelector('.tg-jenis').value, !l.classList.contains('hidden'), !c.disabled, c.checked];
+        }));
+        // Kertas kerja can never be published; Laporan only once finished with a link
+        assert.deepEqual(await awamState(), [['Kertas kerja', false, false, false], ['Laporan', true, false, false], ['Maklum balas', true, true, true]]);
+        assert.match(await page.textContent(`${R}:nth-child(3) .tg-awam-note`), /Robot akan membuka perkongsian fail ini/);
+        await page.fill(`${R}:nth-child(2) .tg-link`, 'https://drive.google.com/file/d/laporan-johor/view');
+        assert.deepEqual((await awamState())[1], ['Laporan', true, true, false]);
+        await page.check(`${R}:nth-child(2) .tg-awam`);
+        assert.equal(await page.isVisible(`${R}:nth-child(2) .tg-awam-note`), true);
+        await shot(page, 'dokumen-awam-admin');
+        await page.click(`${M} .form-sheet-save`); await page.waitForTimeout(900);
+        const pub = () => page.evaluate(() => { const w = window.__tx.filter(t => t.k === 'dokumen-awam/2026').pop(); return w && w.d.programs; });
+        assert.deepEqual((await pub()).map(p => [p.name, p.docs.map(d => [d.jenis, d.link])]), [['Kembara Alumni Johor', [
+            ['Laporan', 'https://drive.google.com/file/d/laporan-johor/view'], ['Maklum balas', 'https://forms.gle/johor']]]]);
+        assert.ok((await pub())[0].docs.every(d => Object.keys(d).sort().join() === 'id,jenis,link'), 'public copy: kind and link only');
+        await page.waitForTimeout(600);
+        assert.deepEqual((await pubLinks(page))[1].map(x => x[0]), ['Laporan', 'Maklum balas'], 'Butiran shows it straight away');
+        // Turning the Laporan into an attendance list drops it; unticking drops the rest
+        await page.click('#details-list li:nth-child(2) .tugasan-chip'); await page.waitForTimeout(500);
+        await page.selectOption(`${R}:nth-child(2) .tg-jenis`, 'Senarai kehadiran');
+        assert.deepEqual((await awamState())[1], ['Senarai kehadiran', false, false, false]);
+        await page.uncheck(`${R}:nth-child(3) .tg-awam`);
+        await page.click(`${M} .form-sheet-save`); await page.waitForTimeout(900);
+        assert.deepEqual(await pub(), []);
+        const saved = await page.evaluate(() => window.__tx.filter(t => t.k === 'tugasan/2026').pop().d.programs[0].tasks.map(t => [t.jenis, !!t.awam]));
+        assert.deepEqual(saved, [['Kertas kerja', false], ['Senarai kehadiran', false], ['Maklum balas', false]]);
+        await page.waitForTimeout(600);
+        assert.deepEqual(await pubLinks(page), [[], []]);
+        assert.equal(await page.evaluate(() => window.__tx.some(t => t.k.startsWith('kpi-'))), false);
+        assert.deepEqual(page.__errors, []);
+        await ctx.close();
+    },
+
     // The admin-only Tugasan tab (canvas Tugasan-*): cards, robot line,
     // Ikut program with the desktop panel, Ikut PIC, and on phones the sheet
     async 'tugasan tab'() {

@@ -1580,6 +1580,35 @@ async function tugasanSaveGuard() {
     return null;
 }
 
+// ---- Dokumen awam --------------------------------------------------------
+// Documents the admin chose to show the public ("Paparkan kepada umum" on a
+// finished Laporan / Maklum balas / Gambar). A copy of just the kind, the
+// programme and the link goes to dokumen-awam/{year}, which the existing
+// rules already make public-read / admin-write; staff names, emails and
+// due dates never leave the private tugasan collection. Attendance lists
+// and kertas kerja (personal data, budgets) can never be published.
+export const AWAM_JENIS = ['Laporan', 'Maklum balas', 'Gambar'];
+
+const dokumenAwamRef = (year) =>
+    db.collection(`artifacts/${getAppId()}/public/data/dokumen-awam`).doc(String(year));
+
+function awamDocs(prog) {
+    return ((prog && prog.tasks) || [])
+        .filter(t => t && t.awam && t.selesai && AWAM_JENIS.includes(t.jenis) && /^https?:\/\/\S+$/i.test(String(t.link || '').trim()))
+        .map(t => ({ id: t.id, jenis: t.jenis, link: String(t.link).trim() }));
+}
+
+// Public read (guests too). [] when none, null when unreadable.
+export async function getDokumenAwam(year) {
+    try {
+        const snap = await dokumenAwamRef(year).get();
+        return snap.exists && Array.isArray(snap.data().programs) ? snap.data().programs : [];
+    } catch (e) {
+        console.warn('getDokumenAwam failed:', e);
+        return null;
+    }
+}
+
 // The Apps Script robot (apps-script/Robot.gs) keeps its own state under
 // `robot` on the programme (its Drive folder) and on each task (subfolder,
 // emails sent). The form never shows it, so a save carries the stored copy
@@ -1606,11 +1635,13 @@ export async function saveProgramTugasan(year, program) {
     showLoading('Menyimpan tugasan...');
     try {
         const ref = tugasanRef(year);
+        const pubRef = dokumenAwamRef(year);
         let before = null;
         let saved = null;
+        let awam = [];
         const clean = auditSafe({ ...program, updatedAt: new Date().toISOString() });
         await db.runTransaction(async (t) => {
-            const doc = await t.get(ref);
+            const [doc, pub] = await Promise.all([t.get(ref), t.get(pubRef)]);   // all reads first
             const programs = doc.exists && Array.isArray(doc.data().programs) ? doc.data().programs.slice() : [];
             const i = programs.findIndex(p => p && p.key === program.key);
             before = i === -1 ? null : programs[i];
@@ -1618,10 +1649,21 @@ export async function saveProgramTugasan(year, program) {
             if (i === -1) programs.push(merged); else programs[i] = merged;
             saved = merged;
             t.set(ref, { programs }, { merge: true });
+
+            // The public copy follows the ticks in the same transaction, so
+            // the two can never disagree; written only when it changes
+            awam = awamDocs(merged);
+            const pubList = pub.exists && Array.isArray(pub.data().programs) ? pub.data().programs : [];
+            const rest = pubList.filter(p => !(p && p.key === program.key && (!p.kpiId || p.kpiId === program.kpiId)));
+            const next = awam.length ? rest.concat([auditSafe({
+                key: program.key, kpiId: program.kpiId, name: program.name, tarikh: program.tarikh,
+                ...(program.tarikhTamat ? { tarikhTamat: program.tarikhTamat } : {}), docs: awam
+            })]) : rest;
+            if (JSON.stringify(next) !== JSON.stringify(pubList)) t.set(pubRef, { programs: next }, { merge: true });
         });
         await writeAuditLog('UPDATE_TUGASAN', {
             year: String(year), kpiId: program.kpiId, name: program.name, key: program.key,
-            before, after: saved
+            before, after: saved, awam
         });
         return saved;
     } catch (e) {

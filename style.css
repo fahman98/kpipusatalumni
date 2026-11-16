@@ -3445,3 +3445,31 @@ body.dark-mode .tg-staf-badge { background: #374151; color: #d1d5db; }
     .tgv-pic-head > .tgv-chip { order: 3; margin-left: 54px; }
     .tgv-pic-who p { overflow-wrap: normal; word-break: normal; }
 }
+
+/* Dokumen awam: the "Paparkan kepada umum" tick in the editor, and the
+   published documents on Butiran programme rows (everyone) */
+.tg-awam-label { display: inline-flex; align-items: center; gap: 8px; min-height: 32px; font-size: 13px; font-weight: 700; color: #1747A6; cursor: pointer; }
+.tg-awam-label.hidden { display: none; }
+.tg-awam-label input { width: 18px; height: 18px; accent-color: #1747A6; margin: 0; }
+.tg-awam-label:has(input:disabled) { color: #9AA6B8; cursor: not-allowed; }
+.tg-awam-short { display: none; }
+.tg-row-foot { flex-wrap: wrap; }
+.tg-awam-note { margin: 0; font-size: 12px; font-weight: 600; line-height: 1.4; color: #3A4658; }
+.tg-awam-note.hidden { display: none; }
+.tg-awam-note[data-tone="ok"] { color: #12703F; }
+.tg-awam-note[data-tone="bad"] { color: #B42E24; }
+.tg-editor.is-wide .tg-awam-long { display: none; }
+.tg-editor.is-wide .tg-awam-short { display: inline; }
+.dok-awam-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.dok-awam {
+    display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 12px; border-radius: 999px;
+    border: 1px solid #BFD0EE; background: #fff; color: #1747A6; font-size: 12px; font-weight: 800; text-decoration: none;
+}
+.dok-awam i { font-size: 15px; }
+.dok-awam:hover { border-color: #1747A6; background: #F3F6FD; }
+body.dark-mode .tg-awam-label { color: #93c5fd; }
+body.dark-mode .tg-awam-note { color: #d1d5db; }
+body.dark-mode .tg-awam-note[data-tone="ok"] { color: #86efac; }
+body.dark-mode .tg-awam-note[data-tone="bad"] { color: #fca5a5; }
+body.dark-mode .dok-awam { background: #111827; border-color: #1e40af; color: #bfdbfe; }
+.tg-editor:not(.is-wide) .tg-awam-label { flex-basis: 100%; }

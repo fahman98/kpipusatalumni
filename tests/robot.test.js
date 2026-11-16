@@ -85,7 +85,21 @@ function fakeDrive(world) {
         };
     };
     const iter = (arr) => { let i = 0; return { hasNext: () => i < arr.length, next: () => arr[i++] }; };
+    // Files that can be shared publicly (dokumen awam); a `blocked` file
+    // throws like a domain that forbids sharing outside it
+    const fileObj = (id) => {
+        const f = world.files[id];
+        return {
+            getId: () => id,
+            setSharing: (access, perm) => {
+                if (f.blocked) throw new Error('Perkongsian luar domain disekat');
+                f.sharing = `${access}:${perm}`;
+                world.sharing.push([id, f.sharing]);
+            }
+        };
+    };
     return {
+        getFileById: (id) => { if (!world.files[id]) throw new Error('no file ' + id); return fileObj(id); },
         getFolderById: (id) => { if (!folders[id]) throw new Error('no folder ' + id); return wrap(id); },
         // test helper
         _byName: (name) => Object.keys(folders).find(k => folders[k].name === name)
@@ -115,7 +129,8 @@ const fsPlain = (v) => {
 
 function makeWorld({ programs, staf, props = {}, kembara = null }) {
     const world = { docs: {}, folders: { INDUK: { name: 'Tugasan Dokumen', editors: [], files: [] } },
-        requests: [], writes: [], mails: [], created: [], renames: [], logs: [], today: '2026-11-16' };
+        requests: [], writes: [], mails: [], created: [], renames: [], logs: [], today: '2026-11-16',
+        files: { 'laporanPerakFileId': {}, 'gambarPerakFileId': { blocked: true } }, sharing: [] };
     world.docs[DATA + 'tugasan/2026'] = { fields: { programs: fsVal(programs) }, updateTime: '2026-11-15T00:00:00Z' };
     world.docs[DATA + 'tugasan/staf'] = { fields: { staf: fsVal(staf) }, updateTime: '2026-11-15T00:00:00Z' };
     // The KPI document the robot reads (never writes): Kembara's programmes
@@ -130,7 +145,10 @@ function makeWorld({ programs, staf, props = {}, kembara = null }) {
         Utilities: { formatDate: () => world.today },
         ScriptApp: { getOAuthToken: () => 'tok' },
         UrlFetchApp: fakeFirestore(world),
-        DriveApp: drive,
+        DriveApp: Object.assign(drive, {
+            Access: { ANYONE_WITH_LINK: 'ANYONE_WITH_LINK', PRIVATE: 'PRIVATE' },
+            Permission: { VIEW: 'VIEW', NONE: 'NONE' }
+        }),
         MailApp: { sendEmail: (o) => world.mails.push(o), getRemainingDailyQuota: () => 1500 }
     };
     vm.createContext(ctx);
@@ -225,6 +243,54 @@ const cases = {
         assert.match(res.ralat, /Firestore GET 500/);
         assert.deepEqual(w.mails, []);
         assert.deepEqual(w.created, []);
+    },
+
+    'dokumen awam: the robot opens a ticked file and closes it when unticked'() {
+        const prog = PERAK();
+        prog.tasks[1] = Object.assign(prog.tasks[1], { selesai: true, link: 'https://drive.google.com/file/d/laporanPerakFileId/view', awam: true });
+        prog.tasks.push({ id: 'tg-4', jenis: 'Senarai kehadiran', pic: 'st-1', tarikhAkhir: '2026-12-01', selesai: true,
+            link: 'https://drive.google.com/file/d/kehadiranFileId00/view', awam: true });
+        prog.tasks.push({ id: 'tg-5', jenis: 'Maklum balas', pic: 'st-1', tarikhAkhir: '2026-12-01', selesai: true,
+            link: 'https://forms.gle/abcdefghijk', awam: true });
+        prog.tasks.push({ id: 'tg-6', jenis: 'Gambar', pic: 'st-1', tarikhAkhir: '2026-12-01', selesai: true,
+            link: 'https://drive.google.com/drive/folders/gambarPerakFileId', awam: true });
+        const w = makeWorld({ programs: [prog], staf: STAF });
+        const res = w.run();
+        assert.equal(res.ralat, undefined, res.ralat);
+        // Only the Laporan opened; attendance lists are never published
+        assert.deepEqual(w.sharing, [['laporanPerakFileId', 'ANYONE_WITH_LINK:VIEW']]);
+        const t = w.programs()[0].tasks;
+        assert.deepEqual(t[1].robot.awam, { status: 'dibuka', link: 'https://drive.google.com/file/d/laporanPerakFileId/view', id: 'laporanPerakFileId' });
+        assert.equal(t[3].robot.awam, undefined, 'Senarai kehadiran ignored');
+        assert.equal(t[4].robot.awam.status, 'gagal');
+        assert.match(t[4].robot.awam.mesej, /bukan fail Google Drive/);
+        assert.equal(t[5].robot.awam.status, 'gagal');
+        assert.match(t[5].robot.awam.mesej, /disekat/);
+        assert.ok(res.ringkasan.includes('Dibuka kepada umum: Laporan, Kembara Alumni Perak.'));
+        // Next run: nothing to redo, failures are not retried until the link changes
+        w.sharing.length = 0;
+        w.today = '2026-11-17'; w.run();
+        assert.deepEqual(w.sharing, []);
+        // The admin unticks it: closed again, state cleared
+        const progs = w.programs();
+        progs[0].tasks[1].awam = false;
+        progs[0].tasks[5].awam = false;
+        w.docs[DATA + 'tugasan/2026'] = { fields: { programs: fsVal(progs) }, updateTime: '2026-11-17T05:00:00Z' };
+        w.today = '2026-11-18'; const r2 = w.run();
+        assert.deepEqual(w.sharing, [['laporanPerakFileId', 'PRIVATE:NONE']]);
+        assert.equal(w.programs()[0].tasks[1].robot.awam, undefined);
+        assert.equal(w.programs()[0].tasks[5].robot.awam, undefined, 'a failure is forgotten once unticked');
+        assert.ok(r2.ringkasan.includes('Perkongsian umum ditutup: Laporan, Kembara Alumni Perak.'));
+        kpiUntouched(w);
+    },
+
+    'dokumen awam in test mode changes nothing'() {
+        const prog = PERAK();
+        prog.tasks[1] = Object.assign(prog.tasks[1], { selesai: true, link: 'https://drive.google.com/file/d/laporanPerakFileId/view', awam: true });
+        const w = makeWorld({ programs: [prog], staf: STAF, props: { MOD_UJI: 'YA' } });
+        const res = w.run();
+        assert.deepEqual(w.sharing, []);
+        assert.ok(res.ringkasan.some(l => l.includes('[MOD UJI] Akan buka perkongsian umum fail laporanPerakFileId')));
     },
 
     'second run the same day changes nothing'() {

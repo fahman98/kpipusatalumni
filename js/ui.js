@@ -8,7 +8,7 @@ import {
     selectedYear
 } from './api.js';
 
-import { decorateProgramRows, TUGASAN_KPI_IDS } from './tugasan.js';
+import { decorateProgramRows, decoratePublicDocs, TUGASAN_KPI_IDS } from './tugasan.js';
 import { statusTier, statusHex, statusBarClass, kpiStatusPct, isPacedKpi, getPaceFraction, STATUS_LABEL } from './status.js';
 
 const BULAN_MY = ['', 'Jan', 'Feb', 'Mac', 'Apr', 'Mei', 'Jun', 'Jul', 'Ogos', 'Sep', 'Okt', 'Nov', 'Dis'];
@@ -993,6 +993,9 @@ export function showDetailsModal(kpiId, triggerElement) {
             `;
             detailsList.appendChild(li);
         });
+
+        // Documents the admin published for each programme (everyone sees them)
+        if (isCountKpi && showMonth && TUGASAN_KPI_IDS.has(kpi.id)) decoratePublicDocs(kpi, detailsList);
 
         if (isEditMode) {
             // Count KPIs in 2026+ pick a date instead of a value + month: the
