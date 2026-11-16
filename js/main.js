@@ -46,6 +46,7 @@ import { renderGaugeChart, showHistoryChart, destroyKpiChart } from './charts.js
 import { handleAdminLogin, resetLoginModal, runLogoutSequence, startIdleLogout, stopIdleLogout, IDLE_LOGOUT_FLAG } from './admin.js';
 import { initTakwim } from './takwim.js';
 import { initPenjanaan } from './penjanaan.js';
+import { initTugasan, syncTugasanNav } from './tugasan-view.js';
 import { statusTier, statusHex, setPaceContext, getPaceFraction, kpiStatusPct, isPacedKpi, quarterStarted, STATUS_LABEL } from './status.js';
 import { isAdminUser } from './auth.js';
 import { openHistory } from './history.js';
@@ -101,6 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const viewDashboard = getEl('view-dashboard');
     const viewTakwim = getEl('view-takwim');
     const viewPenjanaan = getEl('view-penjanaan');
+    const viewTugasan = getEl('view-tugasan');
     let currentView = 'dashboard';
     let activeStatusFilter = 'all';
 
@@ -636,6 +638,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (adminLogoutBtn) adminLogoutBtn.classList.remove('hidden');
                 if (adminLoginBtn) adminLoginBtn.classList.add('hidden');
                 if (adminRibbon) adminRibbon.classList.remove('hidden');
+                syncTugasanNav(true);
 
                 showToastNotification(`Selamat datang, Admin (${user.email})`, "success");
 
@@ -651,6 +654,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (adminLogoutBtn) adminLogoutBtn.classList.add('hidden');
                 if (adminLoginBtn) adminLoginBtn.classList.remove('hidden');
                 if (adminRibbon) adminRibbon.classList.add('hidden');
+                syncTugasanNav(false);
 
                 // Hide admin specific elements immediately
                 if (adminSetupActions) adminSetupActions.classList.add('hidden');
@@ -680,16 +684,22 @@ document.addEventListener('DOMContentLoaded', () => {
             initTakwim(viewTakwim, isEditMode, selectedYear);
         } else if (currentView === 'penjanaan' && viewPenjanaan) {
             initPenjanaan(viewPenjanaan, isEditMode, selectedYear);
+        } else if (currentView === 'tugasan') {
+            // Admin only (tugasan-view.js); a guest lands back on the dashboard
+            if (isEditMode && viewTugasan) initTugasan(viewTugasan, true, selectedYear);
+            else switchView('dashboard');
         }
     }
 
     function switchView(view) {
-        if (!['dashboard', 'takwim', 'penjanaan'].includes(view)) view = 'dashboard';
+        if (!['dashboard', 'takwim', 'penjanaan', 'tugasan'].includes(view)) view = 'dashboard';
+        if (view === 'tugasan' && !isEditMode) view = 'dashboard';
         currentView = view;
 
         if (viewDashboard) viewDashboard.classList.toggle('hidden', view !== 'dashboard');
         if (viewTakwim) viewTakwim.classList.toggle('hidden', view !== 'takwim');
         if (viewPenjanaan) viewPenjanaan.classList.toggle('hidden', view !== 'penjanaan');
+        if (viewTugasan) viewTugasan.classList.toggle('hidden', view !== 'tugasan');
 
         if (mainNav) {
             mainNav.querySelectorAll('.main-nav-tab').forEach(tab => {
@@ -709,6 +719,8 @@ document.addEventListener('DOMContentLoaded', () => {
             initTakwim(viewTakwim, isEditMode, selectedYear);
         } else if (view === 'penjanaan' && viewPenjanaan) {
             initPenjanaan(viewPenjanaan, isEditMode, selectedYear);
+        } else if (view === 'tugasan' && viewTugasan) {
+            initTugasan(viewTugasan, isEditMode, selectedYear);
         } else if (view === 'dashboard' && isEditMode) {
             // Records may have been added on the other tabs
             refreshAdminTodo(selectedYear, isEditMode);
@@ -1069,8 +1081,9 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('popstate', () => {
         if (!detailsHistory) return;
         // Back from a form opened on top of Butiran (ui.js form sheet) lands
-        // on Butiran's own entry: that closes the form only
-        if (history.state && history.state.kpiDetails) return;
+        // on Butiran's own entry, or on another sheet's when two are stacked:
+        // that closes the top form only
+        if (history.state && (history.state.kpiDetails || history.state.formSheet)) return;
         detailsHistory = false;
         if (detailsModal && detailsModal.classList.contains('is-open')) closeModal(detailsModal);
     });

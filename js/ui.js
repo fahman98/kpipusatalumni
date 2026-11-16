@@ -1610,24 +1610,27 @@ export function formSheetHtml({ prefix, formId, title = '', subtitle = '', body 
         </div>`;
 }
 
+// Sheets can stack (Senarai staf over a Tugasan form): each one opened on a
+// phone pushes its own entry, and Back closes the top one only.
 const sheetPhoneQuery = window.matchMedia('(max-width: 639px)');
-let sheetWithHistory = null;
+const sheetStack = [];
 document.addEventListener('modal-opened', (e) => {
     const m = document.getElementById(e.detail.modalId);
-    if (!m || !m.classList.contains('form-sheet') || !sheetPhoneQuery.matches || sheetWithHistory) return;
+    if (!m || !m.classList.contains('form-sheet') || !sheetPhoneQuery.matches || sheetStack.includes(m)) return;
     history.pushState({ formSheet: m.id }, '');
-    sheetWithHistory = m;
+    sheetStack.push(m);
 });
 window.addEventListener('popstate', () => {
-    if (!sheetWithHistory) return;
-    const m = sheetWithHistory;
-    sheetWithHistory = null;
+    if (!sheetStack.length) return;
+    const m = sheetStack.pop();
     if (m.classList.contains('is-open')) closeModal(m);
 });
 // Every way of closing a form sheet (X, Simpan, backdrop, Escape) comes here
 export function closeFormSheet(modal) {
-    if (sheetWithHistory === modal) history.back();   // popstate above closes it
-    else closeModal(modal);
+    if (sheetStack[sheetStack.length - 1] === modal) { history.back(); return; }   // popstate above closes it
+    const i = sheetStack.indexOf(modal);
+    if (i !== -1) sheetStack.splice(i, 1);
+    closeModal(modal);
 }
 
 // Add-programme form for the count KPIs with dates (Kembara and the like),

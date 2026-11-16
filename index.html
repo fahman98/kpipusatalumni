@@ -58,8 +58,8 @@
     <link rel="apple-touch-icon" href="./images/apple-touch-icon.png">
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="style.css?v=7.1">
-    <link rel="stylesheet" href="tailwind.css?v=23">
+    <link rel="stylesheet" href="style.css?v=7.2">
+    <link rel="stylesheet" href="tailwind.css?v=24">
 </head>
 
 <body class="bg-gray-100 relative overflow-x-hidden">
@@ -171,6 +171,11 @@
                 </button>
                 <button class="main-nav-tab" data-view="penjanaan" role="tab" aria-selected="false">
                     <i class="ph-duotone ph-currency-circle-dollar" aria-hidden="true"></i>Penjanaan
+                </button>
+                <!-- Admin only (tugasan-view.js syncTugasanNav) -->
+                <button class="main-nav-tab tugasan-nav hidden" data-view="tugasan" role="tab" aria-selected="false">
+                    <i class="ph-duotone ph-clipboard-text" aria-hidden="true"></i>Tugasan
+                    <span class="tugasan-nav-badge hidden"></span>
                 </button>
             </nav>
 
@@ -510,6 +515,9 @@
 
         <!-- ===================== VIEW: PENJANAAN ===================== -->
         <div id="view-penjanaan" class="hidden"></div>
+
+        <!-- ===================== VIEW: TUGASAN (admin only) ===================== -->
+        <div id="view-tugasan" class="hidden"></div>
 
         <footer class="mt-10 pt-5 border-t border-gray-200 mb-12 text-center">
 
@@ -1177,6 +1185,11 @@
                     <i class="ph-duotone ph-currency-circle-dollar" aria-hidden="true"></i>
                     <span>Penjanaan</span>
                 </button>
+                <button class="bottom-nav-tab tugasan-nav hidden flex-1 flex flex-col items-center justify-center gap-0.5 py-2"
+                    data-view="tugasan" aria-selected="false">
+                    <span class="bottom-nav-icon-wrap"><i class="ph-duotone ph-clipboard-text" aria-hidden="true"></i><span class="tugasan-nav-badge hidden"></span></span>
+                    <span>Tugasan</span>
+                </button>
             </div>
         </nav>
 
@@ -1189,7 +1202,7 @@
         </div>
 
         <!-- Load Main Script as Module -->
-        <script type="module" src="js/main.js?v=7.8"></script>
+        <script type="module" src="js/main.js?v=7.9"></script>
 </body>
 
 </html>

@@ -20,7 +20,7 @@ descriptions of PR #2 to #8.
 - The owner cannot easily re-enter lost data. Never write to live Firestore
   from a session, and never press reset / delete in a live app.
 - Test with `tests/` (see `tests/README.md`): `cd tests && npm install`
-  once, then `node run.js` (31 scenarios, ~4 min) against `mock-firebase.js`,
+  once, then `node run.js` (32 scenarios, ~5 min) against `mock-firebase.js`,
   which records every write instead of sending it. Clock pinned to
   29/10/2026. Add a scenario to `tests/run.js` for each behaviour change;
   extend the mock's seed data rather than touching live data. The proxy
@@ -40,8 +40,9 @@ descriptions of PR #2 to #8.
 - `js/status.js` status tiers and pace logic. `js/charts.js` Chart.js.
 - `js/takwim.js`, `js/penjanaan.js` the two other tabs. `js/admin.js` login,
   logout, idle logout. `js/history.js` audit log viewer. `js/todo.js` admin
-  "Perlu tindakan" panel (read-only). `js/tugasan.js` Tugasan dokumen per
-  Kembara programme (admin only). `js/admin-table.js` admin desktop
+  "Perlu tindakan" panel (read-only). `js/tugasan.js` Tugasan dokumen data
+  helpers, the task editor, "Agih tugasan" + "Senarai staf" sheets (admin
+  only). `js/tugasan-view.js` the admin-only Tugasan tab. `js/admin-table.js` admin desktop
   table (borrows the hidden cards' buttons). `js/calendar.js` Takwim
   "Simpan ke kalendar" (Google link + .ics, read-only). `js/welcome.js`
   poster sambutan overlay (read-only). `js/auth.js` admin
@@ -236,20 +237,44 @@ descriptions of PR #2 to #8.
   photo). After the visit, delete that image (still reachable by URL) and
   the `WELCOME` entry or point it at the next poster.
 
-- Tugasan dokumen, phase 1 (since 15/11/2026, `js/tugasan.js`): admin
-  Butiran Kembara rows get a "Dokumen x/y" / "Agih tugasan" button opening a
-  form sheet: tasks (Kertas kerja, Laporan, Maklum balas suggested; also
+- Tugasan dokumen (since 15/11/2026, `js/tugasan.js`) covers every
+  programme of the dated KPIs `TUGASAN_KPI_IDS` = kembara, bicara, ziarah
+  (owner, 16/11/2026). Admin Butiran rows of those KPIs get a "Dokumen x/y" /
+  "Agih tugasan" button opening the "Agih tugasan" form sheet: tasks (Kertas kerja, Laporan, Maklum balas suggested; also
   Gambar, Senarai kehadiran, Lain-lain) with PIC from the staff list, due
   date (suggested: kertas kerja 14 days before, laporan 14 / maklum balas 7
   days after), Google Drive link (http(s) only, pasting one ticks Selesai)
-  and Selesai; plus an editable "Senarai staf" (name + UPSI email, used by
-  the robot) at the end of the form, reached from "Urus senarai staf" under
-  every PIC and from a "Senarai staf masih kosong" note at the top while
-  the list is empty (owner missed the list on first use). Files stay in Drive. Saves are refused until the admin-only rule for
+  and Selesai. The editor is ONE component (`mountEditor(root, ctx)`,
+  class-based, no ids inside) used in that sheet and, `wide`, as a table in
+  the Tugasan tab's desktop panel (own "Simpan perubahan"). "Senarai staf"
+  is its own sheet (`#staf-modal`, `openStafSheet`): name + UPSI email per
+  staff, per-staff active / late counts, "Tiada emel" warning; reached from
+  "Urus senarai staf" under every PIC, the "Senarai staf masih kosong" note
+  and the tab. Form sheets stack on phones: each pushes its own history
+  entry and Back closes the top one (ui.js `sheetStack`; main.js Butiran
+  popstate ignores pops landing on a `formSheet` entry).
+- Tugasan tab (`js/tugasan-view.js`, canvas artboards Tugasan-*, built
+  16/11/2026): admin-only `#view-tugasan`, nav tabs `.tugasan-nav` (header +
+  bottom bar, hidden for guests via `syncTugasanNav`; `switchView('tugasan')`
+  falls back to the dashboard for guests) with a red `.tugasan-nav-badge` =
+  late tasks of the current year (set by todo.js and the tab). Four cards
+  (Lewat / Belum siap / Selesai = task counts, Belum diagih = programmes with
+  no tasks within 30 days of today) that filter; robot line (aktif / tidak
+  berjalan pagi ini after 36 h / gagal / belum berjalan); "Ikut program":
+  list sorted lewat, belum, agih, selesai, tiada then newest; >= 1024px the
+  chosen programme is edited in a panel beside it (leaving a dirty panel
+  asks first), below that a row opens the sheet; "Ikut PIC": a card per
+  staff (+ "Belum ada PIC", removed staff) with open tasks, done ones behind
+  "Lihat n tugasan selesai", "Tambah emel" for staff without one; a task
+  opens its programme. Agreed changes from the canvas: no "Emel peringatan"
+  button (the robot reminds), app font, native date pickers, the Butiran
+  button stays and opens the sheet. "Perlu tindakan" tugasan buttons open
+  the tab filtered (`showTugasan({ filter })`). Files stay in Drive. Saves are refused until the admin-only rule for
   `tugasan` is live: `checkTugasanRules` reads `tugasan/staf` as a guest
   through a second, never-signed-in Firebase app and needs permission-denied.
   Logged as UPDATE_TUGASAN / UPDATE_STAF. "Perlu tindakan" adds overdue tasks
-  (per PIC) and programmes within 30 days either side of today with no tasks.
+  (per PIC) and programmes within 30 days either side of today with no tasks
+  (`inAssignWindow`).
   Mock flags `tugasan` (seed: two staff, Johor with a late Laporan) and
   `rulesOpen` (rules not deployed).
 - Phase 2 = the robot (owner chose it over staff logins, 16/11/2026):
