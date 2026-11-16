@@ -186,6 +186,15 @@ const cases = {
         kpiUntouched(w);
     },
 
+    'replies go to EMEL_BALAS when set'() {
+        const w = makeWorld({ programs: [PERAK()], staf: STAF, props: { EMEL_BALAS: 'alumni@upsi.edu.my' } });
+        w.run();
+        assert.deepEqual(w.mails.map(m => m.replyTo), ['alumni@upsi.edu.my', 'alumni@upsi.edu.my']);
+        const w2 = makeWorld({ programs: [PERAK()], staf: STAF });
+        w2.run();
+        assert.equal(w2.mails[0].replyTo, undefined);
+    },
+
     'second run the same day changes nothing'() {
         const w = makeWorld({ programs: [PERAK()], staf: STAF });
         w.run();

@@ -248,7 +248,10 @@ descriptions of PR #2 to #8.
   `rulesOpen` (rules not deployed).
 - Phase 2 = the robot (owner chose it over staff logins, 16/11/2026):
   `apps-script/Robot.gs` (+ `appsscript.json`, setup guide `README.md`,
-  not deployed by Vercel) runs daily as alumni@upsi.edu.my. It creates a
+  not deployed by Vercel) runs daily under the owner's own UPSI Google
+  account (fahman@upsi.edu.my, whose Drive holds the folder; alumni@upsi.edu.my
+  stays the dashboard's admin login), which must be Owner / Editor of
+  the Firebase project; replies go to EMEL_BALAS. It creates a
   Drive folder per programme with a subfolder per task shared with the PIC,
   emails the PIC (on assignment, 3 days before due, late every 7 days max
   4; a moved due date restarts), and ticks Selesai + fills the link when a

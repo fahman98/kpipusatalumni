@@ -1,6 +1,9 @@
 # Robot Tugasan Dokumen (Google Apps Script)
 
-Robot ini berjalan setiap pagi di bawah akaun `alumni@upsi.edu.my`. Untuk
+Robot ini berjalan setiap pagi di bawah akaun Google UPSI yang
+memasangnya, iaitu `fahman@upsi.edu.my`. Folder dicipta dan emel dihantar
+oleh akaun itu (nama pengirim tertera "Pusat Alumni UPSI"). Akaun
+`alumni@upsi.edu.my` kekal sebagai log masuk admin dashboard sahaja. Untuk
 setiap program Kembara yang ada tugasan dalam Dashboard KPI, robot:
 
 1. mencipta folder program dalam Google Drive (`Folder induk / 2026 /
@@ -19,18 +22,28 @@ oleh `node tests/robot.test.js` dengan Google palsu.
 
 - Peraturan baharu `firestore.rules` sudah diterbitkan (Firebase Console,
   Firestore Database, Rules, Publish).
-- Akaun `alumni@upsi.edu.my` ialah **Owner** atau **Editor** projek
-  Firebase `dashboard-alumni-kpi` (Firebase Console, Project settings,
-  Users and permissions). Robot menulis ke Firestore menggunakan akaun ini.
+- Akaun `fahman@upsi.edu.my` ialah **Owner** atau **Editor** projek
+  Firebase `dashboard-alumni-kpi`. Robot menulis ke Firestore menggunakan
+  akaun ini. Semak di Firebase Console, Project settings, *Users and
+  permissions*. Jika tiada, pemilik projek perlu menambahnya melalui
+  *Add member* dengan peranan Editor.
 - Setiap staf dalam "Senarai staf" (borang tugasan) ada emel UPSI.
 
 ## Pemasangan (sekali sahaja, kira-kira 15 minit)
 
-1. **Folder induk.** Dalam Google Drive `alumni@upsi.edu.my`, cipta folder
-   `Tugasan Dokumen Pusat Alumni`. Buka folder itu dan salin ID daripada
-   URL: `https://drive.google.com/drive/folders/`**`ID_INI`**.
+1. **Folder induk.** Cipta folder `Tugasan Dokumen Pusat Alumni`. Buka
+   folder itu dan salin ID daripada URL:
+   `https://drive.google.com/drive/folders/`**`ID_INI`**. Tempat folder:
+   - **Disyorkan: Drive bersama (Shared drive) unit**, jika UPSI
+     membenarkan. Fail dimiliki oleh unit, bukan individu, jadi dokumen
+     kekal walaupun akaun staf ditutup (penting untuk rekod ISO).
+     `fahman@upsi.edu.my` perlu peranan *Content manager* atau *Manager*.
+   - Jika tiada Drive bersama: dalam My Drive `fahman@upsi.edu.my`. Folder
+     dimiliki oleh akaun itu, dan fail yang staf muat naik dimiliki oleh
+     staf masing-masing. Sebelum akaun ditutup (contoh tamat kontrak),
+     pindahkan pemilikan folder kepada akaun unit.
 2. **Projek skrip.** Buka <https://script.google.com> sebagai
-   `alumni@upsi.edu.my`, pilih *Projek baharu*, namakan
+   `fahman@upsi.edu.my`, pilih *Projek baharu*, namakan
    `Robot Tugasan Dokumen`.
 3. **Fail.** Dalam *Project Settings* (ikon gear), tandakan *Show
    "appsscript.json" manifest file in editor*. Kemudian di *Editor*:
@@ -42,11 +55,13 @@ oleh `node tests/robot.test.js` dengan Google palsu.
    | --- | --- |
    | `FOLDER_INDUK_ID` | ID folder dari langkah 1 |
    | `MOD_UJI` | `YA` (robot hanya mencatat, tiada perubahan) |
-   | `EMEL_ADMIN` | `alumni@upsi.edu.my` (emel jika robot gagal) |
+   | `EMEL_ADMIN` | `fahman@upsi.edu.my` (emel jika robot gagal) |
+   | `EMEL_BALAS` | `alumni@upsi.edu.my` (pilihan: staf yang membalas emel robot akan membalas ke alamat ini) |
 
 5. **Semak sambungan.** Pilih fungsi `semakSambungan` dan tekan *Run*.
    Google akan meminta kebenaran: semak senarai dan tekan *Allow*. Log
-   sepatutnya menunjukkan bilangan program, bilangan staf dan nama folder.
+   sepatutnya menunjukkan akaun yang menjalankan robot, bilangan program,
+   bilangan staf, serta nama dan pemilik folder induk.
 6. **Larian uji.** Pilih `jalankanRobot` dan tekan *Run*. Dengan
    `MOD_UJI = YA`, log menyenaraikan apa yang *akan* dibuat (folder, emel)
    tanpa membuatnya. Semak senarai itu.
@@ -70,6 +85,10 @@ oleh `node tests/robot.test.js` dengan Google palsu.
   mencuba semula.
 - **Staf tidak menerima emel**: semak emel staf dalam "Senarai staf".
   Staf tanpa emel tidak dikongsi folder dan tidak diemel.
+- **Drive bersama tidak membenarkan perkongsian folder**: sesetengah
+  tetapan Drive bersama menyekat perkongsian kepada bukan ahli. Tambah
+  staf sebagai ahli Drive bersama (*Contributor*), atau minta pentadbir
+  Google UPSI membenarkan perkongsian folder.
 - **Hentikan robot**: di *Triggers* (ikon jam), padam pencetus
   `jalankanRobot`. Data dalam dashboard kekal.
 - Google mungkin juga menghantar emel perkongsian folder sendiri kepada

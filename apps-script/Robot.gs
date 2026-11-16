@@ -1,7 +1,9 @@
 /**
  * ROBOT TUGASAN DOKUMEN · Pusat Alumni UPSI
  * ------------------------------------------------------------------------
- * Berjalan setiap pagi (pencetus masa) di bawah akaun alumni@upsi.edu.my.
+ * Berjalan setiap pagi (pencetus masa) di bawah akaun Google UPSI yang
+ * memasangnya (contoh fahman@upsi.edu.my). Folder dicipta dan emel dihantar
+ * oleh akaun itu; balasan staf pergi ke EMEL_BALAS jika ditetapkan.
  * Untuk setiap program yang ada tugasan dalam Dashboard KPI, robot ini:
  *   1. mencipta folder program dalam Google Drive, dengan satu subfolder
  *      bagi setiap tugasan (contoh "Laporan"), dan berkongsi subfolder itu
@@ -55,9 +57,10 @@ function semakSambungan() {
   var staf = fsGet_(laluanTugasan_('staf'));
   var induk = DriveApp.getFolderById(t.folderInduk);
   var baris = [
+    'Berjalan sebagai: ' + Session.getEffectiveUser().getEmail(),
     'Firestore tugasan/' + tahun + ': ' + (doc ? (doc.data.programs || []).length + ' program' : 'belum wujud'),
     'Firestore tugasan/staf: ' + (staf ? (staf.data.staf || []).length + ' staf' : 'belum wujud'),
-    'Folder induk: ' + induk.getName(),
+    'Folder induk: ' + induk.getName() + ' (pemilik: ' + (induk.getOwner() ? induk.getOwner().getEmail() : 'Drive bersama') + ')',
     'Baki kuota emel hari ini: ' + MailApp.getRemainingDailyQuota(),
     'Mod uji: ' + (t.modUji ? 'YA (tiada perubahan dibuat)' : 'TIDAK')
   ];
@@ -85,6 +88,7 @@ function tetapan_() {
     folderInduk: induk,
     modUji: String(p.getProperty('MOD_UJI') || '').toUpperCase() === 'YA',
     emelAdmin: p.getProperty('EMEL_ADMIN') || '',
+    emelBalas: p.getProperty('EMEL_BALAS') || '',
     hariIni: Utilities.formatDate(new Date(), ROBOT.ZON, 'yyyy-MM-dd')
   };
 }
@@ -179,7 +183,9 @@ function laksana_(t) {
       var isi = isiEmel_(e);
       if (t.modUji) { catat('[MOD UJI] Akan emel ' + e.kepada + ': ' + isi.subjek); return; }
       try {
-        MailApp.sendEmail({ to: e.kepada, subject: isi.subjek, htmlBody: isi.html, name: ROBOT.NAMA_PENGIRIM });
+        var mesej = { to: e.kepada, subject: isi.subjek, htmlBody: isi.html, name: ROBOT.NAMA_PENGIRIM };
+        if (t.emelBalas) mesej.replyTo = t.emelBalas;
+        MailApp.sendEmail(mesej);
         hasil.emel.push(e.jenis + ' ' + e.kepada);
         catat('Emel ' + e.jenis + ': ' + e.kepada + ' (' + e.task.jenis + ', ' + e.prog.name + ').');
       } catch (err) {
