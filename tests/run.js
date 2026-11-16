@@ -751,6 +751,17 @@ const scenarios = {
     },
 
     // Wrong password message, then lockout after three tries
+    // Two admin accounts (js/auth.js ADMIN_EMAILS); any other signed-in email is not admin
+    async 'admin accounts'() {
+        for (const [email, admin] of [['fahman@upsi.edu.my', true], ['alumni@upsi.edu.my', true], ['orang.lain@upsi.edu.my', false]]) {
+            const { ctx, page } = await open({ admin: true, adminEmail: email });
+            assert.equal(await isAdminOn(page), admin, email);
+            assert.equal(await page.evaluate(() => document.body.classList.contains('admin-desk-on')), admin, email);
+            await noWrites(page);
+            await ctx.close();
+        }
+    },
+
     async 'login form'() {
         const { ctx, page } = await open({ mobile: true });
         await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));

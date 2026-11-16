@@ -20,7 +20,7 @@ descriptions of PR #2 to #8.
 - The owner cannot easily re-enter lost data. Never write to live Firestore
   from a session, and never press reset / delete in a live app.
 - Test with `tests/` (see `tests/README.md`): `cd tests && npm install`
-  once, then `node run.js` (30 scenarios, ~4 min) against `mock-firebase.js`,
+  once, then `node run.js` (31 scenarios, ~4 min) against `mock-firebase.js`,
   which records every write instead of sending it. Clock pinned to
   29/10/2026. Add a scenario to `tests/run.js` for each behaviour change;
   extend the mock's seed data rather than touching live data. The proxy
@@ -45,7 +45,11 @@ descriptions of PR #2 to #8.
   table (borrows the hidden cards' buttons). `js/calendar.js` Takwim
   "Simpan ke kalendar" (Google link + .ics, read-only). `js/welcome.js`
   poster sambutan overlay (read-only). `js/auth.js` admin
-  allow-list (`alumni@upsi.edu.my`, mirrored in `firestore.rules`).
+  allow-list `ADMIN_EMAILS` (`alumni@upsi.edu.my` unit account +
+  `fahman@upsi.edu.my`, the owner's own, since 16/11/2026; mirrored in
+  `firestore.rules`). A new admin email must exist in Firebase Auth
+  before the rules naming it are published (else anyone could sign up
+  with it). Owner chose to keep alumni@ so the unit never loses access.
 
 ## Data model (`artifacts/{appId}/public/data/...`)
 - `kpi-{year}/q1..q4` `{ title, subtitle, kpis: [...], footerDate }`. Values
@@ -249,8 +253,8 @@ descriptions of PR #2 to #8.
 - Phase 2 = the robot (owner chose it over staff logins, 16/11/2026):
   `apps-script/Robot.gs` (+ `appsscript.json`, setup guide `README.md`,
   not deployed by Vercel) runs daily under the owner's own UPSI Google
-  account (fahman@upsi.edu.my, whose Drive holds the folder; alumni@upsi.edu.my
-  stays the dashboard's admin login), which must be Owner / Editor of
+  account (fahman@upsi.edu.my, whose Drive holds the folder), which must
+  be Owner / Editor of
   the Firebase project; replies go to EMEL_BALAS. It creates a
   Drive folder per programme with a subfolder per task shared with the PIC,
   emails the PIC (on assignment, 3 days before due, late every 7 days max

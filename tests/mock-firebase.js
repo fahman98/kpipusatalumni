@@ -8,6 +8,7 @@
 //   window.__persist  auth.setPersistence() calls
 // Flags read at load (set with page.addInitScript):
 //   window.__ADMIN    sign in as the admin instead of an anonymous guest
+//   window.__ADMIN_EMAIL  that signed-in account's email (default alumni@)
 //   window.__WITH2025 also seed kpi-2025 (default: only 2026 has data)
 //   window.__TODOS    data that raises every "Perlu tindakan" reminder: a
 //                     finished Kembara with no attendance, no Penjanaan record
@@ -168,7 +169,7 @@
 
     const signedOut = (() => { try { return !!sessionStorage.getItem('mockSignedOut'); } catch (_) { return false; } })();
     const user = (window.__ADMIN && !signedOut)
-        ? { isAnonymous: false, uid: 'adm', email: 'alumni@upsi.edu.my' }
+        ? { isAnonymous: false, uid: 'adm', email: window.__ADMIN_EMAIL || 'alumni@upsi.edu.my' }
         : { isAnonymous: true, uid: 'anon' };
 
     const auth = () => ({

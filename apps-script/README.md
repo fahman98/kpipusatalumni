@@ -2,8 +2,7 @@
 
 Robot ini berjalan setiap pagi di bawah akaun Google UPSI yang
 memasangnya, iaitu `fahman@upsi.edu.my`. Folder dicipta dan emel dihantar
-oleh akaun itu (nama pengirim tertera "Pusat Alumni UPSI"). Akaun
-`alumni@upsi.edu.my` kekal sebagai log masuk admin dashboard sahaja. Untuk
+oleh akaun itu (nama pengirim tertera "Pusat Alumni UPSI"). Untuk
 setiap program Kembara yang ada tugasan dalam Dashboard KPI, robot:
 
 1. mencipta folder program dalam Google Drive (`Folder induk / 2026 /
@@ -56,7 +55,7 @@ oleh `node tests/robot.test.js` dengan Google palsu.
    | `FOLDER_INDUK_ID` | ID folder dari langkah 1 |
    | `MOD_UJI` | `YA` (robot hanya mencatat, tiada perubahan) |
    | `EMEL_ADMIN` | `fahman@upsi.edu.my` (emel jika robot gagal) |
-   | `EMEL_BALAS` | `alumni@upsi.edu.my` (pilihan: staf yang membalas emel robot akan membalas ke alamat ini) |
+   | `EMEL_BALAS` | Pilihan. Biarkan kosong: balasan staf terus ke `fahman@upsi.edu.my`. Isi jika balasan patut pergi ke alamat lain. |
 
 5. **Semak sambungan.** Pilih fungsi `semakSambungan` dan tekan *Run*.
    Google akan meminta kebenaran: semak senarai dan tekan *Allow*. Log
