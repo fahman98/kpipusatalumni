@@ -160,6 +160,10 @@ function ensureSheet() {
         prefix: 'tugasan-modal', formId: 'tugasan-form', title: 'Tugasan dokumen',
         body: `
             <div id="tugasan-rules-warn" class="tg-warn hidden" role="alert"></div>
+            <div id="tugasan-staf-empty" class="tg-note hidden">
+                <p><i class="ph-duotone ph-users-three" aria-hidden="true"></i><span>Senarai staf masih kosong. Tambah staf dahulu supaya PIC boleh dipilih.</span></p>
+                <button type="button" id="tugasan-staf-go" class="tg-note-btn"><i class="fas fa-plus" aria-hidden="true"></i> Tambah staf</button>
+            </div>
             <div class="fs-summary"><p id="tugasan-info"></p><p id="tugasan-robot" class="hidden"></p></div>
             <div id="tugasan-rows" class="tg-rows"></div>
             <p id="tugasan-empty" class="fs-hint hidden">Tiada tugasan. Tekan "Tambah tugasan" untuk mula.</p>
@@ -168,7 +172,7 @@ function ensureSheet() {
             <details id="tugasan-staf" class="tg-staf">
                 <summary>Senarai staf <span id="tugasan-staf-count"></span></summary>
                 <div class="tg-staf-body">
-                    <p class="fs-hint">Staf yang boleh diberi tugasan. Emel UPSI akan digunakan apabila staf boleh log masuk sendiri (fasa 2).</p>
+                    <p class="fs-hint">Staf yang boleh diberi tugasan. Robot menggunakan emel UPSI untuk berkongsi folder dan menghantar peringatan kepada PIC.</p>
                     <div id="tugasan-staf-rows" class="tg-staf-rows"></div>
                     <div class="tg-staf-actions">
                         <button type="button" id="tugasan-staf-add" class="tg-add tg-add-sm"><i class="fas fa-plus" aria-hidden="true"></i> Tambah staf</button>
@@ -192,6 +196,7 @@ function ensureSheet() {
     });
     const rows = modal.querySelector('#tugasan-rows');
     rows.addEventListener('click', (e) => {
+        if (e.target.closest('.tg-staf-link')) { goToStaf(modal, false); return; }
         const rm = e.target.closest('.tg-remove');
         if (rm) { rm.closest('.tg-row').remove(); syncEmpty(modal); }
     });
@@ -225,6 +230,7 @@ function ensureSheet() {
         refreshRowState(row);
     });
 
+    modal.querySelector('#tugasan-staf-go').addEventListener('click', () => goToStaf(modal, true));
     modal.querySelector('#tugasan-staf-add').addEventListener('click', () => {
         const box = modal.querySelector('#tugasan-staf-rows');
         box.insertAdjacentHTML('beforeend', stafRowHtml({ id: genId('st'), nama: '', emel: '' }));
@@ -277,6 +283,7 @@ function taskRowHtml(t, staf) {
                 <div class="fs-field">
                     <label class="fs-label" for="tg-pic-${uid}">PIC</label>
                     <select id="tg-pic-${uid}" class="fs-input fs-select tg-pic">${picOptions(staf, t.pic)}</select>
+                    <button type="button" class="tg-staf-link">Urus senarai staf <i class="fas fa-arrow-down" aria-hidden="true"></i></button>
                 </div>
                 <div class="fs-field">
                     <label class="fs-label" for="tg-due-${uid}">Tarikh akhir</label>
@@ -350,8 +357,22 @@ function renderStaf(modal) {
     const staf = cache.staf || [];
     modal.querySelector('#tugasan-staf-rows').innerHTML = staf.map(stafRowHtml).join('');
     modal.querySelector('#tugasan-staf-count').textContent = `(${staf.length})`;
-    // No staff yet: open the list so the admin sees where to add them
+    // No staff yet: open the list and say so at the top of the form
     modal.querySelector('#tugasan-staf').open = !staf.length;
+    modal.querySelector('#tugasan-staf-empty').classList.toggle('hidden', staf.length > 0);
+}
+
+// "Urus senarai staf" / "Tambah staf": the staff list sits at the end of
+// the form, below every task, where the owner did not find it on first use
+function goToStaf(modal, addRow) {
+    const box = modal.querySelector('#tugasan-staf');
+    box.open = true;
+    const rowsEl = modal.querySelector('#tugasan-staf-rows');
+    const blank = Array.from(rowsEl.querySelectorAll('.tg-staf-nama')).find(i => !i.value.trim());
+    if (addRow && !blank) modal.querySelector('#tugasan-staf-add').click();
+    box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const target = blank || (addRow ? rowsEl.lastElementChild && rowsEl.lastElementChild.querySelector('.tg-staf-nama') : null);
+    if (target) target.focus({ preventScroll: true });
 }
 
 // The robot writes tugasan/robot { lastRun, ok, mesej } after every run

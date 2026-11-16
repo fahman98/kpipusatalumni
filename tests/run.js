@@ -657,6 +657,38 @@ const scenarios = {
         assert.deepEqual(page.__errors, []);
         await ctx.close();
 
+        // Staff list easy to reach: no banner while staff exist, the link under PIC opens the list
+        ({ ctx, page } = await open({ admin: true, tugasan: true }));
+        await page.click('.admin-row[data-kpi-id=kembara] .admin-primary-btn'); await page.waitForTimeout(1200);
+        await page.click('#details-list li:nth-child(1) .tugasan-chip'); await page.waitForTimeout(600);
+        assert.equal(await page.isVisible('#tugasan-staf-empty'), false);
+        assert.equal(await page.$eval('#tugasan-staf', d => d.open), false);
+        await page.click('#tugasan-rows .tg-row:nth-child(2) .tg-staf-link'); await page.waitForTimeout(700);
+        assert.equal(await page.$eval('#tugasan-staf', d => d.open), true);
+        assert.ok(await page.$eval('#tugasan-staf', d => { const r = d.getBoundingClientRect(); return r.top >= 0 && r.top < innerHeight; }), 'scrolled to the staff list');
+        await noWrites(page);
+        await ctx.close();
+
+        // No staff yet: banner at the top; its button opens the list with an empty row ready
+        ({ ctx, page } = await open({ admin: true }));
+        await page.click('.admin-row[data-kpi-id=kembara] .admin-primary-btn'); await page.waitForTimeout(1200);
+        await page.click('#details-list li:nth-child(1) .tugasan-chip'); await page.waitForTimeout(600);
+        assert.equal(await page.isVisible('#tugasan-staf-empty'), true);
+        assert.match(await page.textContent('#tugasan-staf-empty'), /Senarai staf masih kosong/);
+        await shot(page, 'tugasan-staf-kosong');
+        await page.click('#tugasan-staf-go'); await page.waitForTimeout(700);
+        assert.equal(await page.$$eval('#tugasan-staf-rows .tg-staf-row', r => r.length), 1);
+        assert.equal(await page.evaluate(() => document.activeElement.classList.contains('tg-staf-nama')), true);
+        await page.click('#tugasan-staf-go'); await page.waitForTimeout(300);
+        assert.equal(await page.$$eval('#tugasan-staf-rows .tg-staf-row', r => r.length), 1, 'no second blank row');
+        await page.fill('#tugasan-staf-rows .tg-staf-nama', 'Siti Nur');
+        await page.fill('#tugasan-staf-rows .tg-staf-emel', 'siti@upsi.edu.my');
+        await page.click('#tugasan-staf-save'); await page.waitForTimeout(800);
+        assert.equal(await page.isVisible('#tugasan-staf-empty'), false, 'banner gone once staff exist');
+        assert.equal(await page.$$eval('#tugasan-rows .tg-row:nth-child(1) .tg-pic option', o => o.map(x => x.textContent)).then(x => x.join('|')), 'Belum ditetapkan|Siti Nur');
+        assert.deepEqual(page.__errors, []);
+        await ctx.close();
+
         // Rules not deployed yet: warning in the sheet and nothing is saved
         ({ ctx, page } = await open({ admin: true, tugasan: true, rulesOpen: true }));
         await page.click('.admin-row[data-kpi-id=kembara] .admin-primary-btn'); await page.waitForTimeout(1200);
