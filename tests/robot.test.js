@@ -113,13 +113,14 @@ const fsPlain = (v) => {
     return Object.fromEntries(Object.entries(v.mapValue.fields || {}).map(([k, x]) => [k, fsPlain(x)]));
 };
 
-function makeWorld({ programs, staf, props = {} }) {
+function makeWorld({ programs, staf, props = {}, kembara = null }) {
     const world = { docs: {}, folders: { INDUK: { name: 'Tugasan Dokumen', editors: [], files: [] } },
         requests: [], writes: [], mails: [], created: [], renames: [], logs: [], today: '2026-11-16' };
     world.docs[DATA + 'tugasan/2026'] = { fields: { programs: fsVal(programs) }, updateTime: '2026-11-15T00:00:00Z' };
     world.docs[DATA + 'tugasan/staf'] = { fields: { staf: fsVal(staf) }, updateTime: '2026-11-15T00:00:00Z' };
-    // A KPI document the robot must never touch
-    world.docs[DATA + 'kpi-2026/q4'] = { fields: { kpis: fsVal([]) }, updateTime: '2026-11-15T00:00:00Z' };
+    // The KPI document the robot reads (never writes): Kembara's programmes
+    const items = (kembara || programs.map(p => ({ id: p.key.replace(/^id:/, ''), name: p.name, value: 1, tarikh: p.tarikh })));
+    world.docs[DATA + 'kpi-2026/q4'] = { fields: { kpis: fsVal([{ id: 'kembara', name: 'Kembara Alumni', details: { type: 'breakdownList', items } }]) }, updateTime: '2026-11-15T00:00:00Z' };
     world.props = Object.assign({ FOLDER_INDUK_ID: 'INDUK' }, props);
     const drive = fakeDrive(world);
     const ctx = {
@@ -193,6 +194,37 @@ const cases = {
         const w2 = makeWorld({ programs: [PERAK()], staf: STAF });
         w2.run();
         assert.equal(w2.mails[0].replyTo, undefined);
+    },
+
+    'a programme deleted from Kembara is skipped'() {
+        const test = Object.assign(PERAK(), { key: 'id:it-test', name: 'Test', tarikh: '2026-11-17' });
+        const w = makeWorld({ programs: [PERAK(), test], staf: STAF,
+            kembara: [{ id: 'it-perak', name: 'Kembara Alumni Perak', value: 1, tarikh: '2026-11-28' }] });
+        const res = w.run();
+        assert.equal(res.ralat, undefined, res.ralat);
+        assert.ok(!w.created.some(n => /Test/.test(n)), 'no folder for the deleted programme');
+        assert.ok(w.mails.every(m => !/Test/.test(m.subject)), 'no email for it');
+        assert.equal(w.mails.length, 2);
+        assert.ok(res.ringkasan.includes('Dilangkau: Test (program sudah dipadam daripada senarai KPI).'));
+        assert.ok(res.ringkasan.includes('Folder dicipta: 2026-11-28 Kembara Alumni Perak'));
+        assert.ok(res.ringkasan.includes('Disimpan ke tugasan/2026.'));
+        assert.equal(w.programs()[1].robot, undefined, 'its record is left as it was');
+        // A legacy record without an id is matched by name + date
+        const lama = makeWorld({ programs: [Object.assign(PERAK(), { key: 'n:Kembara Alumni Perak|2026-11-28' })], staf: STAF,
+            kembara: [{ name: 'Kembara Alumni Perak', value: 1, tarikh: '2026-11-28' }] });
+        lama.run();
+        assert.equal(lama.mails.length, 2);
+        kpiUntouched(w);
+    },
+
+    'KPI list unreadable: the run stops before any email'() {
+        const w = makeWorld({ programs: [PERAK()], staf: STAF });
+        const fetch = w.eval('UrlFetchApp.fetch');
+        w.eval('(f => { UrlFetchApp.fetch = (u, o) => /kpi-2026/.test(u) ? { getResponseCode: () => 500, getContentText: () => "{}" } : f(u, o); })')(fetch);
+        const res = w.run();
+        assert.match(res.ralat, /Firestore GET 500/);
+        assert.deepEqual(w.mails, []);
+        assert.deepEqual(w.created, []);
     },
 
     'second run the same day changes nothing'() {

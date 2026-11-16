@@ -259,16 +259,21 @@ descriptions of PR #2 to #8.
   Drive folder per programme with a subfolder per task shared with the PIC,
   emails the PIC (on assignment, 3 days before due, late every 7 days max
   4; a moved due date restarts), and ticks Selesai + fills the link when a
-  file appears. It writes ONLY `tugasan/{year}` (PATCH `programs` with an
+  file appears. It skips programmes no longer in `kpi-{year}/q4` (read
+  only; unreadable q4 stops the run before any email). It writes ONLY `tugasan/{year}` (PATCH `programs` with an
   `updateTime` precondition, so an admin save mid-run wins and nothing is
   emailed), `tugasan/robot` `{ lastRun, ok, mesej }` and a ROBOT_TUGASAN
   audit entry; IAM access bypasses rules, so `assertLaluanTugasan_` guards
   paths. State lives under `robot` on the programme / task; `saveProgramTugasan`
   (`keepRobotState`) carries it over because the form never shows it.
-  Script property MOD_UJI=YA = log only. Tested by `node tests/robot.test.js`
+  Script property MOD_UJI=YA = log only; real runs log folders created /
+  shared and the save. Tested by `node tests/robot.test.js`
   (fake Firestore REST / Drive / Mail; also in CI). The owner installs it by
-  hand; whether Firestore accepts the script's OAuth token
-  (X-Goog-User-Project header) is not verified live yet.
+  hand. Installed 16/11/2026 in the owner's project "Robot Tugasan
+  Dokumen"; `semakSambungan` confirmed live that Firestore accepts the
+  script's OAuth token (X-Goog-User-Project) for reads, with fahman@ added
+  as Editor of the Firebase project (owned by the owner's personal Gmail:
+  a continuity risk, suggest a second Owner from the unit).
 
 ## Ideas not done yet
 - Restore from the downloaded JSON backup file (needs careful design, it

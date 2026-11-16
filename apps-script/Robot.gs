@@ -14,8 +14,9 @@
  *      mengisi pautan fail itu dalam dashboard.
  *
  * KESELAMATAN DATA
- * - Robot membaca dan menulis koleksi `tugasan` SAHAJA. Dokumen KPI tidak
- *   pernah dibaca atau ditulis (lihat assertLaluanTugasan_).
+ * - Robot MENULIS ke koleksi `tugasan` sahaja (lihat assertLaluanTugasan_).
+ *   Dokumen KPI hanya DIBACA (kpi-{tahun}/q4) untuk melangkau program yang
+ *   sudah dipadam daripada Kembara; ia tidak pernah ditulis.
  * - Akses ke Firestore menggunakan akaun Google pemilik skrip melalui IAM,
  *   jadi firestore.rules tidak terpakai di sini. Sebab itu had di atas
  *   dikuatkuasakan dalam kod.
@@ -109,6 +110,9 @@ function laksana_(t) {
     var staf = stafDoc && Array.isArray(stafDoc.data.staf) ? stafDoc.data.staf : [];
     var programs = doc && Array.isArray(doc.data.programs) ? doc.data.programs : [];
     if (!programs.length) catat('Tiada program bertugasan bagi tahun ' + tahun + '.');
+    // Program yang masih ada dalam senarai KPI (dibaca sahaja). Jika tidak
+    // dapat dibaca, fsGet_ membaling ralat dan larian berhenti tanpa emel.
+    var aktif = programs.length ? programAktif_(tahun) : {};
 
     var drive = driveOps_(t, catat);
     var emelBaru = [];
@@ -118,6 +122,10 @@ function laksana_(t) {
     programs.forEach(function (prog) {
       var tasks = Array.isArray(prog.tasks) ? prog.tasks : [];
       if (!tasks.length) return;
+      if (!aktif[(prog.kpiId || '') + '|' + prog.key]) {
+        catat('Dilangkau: ' + (prog.name || prog.key) + ' (program sudah dipadam daripada senarai KPI).');
+        return;
+      }
       if (!folderTahun) folderTahun = drive.folderAnak(drive.induk(), tahun);
       var namaFolder = (prog.tarikh ? prog.tarikh + ' ' : '') + (prog.name || 'Program');
       var r = prog.robot || {};
@@ -177,6 +185,7 @@ function laksana_(t) {
       else {
         fsPatchPrograms_(laluan, programs, doc ? doc.updateTime : null);
         hasil.ditulis = true;
+        catat('Disimpan ke tugasan/' + tahun + '.');
       }
     }
     emelBaru.forEach(function (e) {
@@ -246,6 +255,25 @@ function bezaHari_(dari, ke) {
   var a = Date.UTC(+dari.slice(0, 4), +dari.slice(5, 7) - 1, +dari.slice(8, 10));
   var b = Date.UTC(+ke.slice(0, 4), +ke.slice(5, 7) - 1, +ke.slice(8, 10));
   return Math.round((b - a) / 86400000);
+}
+
+// Sama seperti programKey() dalam js/tugasan.js
+function kunciProgram_(item) {
+  if (item.id != null && item.id !== '') return 'id:' + item.id;
+  return 'n:' + (item.name || '') + '|' + (item.tarikh || '');
+}
+
+// { 'kembara|id:it-xxx': true, ... } daripada kpi-{tahun}/q4 (senarai
+// terkumpul: q4 memegang semua program tahun itu). Dibaca sahaja.
+function programAktif_(tahun) {
+  var doc = fsGet_('artifacts/' + ROBOT.APP_ID + '/public/data/kpi-' + tahun + '/q4');
+  var out = {};
+  var kpis = doc && Array.isArray(doc.data.kpis) ? doc.data.kpis : [];
+  kpis.forEach(function (k) {
+    var items = k && k.details && Array.isArray(k.details.items) ? k.details.items : [];
+    items.forEach(function (it) { if (it) out[k.id + '|' + kunciProgram_(it)] = true; });
+  });
+  return out;
 }
 
 function cariStaf_(staf, id) {
@@ -318,6 +346,7 @@ function driveOps_(t, catat) {
       var it = ibu._f.getFoldersByName(nama);
       while (it.hasNext()) { var f = it.next(); if (!f.isTrashed()) return bungkus(f); }
       if (uji) { catat('[MOD UJI] Akan cipta folder ' + nama); return bungkus(null); }
+      catat('Folder dicipta: ' + nama);
       return bungkus(ibu._f.createFolder(nama));
     },
     // Folder yang disimpan (ikut id) jika masih wujud, dinamakan semula jika
@@ -327,16 +356,18 @@ function driveOps_(t, catat) {
       if (f) {
         if (f.getName() !== nama) {
           if (uji) catat('[MOD UJI] Akan namakan semula folder ' + f.getName() + ' kepada ' + nama);
-          else f.setName(nama);
+          else { catat('Folder dinamakan semula: ' + f.getName() + ' kepada ' + nama); f.setName(nama); }
         }
         return bungkus(f);
       }
-      if (!ibu._f || uji) { catat('[MOD UJI] Akan cipta folder ' + nama); return bungkus(null); }
+      if (uji) { catat('[MOD UJI] Akan cipta folder ' + nama); return bungkus(null); }
+      if (!ibu._f) return bungkus(null);
+      catat('Folder dicipta: ' + nama);
       return bungkus(ibu._f.createFolder(nama));
     },
     kongsi: function (folder, emel) {
       if (uji) { catat('[MOD UJI] Akan kongsi folder ' + folder.url + ' dengan ' + emel); return; }
-      try { folder._f.addEditor(emel); }
+      try { folder._f.addEditor(emel); catat('Folder ' + folder._f.getName() + ' dikongsi dengan ' + emel + '.'); }
       catch (err) { catat('Gagal kongsi folder dengan ' + emel + ': ' + err.message); }
     },
     failDalam: function (folder) {
