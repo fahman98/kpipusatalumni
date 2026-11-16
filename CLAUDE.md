@@ -270,8 +270,9 @@ descriptions of PR #2 to #8.
   shared and the save. Tested by `node tests/robot.test.js`
   (fake Firestore REST / Drive / Mail; also in CI). The owner installs it by
   hand. Installed 16/11/2026 in the owner's project "Robot Tugasan
-  Dokumen"; `semakSambungan` confirmed live that Firestore accepts the
-  script's OAuth token (X-Goog-User-Project) for reads, with fahman@ added
+  Dokumen" and verified live end to end (Firestore read + write via the
+  script's OAuth token with X-Goog-User-Project, Drive folders + sharing,
+  assignment email, file -> Selesai), with fahman@ added
   as Editor of the Firebase project (owned by the owner's personal Gmail:
   a continuity risk, suggest a second Owner from the unit).
 
