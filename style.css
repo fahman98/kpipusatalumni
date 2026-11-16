@@ -1599,6 +1599,12 @@ body.dark-mode .tugasan-chip[data-tone="done"] { background: #052e16; border-col
     .tg-staf-row .tg-staf-emel { grid-column: 1; grid-row: 2; }
     .tg-staf-row .tg-staf-remove { grid-column: 2; grid-row: 1; }
 }
+.tg-robot { margin: 0; display: flex; gap: 6px; align-items: flex-start; font-size: 13px; line-height: 1.45; color: #5B6779; }
+.tg-robot i { font-size: 16px; color: #1747A6; flex-shrink: 0; margin-top: 1px; }
+.tg-robot a, .tg-folder { color: #1747A6; font-weight: 800; }
+#tugasan-robot.hidden { display: none; }
+body.dark-mode .tg-robot { color: #9ca3af; }
+body.dark-mode .tg-robot a, body.dark-mode .tg-folder, body.dark-mode .tg-robot i { color: #93c5fd; }
 body.dark-mode .tg-row, body.dark-mode .tg-staf, body.dark-mode .tg-add { background: #111827; border-color: #4b5563; }
 body.dark-mode .tg-add { color: #93c5fd; border-color: #60a5fa; }
 body.dark-mode .tg-staf summary, body.dark-mode .tg-done-label { color: #f3f4f6; }

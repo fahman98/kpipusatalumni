@@ -15,7 +15,7 @@
 // staff id, and each staff entry carries an email.
 
 import {
-    getTugasanYear, getStafList, saveProgramTugasan, saveStafList,
+    getTugasanYear, getStafList, getRobotStatus, saveProgramTugasan, saveStafList,
     checkTugasanRules, selectedYear
 } from './api.js';
 import {
@@ -87,15 +87,16 @@ export function suggestedDue(jenis, item) {
 }
 
 // ---- Cache (one read per year per opening of Butiran) ------------------
-const cache = { year: null, programs: null, staf: null };
+const cache = { year: null, programs: null, staf: null, robot: null };
 
 async function loadTugasan(force = false) {
     const year = String(selectedYear);
     if (!force && cache.year === year && cache.programs && cache.staf) return cache;
-    const [programs, staf] = await Promise.all([getTugasanYear(year), getStafList()]);
+    const [programs, staf, robot] = await Promise.all([getTugasanYear(year), getStafList(), getRobotStatus()]);
     cache.year = year;
     cache.programs = programs;
     cache.staf = staf;
+    cache.robot = robot;
     return cache;
 }
 
@@ -159,7 +160,7 @@ function ensureSheet() {
         prefix: 'tugasan-modal', formId: 'tugasan-form', title: 'Tugasan dokumen',
         body: `
             <div id="tugasan-rules-warn" class="tg-warn hidden" role="alert"></div>
-            <div class="fs-summary"><p id="tugasan-info"></p></div>
+            <div class="fs-summary"><p id="tugasan-info"></p><p id="tugasan-robot" class="hidden"></p></div>
             <div id="tugasan-rows" class="tg-rows"></div>
             <p id="tugasan-empty" class="fs-hint hidden">Tiada tugasan. Tekan "Tambah tugasan" untuk mula.</p>
             <button type="button" id="tugasan-add" class="tg-add"><i class="fas fa-plus" aria-hidden="true"></i> Tambah tugasan</button>
@@ -250,7 +251,8 @@ function jenisOptions(selected) {
 function picOptions(staf, selected) {
     let html = '<option value="">Belum ditetapkan</option>';
     (staf || []).forEach(s => {
-        html += `<option value="${escapeHtml(s.id)}"${s.id === selected ? ' selected' : ''}>${escapeHtml(s.nama)}</option>`;
+        const note = s.emel ? '' : ' (tiada emel)';
+        html += `<option value="${escapeHtml(s.id)}"${s.id === selected ? ' selected' : ''}>${escapeHtml(s.nama + note)}</option>`;
     });
     // A staff member removed from the list keeps their tasks
     if (selected && !(staf || []).some(s => s.id === selected)) {
@@ -288,11 +290,23 @@ function taskRowHtml(t, staf) {
                     <a class="tg-open${href ? '' : ' hidden'}" href="${escapeHtml(href || '#')}" target="_blank" rel="noopener noreferrer">Buka</a>
                 </div>
             </div>
+            ${robotHint(t)}
             <div class="tg-row-foot">
                 <label class="tg-done-label"><input type="checkbox" class="tg-done"${t.selesai ? ' checked data-touched="1"' : ''}> Selesai</label>
                 <span class="tg-state" data-state="${state}">${STATE_LABEL[state]}</span>
             </div>
         </div>`;
+}
+
+// What the robot (apps-script/Robot.gs) did for this task: the PIC's Drive
+// folder, and whether it ticked Selesai itself
+function robotHint(t) {
+    const r = t && t.robot;
+    const folder = r && safeLink(r.folderUrl);
+    if (!folder) return '';
+    const auto = t.selesai && r.selesaiAuto ? ' Ditanda selesai oleh robot apabila fail dijumpai.' : '';
+    return `<p class="tg-robot"><i class="ph-duotone ph-folder-simple" aria-hidden="true"></i><span>`
+        + `<a href="${escapeHtml(folder)}" target="_blank" rel="noopener noreferrer">Folder PIC</a> dalam Google Drive.${auto}</span></p>`;
 }
 
 function refreshRowState(row) {
@@ -340,6 +354,17 @@ function renderStaf(modal) {
     modal.querySelector('#tugasan-staf').open = !staf.length;
 }
 
+// The robot writes tugasan/robot { lastRun, ok, mesej } after every run
+function robotStatusText(r) {
+    if (!r || !r.lastRun) return '';
+    const d = new Date(r.lastRun);
+    if (isNaN(d)) return '';
+    const when = `${d.toLocaleDateString('en-GB')}, ${d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`;
+    return r.ok === false
+        ? `Robot gagal pada ${when}: ${r.mesej || 'ralat tidak diketahui'}.`
+        : `Robot terakhir berjalan pada ${when}. Ia mencipta folder, mengemel PIC dan menanda tugasan selesai apabila fail dimuat naik.`;
+}
+
 const RULES_MSG = {
     rules: 'Peraturan keselamatan untuk tugasan belum dikemas kini dalam Firebase Console. Tugasan tidak boleh disimpan sehingga peraturan baharu diterbitkan, supaya maklumat staf dan pautan tidak boleh dibaca oleh orang awam.',
     unknown: 'Tidak dapat menyemak peraturan keselamatan sekarang. Semak sambungan internet dan cuba lagi.'
@@ -376,8 +401,13 @@ export async function openTugasanSheet(kpi, item, onSaved) {
     const prog = findProgram(data.programs, item);
     const tasks = prog && Array.isArray(prog.tasks) ? prog.tasks : null;
     const info = modal.querySelector('#tugasan-info');
+    const folder = prog && prog.robot && safeLink(prog.robot.folderUrl);
     info.innerHTML = `${escapeHtml(item.name || '')}${when ? `, <strong>${escapeHtml(when)}</strong>` : ''}.`
-        + (tasks ? '' : ' Tiga tugasan biasa dicadangkan di bawah. Tetapkan PIC dan tekan Simpan.');
+        + (tasks ? '' : ' Tiga tugasan biasa dicadangkan di bawah. Tetapkan PIC dan tekan Simpan.')
+        + (folder ? ` <a class="tg-folder" href="${escapeHtml(folder)}" target="_blank" rel="noopener noreferrer">Buka folder program</a>` : '');
+    const robotEl = modal.querySelector('#tugasan-robot');
+    robotEl.textContent = robotStatusText(data.robot);
+    robotEl.classList.toggle('hidden', !robotEl.textContent);
 
     // A programme without tasks starts with the usual three, due dates
     // suggested from its dates (nothing is saved until Simpan)
@@ -409,10 +439,10 @@ async function saveTasks(modal) {
     };
     if (item.tarikhTamat) program.tarikhTamat = item.tarikhTamat;
     const res = await saveProgramTugasan(selectedYear, program);
-    if (res !== 'ok') { showSaveError(res); return; }
+    if (typeof res === 'string') { showSaveError(res); return; }
     const list = cache.programs || [];
     const i = list.findIndex(p => p.key === program.key);
-    if (i === -1) list.push(program); else list[i] = program;
+    if (i === -1) list.push(res); else list[i] = res;
     cache.programs = list;
     closeFormSheet(modal);
     showToastNotification('Tugasan disimpan.', 'success');

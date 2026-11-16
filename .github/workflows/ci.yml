@@ -47,6 +47,9 @@ jobs:
       - name: Check firestore.rules structure
         run: node .github/scripts/check-rules.mjs
 
+      - name: Apps Script robot tests (fake Google services)
+        run: node tests/robot.test.js
+
       - name: Verify tailwind.css is in sync
         run: |
           npx --yes tailwindcss@3.4.17 -c tailwind.config.js -i tailwind.src.css -o /tmp/tailwind.check.css --minify

@@ -588,6 +588,11 @@ const scenarios = {
         assert.equal(await page.isVisible('#tugasan-rules-warn'), false, 'rules are live');
         assert.equal(await page.getAttribute('#tugasan-rows .tg-row:nth-child(1) .tg-open', 'href'), 'https://drive.google.com/file/d/kk-johor');
         assert.equal(await page.getAttribute('#tugasan-rows .tg-row:nth-child(1) .tg-open', 'rel'), 'noopener noreferrer');
+        // What the robot did: programme folder, PIC folder, auto tick, last run
+        assert.equal(await page.getAttribute('#tugasan-info .tg-folder', 'href'), 'https://drive.google.com/drive/folders/F2');
+        assert.match(await page.textContent('#tugasan-rows .tg-row:nth-child(1) .tg-robot'), /Folder PIC dalam Google Drive\. Ditanda selesai oleh robot/);
+        assert.equal(await page.$$eval('#tugasan-rows .tg-robot', r => r.length), 1);
+        assert.match(await page.textContent('#tugasan-robot'), /^Robot terakhir berjalan pada 29\/10\/2026, \d{2}:\d{2}\./);
         // Pasting the Laporan link ticks Selesai
         const laporan = '#tugasan-rows .tg-row:nth-child(2)';
         await page.fill(`${laporan} .tg-link`, 'https://drive.google.com/file/d/laporan-johor');
@@ -605,6 +610,10 @@ const scenarios = {
         const saved = await page.evaluate(() => window.__tx.filter(t => t.k === 'tugasan/2026'));
         assert.equal(saved.length, 1);
         const johor = saved[0].d.programs.find(p => p.key === 'n:Kembara Alumni Johor|2026-06-20');
+        // The robot's state, never shown in the form, survives the save
+        assert.equal(johor.robot.folderId, 'F2');
+        assert.equal(johor.tasks[0].robot.emelTugasan.emel, 'aminah@upsi.edu.my');
+        assert.equal(johor.tasks[1].robot, undefined);
         assert.deepEqual(johor.tasks.map(t => [t.jenis, t.pic, t.selesai, t.link]), [
             ['Kertas kerja', 'st-1', true, 'https://drive.google.com/file/d/kk-johor'],
             ['Laporan', 'st-2', true, 'https://drive.google.com/file/d/laporan-johor'],

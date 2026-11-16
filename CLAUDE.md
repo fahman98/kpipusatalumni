@@ -205,6 +205,7 @@ descriptions of PR #2 to #8.
    `node .github/scripts/check-refs.mjs`, `node .github/scripts/check-rules.mjs`,
    and confirm the Tailwind output matches.
 4. `node tests/run.js` passes; `--shots` for desktop / phone screenshots.
+   `node tests/robot.test.js` when `apps-script/Robot.gs` changes.
 
 ## Git workflow
 - Work on the session's branch, open a PR only when asked. On "merge bro":
@@ -244,8 +245,23 @@ descriptions of PR #2 to #8.
   Logged as UPDATE_TUGASAN / UPDATE_STAF. "Perlu tindakan" adds overdue tasks
   (per PIC) and programmes within 30 days either side of today with no tasks.
   Mock flags `tugasan` (seed: two staff, Johor with a late Laporan) and
-  `rulesOpen` (rules not deployed). Phase 2 (agreed, not built): staff sign
-  in with their UPSI Google account and fill in only their own tasks.
+  `rulesOpen` (rules not deployed).
+- Phase 2 = the robot (owner chose it over staff logins, 16/11/2026):
+  `apps-script/Robot.gs` (+ `appsscript.json`, setup guide `README.md`,
+  not deployed by Vercel) runs daily as alumni@upsi.edu.my. It creates a
+  Drive folder per programme with a subfolder per task shared with the PIC,
+  emails the PIC (on assignment, 3 days before due, late every 7 days max
+  4; a moved due date restarts), and ticks Selesai + fills the link when a
+  file appears. It writes ONLY `tugasan/{year}` (PATCH `programs` with an
+  `updateTime` precondition, so an admin save mid-run wins and nothing is
+  emailed), `tugasan/robot` `{ lastRun, ok, mesej }` and a ROBOT_TUGASAN
+  audit entry; IAM access bypasses rules, so `assertLaluanTugasan_` guards
+  paths. State lives under `robot` on the programme / task; `saveProgramTugasan`
+  (`keepRobotState`) carries it over because the form never shows it.
+  Script property MOD_UJI=YA = log only. Tested by `node tests/robot.test.js`
+  (fake Firestore REST / Drive / Mail; also in CI). The owner installs it by
+  hand; whether Firestore accepts the script's OAuth token
+  (X-Goog-User-Project header) is not verified live yet.
 
 ## Ideas not done yet
 - Restore from the downloaded JSON backup file (needs careful design, it
