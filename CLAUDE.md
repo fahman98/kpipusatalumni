@@ -242,8 +242,10 @@ descriptions of PR #2 to #8.
   Gambar, Senarai kehadiran, Lain-lain) with PIC from the staff list, due
   date (suggested: kertas kerja 14 days before, laporan 14 / maklum balas 7
   days after), Google Drive link (http(s) only, pasting one ticks Selesai)
-  and Selesai; plus an editable "Senarai staf" (name + UPSI email for phase
-  2). Files stay in Drive. Saves are refused until the admin-only rule for
+  and Selesai; plus an editable "Senarai staf" (name + UPSI email, used by
+  the robot) at the end of the form, reached from "Urus senarai staf" under
+  every PIC and from a "Senarai staf masih kosong" note at the top while
+  the list is empty (owner missed the list on first use). Files stay in Drive. Saves are refused until the admin-only rule for
   `tugasan` is live: `checkTugasanRules` reads `tugasan/staf` as a guest
   through a second, never-signed-in Firebase app and needs permission-denied.
   Logged as UPDATE_TUGASAN / UPDATE_STAF. "Perlu tindakan" adds overdue tasks
