@@ -136,12 +136,12 @@ function initials(nama) {
 
 function robotLine() {
     const r = cache.robot;
-    if (!r || !r.lastRun) return `<p class="tgv-robot" data-tone="off" role="status"><span class="tgv-dot" aria-hidden="true"></span><span><strong>Robot belum berjalan.</strong> Folder, emel dan tanda selesai automatik bermula selepas robot dipasang.</span></p>`;
+    if (!r || !r.lastRun) return `<p class="tgv-robot" data-tone="off" role="status"><span class="tgv-dot" aria-hidden="true"></span><span><strong>Bot belum berjalan.</strong> Folder, emel dan tanda selesai automatik bermula selepas bot dipasang.</span></p>`;
     const text = robotStatusText(r);
-    if (r.ok === false) return `<p class="tgv-robot" data-tone="bad" role="status"><span class="tgv-dot" aria-hidden="true"></span><span><strong>Robot gagal.</strong> ${escapeHtml(text.replace(/^Robot gagal /, 'Larian '))}</span></p>`;
+    if (r.ok === false) return `<p class="tgv-robot" data-tone="bad" role="status"><span class="tgv-dot" aria-hidden="true"></span><span><strong>Bot gagal.</strong> ${escapeHtml(text.replace(/^Bot gagal /, 'Larian '))}</span></p>`;
     const hours = (Date.now() - new Date(r.lastRun).getTime()) / 3600000;
-    if (hours > 36) return `<p class="tgv-robot" data-tone="warn" role="status"><span class="tgv-dot" aria-hidden="true"></span><span><strong>Robot tidak berjalan pagi ini.</strong> ${escapeHtml(robotStatusText(r, false))} Semak pencetus dalam Apps Script.</span></p>`;
-    return `<p class="tgv-robot" data-tone="ok" role="status"><span class="tgv-dot" aria-hidden="true"></span><span><strong>Robot aktif.</strong> ${escapeHtml(text.replace(/^Robot terakhir berjalan pada/, 'Terakhir berjalan'))}</span></p>`;
+    if (hours > 36) return `<p class="tgv-robot" data-tone="warn" role="status"><span class="tgv-dot" aria-hidden="true"></span><span><strong>Bot tidak berjalan pagi ini.</strong> ${escapeHtml(robotStatusText(r, false))} Semak pencetus dalam Apps Script.</span></p>`;
+    return `<p class="tgv-robot" data-tone="ok" role="status"><span class="tgv-dot" aria-hidden="true"></span><span><strong>Bot aktif.</strong> ${escapeHtml(text.replace(/^Bot terakhir berjalan pada/, 'Terakhir berjalan'))}</span></p>`;
 }
 
 function cardsHtml(t) {
@@ -296,7 +296,7 @@ function picCardHtml(g) {
     const shown = expanded ? g.tasks : open;
     let body;
     if (!g.tasks.length) {
-        body = `<div class="tgv-pic-empty"><p>Belum memegang sebarang tugasan.${noEmail ? ' Tambah emel UPSI dahulu supaya robot boleh berkongsi folder dan menghantar peringatan.' : ''}</p>
+        body = `<div class="tgv-pic-empty"><p>Belum memegang sebarang tugasan.${noEmail ? ' Tambah emel UPSI dahulu supaya bot boleh berkongsi folder dan menghantar peringatan.' : ''}</p>
             ${noEmail ? `<button type="button" class="tgv-outline-btn" data-emel="${escapeHtml(g.id)}">Tambah emel</button>` : ''}</div>`;
     } else {
         body = `${shown.length ? `<ul class="tgv-tasks">${shown.map(taskItemHtml).join('')}</ul>` : '<p class="tgv-pic-none">Tiada tugasan terbuka.</p>'}
@@ -346,7 +346,7 @@ function render() {
         </div>
         ${cardsHtml(t)}
         ${robotLine()}
-        ${state.prevLate ? `<p class="tgv-prev-note" role="status"><span>Tahun ${Number(state.year) - 1} masih ada <strong>${state.prevLate} tugasan lewat</strong>. Robot terus mengingatkan PIC sehingga selesai.</span>
+        ${state.prevLate ? `<p class="tgv-prev-note" role="status"><span>Tahun ${Number(state.year) - 1} masih ada <strong>${state.prevLate} tugasan lewat</strong>. Bot terus mengingatkan PIC sehingga selesai.</span>
             <button type="button" class="tgv-link-btn" data-goto-year="${Number(state.year) - 1}">Lihat ${Number(state.year) - 1}</button></p>` : ''}
         <div class="tgv-seg" role="group" aria-label="Susun mengikut">
             <button type="button" data-mode="program" aria-pressed="${state.mode === 'program'}">Ikut program</button>

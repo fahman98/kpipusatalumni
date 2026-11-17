@@ -302,7 +302,11 @@ descriptions of PR #2 to #8.
   the Firebase project; replies go to EMEL_BALAS. It creates a
   Drive folder per programme with a subfolder per task shared with the PIC,
   emails the PIC (on assignment, 3 days before due, late every 7 days max
-  4; a moved due date restarts), and ticks Selesai + fills the link when a
+  4; a moved due date restarts; the reminder says "tinggal N hari lagi",
+  the late one "lewat N hari", and the folder is a "Buka folder Google
+  Drive" button with the plain link under it; sender name and signature
+  "Tugasan Dokumen · Pusat Alumni UPSI"; the dashboard calls it "Bot",
+  owner's wording, 17/11/2026), and ticks Selesai + fills the link when a
   file appears. It looks after the current year AND last year while last
   year still has work (`perluDiproses_`: an unfinished task or an awam tick
   not yet matched), so a December programme's January deadline is not
