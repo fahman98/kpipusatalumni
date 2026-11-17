@@ -43,7 +43,7 @@ var ROBOT = {
   HARI_PERINGATAN: 3,
   SELANG_LEWAT: 7,
   MAKS_EMEL_LEWAT: 4,
-  NAMA_PENGIRIM: 'Pusat Alumni UPSI',
+  NAMA_PENGIRIM: 'Tugasan Dokumen · Pusat Alumni UPSI',
   JAM_LARIAN: 8
 };
 
@@ -161,8 +161,8 @@ function laksana_(t) {
       try { fsSetRobotStatus_({ lastRun: new Date().toISOString(), ok: false, mesej: String(err.message).slice(0, 200) }); } catch (_) {}
       if (t.emelAdmin) {
         try {
-          MailApp.sendEmail({ to: t.emelAdmin, subject: 'Robot tugasan dokumen gagal', name: ROBOT.NAMA_PENGIRIM,
-            htmlBody: '<p>Robot tugasan dokumen gagal berjalan:</p><p><b>' + esc_(err.message) + '</b></p><p>Larian seterusnya akan mencuba semula.</p>' });
+          MailApp.sendEmail({ to: t.emelAdmin, subject: 'Bot tugasan dokumen gagal', name: ROBOT.NAMA_PENGIRIM,
+            htmlBody: '<p>Bot tugasan dokumen gagal berjalan:</p><p><b>' + esc_(err.message) + '</b></p><p>Larian seterusnya akan mencuba semula.</p>' });
         } catch (_) {}
       }
     }

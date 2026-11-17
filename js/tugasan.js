@@ -145,8 +145,8 @@ export function robotStatusText(r, long = true) {
     const d = new Date(r.lastRun);
     if (isNaN(d)) return '';
     const when = `${d.toLocaleDateString('en-GB')}, ${d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`;
-    if (r.ok === false) return `Robot gagal pada ${when}: ${r.mesej || 'ralat tidak diketahui'}.`;
-    return `Robot terakhir berjalan pada ${when}.`
+    if (r.ok === false) return `Bot gagal pada ${when}: ${r.mesej || 'ralat tidak diketahui'}.`;
+    return `Bot terakhir berjalan pada ${when}.`
         + (long ? ' Ia mencipta folder, mengemel PIC dan menanda tugasan selesai apabila fail dimuat naik.' : '');
 }
 
@@ -277,7 +277,7 @@ function robotHint(t) {
     const r = t && t.robot;
     const folder = r && safeLink(r.folderUrl);
     if (!folder) return '';
-    const auto = t.selesai && r.selesaiAuto ? ' Ditanda selesai oleh robot apabila fail dijumpai.' : '';
+    const auto = t.selesai && r.selesaiAuto ? ' Ditanda selesai oleh bot apabila fail dijumpai.' : '';
     return `<p class="tg-robot"><i class="ph-duotone ph-folder-simple" aria-hidden="true"></i><span>`
         + `<a href="${escapeHtml(folder)}" target="_blank" rel="noopener noreferrer">Folder PIC</a> dalam Google Drive.${auto}</span></p>`;
 }
@@ -336,7 +336,7 @@ function awamNote(t) {
     const r = t && t.robot && t.robot.awam;
     if (r && r.link === t.link && r.status === 'dibuka') return 'Dipaparkan kepada umum. Fail boleh dibuka oleh sesiapa yang ada pautan.';
     if (r && r.link === t.link && r.status === 'gagal') return `Dipaparkan kepada umum, tetapi fail belum boleh dibuka oleh umum: ${r.mesej || 'perkongsian gagal'}.`;
-    return 'Dipaparkan kepada umum. Robot akan membuka perkongsian fail ini pada larian pagi esok.';
+    return 'Dipaparkan kepada umum. Bot akan membuka perkongsian fail ini pada larian pagi esok.';
 }
 function awamTone(t) {
     const r = t && t.robot && t.robot.awam;
@@ -499,7 +499,7 @@ export function mountEditor(root, ctx) {
         </div>
         <p class="fs-hint tg-empty hidden">Tiada tugasan. Tekan "Tambah tugasan" untuk mula.</p>
         <button type="button" class="tg-add"><i class="fas fa-plus" aria-hidden="true"></i> Tambah tugasan</button>
-        <p class="fs-hint">Robot mencipta folder Google Drive bagi setiap PIC. Jika fail disimpan di tempat lain, tampal pautannya di sini dan pastikan fail dikongsi dengan staf UPSI sahaja.</p>
+        <p class="fs-hint">Bot mencipta folder Google Drive bagi setiap PIC. Jika fail disimpan di tempat lain, tampal pautannya di sini dan pastikan fail dikongsi dengan staf UPSI sahaja.</p>
         ${ctx.wide ? '<div class="tg-panel-actions"><button type="button" class="tg-save">Simpan perubahan</button></div>' : ''}`;
     // Suggested dates of an unsaved programme follow a kind change
     if (!tasks) root.querySelectorAll('.tg-due').forEach(el => { delete el.dataset.touched; });
@@ -604,7 +604,7 @@ function stafRowHtml(s, load) {
                 <input type="email" id="st-emel-${uid}" class="fs-input tg-staf-emel" inputmode="email" placeholder="nama@upsi.edu.my" value="${escapeHtml(s.emel || '')}"${noEmail ? ` aria-describedby="st-nota-${uid}"` : ''}>
                 <button type="button" class="tg-staf-remove" aria-label="Buang ${escapeHtml(s.nama || 'staf ini')}"><i class="fas fa-times" aria-hidden="true"></i></button>
             </div>
-            <p id="st-nota-${uid}" class="tg-staf-nota${noEmail ? '' : ' hidden'}">Tiada emel: robot tidak dapat berkongsi folder atau menghantar peringatan.</p>
+            <p id="st-nota-${uid}" class="tg-staf-nota${noEmail ? '' : ' hidden'}">Tiada emel: bot tidak dapat berkongsi folder atau menghantar peringatan.</p>
         </div>`;
 }
 
@@ -617,7 +617,7 @@ function ensureStafSheet() {
     modal.innerHTML = formSheetHtml({
         prefix: 'staf-modal', formId: 'staf-form', title: 'Senarai staf',
         body: `
-            <p class="tg-info-box">Robot menggunakan emel UPSI untuk berkongsi folder Google Drive dan menghantar peringatan kepada PIC.</p>
+            <p class="tg-info-box">Bot menggunakan emel UPSI untuk berkongsi folder Google Drive dan menghantar peringatan kepada PIC.</p>
             <div id="staf-rows" class="tg-staf-rows"></div>
             <button type="button" id="staf-add" class="tg-add"><i class="fas fa-plus" aria-hidden="true"></i> Tambah staf</button>
             <p class="fs-hint">Staf yang dibuang kekal pada tugasan lama mereka sebagai "Staf telah dibuang".</p>`

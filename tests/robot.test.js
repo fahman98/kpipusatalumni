@@ -196,7 +196,8 @@ const cases = {
         assert.match(w.mails[0].htmlBody, /drive\.google\.com\/drive\/folders\//);
         assert.match(w.mails[0].htmlBody, />Buka folder Google Drive<\/a>/);
         assert.match(w.mails[0].htmlBody, /Jika butang tidak berfungsi/);
-        assert.equal(w.mails[0].name, 'Pusat Alumni UPSI');
+        assert.equal(w.mails[0].name, 'Tugasan Dokumen · Pusat Alumni UPSI');
+        assert.match(w.mails[0].htmlBody, /<p>Tugasan Dokumen · Pusat Alumni UPSI<br>/);
         const p = w.programs()[0];
         assert.match(p.robot.folderUrl, /folders\/F2$/);
         assert.equal(p.tasks[0].robot.emelTugasan.emel, 'aminah@upsi.edu.my');
@@ -453,7 +454,7 @@ const cases = {
         w.props.FOLDER_INDUK_ID = 'HILANG';
         const res = w.run();
         assert.match(res.ralat, /no folder HILANG/);
-        assert.deepEqual(w.mails.map(m => [m.to, m.subject]), [['alumni@upsi.edu.my', 'Robot tugasan dokumen gagal']]);
+        assert.deepEqual(w.mails.map(m => [m.to, m.subject]), [['alumni@upsi.edu.my', 'Bot tugasan dokumen gagal']]);
         assert.equal(w.status().ok, false);
     }
 };

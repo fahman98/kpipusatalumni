@@ -610,9 +610,9 @@ const scenarios = {
         assert.equal(await page.getAttribute(`${R}:nth-child(1) .tg-open`, 'rel'), 'noopener noreferrer');
         // What the robot did: programme folder, PIC folder, auto tick, last run
         assert.equal(await page.getAttribute(`${M} .tg-info .tg-folder`, 'href'), 'https://drive.google.com/drive/folders/F2');
-        assert.match(await page.textContent(`${R}:nth-child(1) .tg-robot`), /Folder PIC dalam Google Drive\. Ditanda selesai oleh robot/);
+        assert.match(await page.textContent(`${R}:nth-child(1) .tg-robot`), /Folder PIC dalam Google Drive\. Ditanda selesai oleh bot/);
         assert.equal(await page.$$eval(`${R} .tg-robot`, r => r.length), 1);
-        assert.match(await page.textContent(`${M} .tg-robot-status`), /^Robot terakhir berjalan pada 29\/10\/2026, \d{2}:\d{2}\./);
+        assert.match(await page.textContent(`${M} .tg-robot-status`), /^Bot terakhir berjalan pada 29\/10\/2026, \d{2}:\d{2}\./);
         // Pasting the Laporan link ticks Selesai
         const laporan = `${R}:nth-child(2)`;
         await page.fill(`${laporan} .tg-link`, 'https://drive.google.com/file/d/laporan-johor');
@@ -764,7 +764,7 @@ const scenarios = {
         }));
         // Kertas kerja can never be published; Laporan only once finished with a link
         assert.deepEqual(await awamState(), [['Kertas kerja', false, false, false], ['Laporan', true, false, false], ['Maklum balas', true, true, true]]);
-        assert.match(await page.textContent(`${R}:nth-child(3) .tg-awam-note`), /Robot akan membuka perkongsian fail ini/);
+        assert.match(await page.textContent(`${R}:nth-child(3) .tg-awam-note`), /Bot akan membuka perkongsian fail ini/);
         await page.fill(`${R}:nth-child(2) .tg-link`, 'https://drive.google.com/file/d/laporan-johor/view');
         assert.deepEqual((await awamState())[1], ['Laporan', true, true, false]);
         await page.check(`${R}:nth-child(2) .tg-awam`);
@@ -813,7 +813,7 @@ const scenarios = {
         assert.equal(await page.isVisible('#view-tugasan'), true);
         const cards = () => page.$$eval('.tgv-card', c => c.map(x => [x.dataset.card, x.querySelector('.tgv-card-num').textContent]));
         assert.deepEqual(await cards(), [['lewat', '1'], ['belum', '0'], ['selesai', '2'], ['agih', '0']]);
-        assert.match(await page.textContent('.tgv-robot'), /^Robot aktif\. Terakhir berjalan 29\/10\/2026, \d{2}:\d{2}\. Ia mencipta folder/);
+        assert.match(await page.textContent('.tgv-robot'), /^Bot aktif\. Terakhir berjalan 29\/10\/2026, \d{2}:\d{2}\. Ia mencipta folder/);
         // Last year's late tasks are mentioned, with a way there
         assert.match(await page.textContent('.tgv-prev-note'), /Tahun 2025 masih ada 1 tugasan lewat\./);
         const progs = () => page.$$eval('.tgv-prog', p => p.map(x => [x.querySelector('.tgv-prog-name').textContent, x.querySelector('.tgv-chip').textContent]));

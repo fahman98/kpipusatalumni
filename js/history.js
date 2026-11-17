@@ -41,7 +41,7 @@ const ACTIONS = {
     RESTORE_TAKWIM:       { label: 'Pulihkan aktiviti Takwim',   icon: 'fa-undo',         tone: 'add' },
     UPDATE_TUGASAN:       { label: 'Kemas kini tugasan dokumen', icon: 'fa-clipboard-list', tone: 'edit' },
     UPDATE_STAF:          { label: 'Kemas kini senarai staf',    icon: 'fa-user-friends', tone: 'edit' },
-    ROBOT_TUGASAN:        { label: 'Robot tugasan dokumen',      icon: 'fa-robot',        tone: 'edit' },
+    ROBOT_TUGASAN:        { label: 'Bot tugasan dokumen',        icon: 'fa-robot',        tone: 'edit' },
 };
 const BREAKDOWN_ACTIONS = {
     add:    { label: 'Tambah butiran', icon: 'fa-plus',      tone: 'add' },
