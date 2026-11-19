@@ -37,6 +37,7 @@ function startServer() {
 //                        the signed-in account's email
 //   todos, tugasan,
 //   rulesOpen
+//   aset, asetRulesOpen  seed the asset check / aset rules not deployed
 //   mobile               390x844 touch viewport instead of 1366x900
 //   time                 ISO string; null leaves the real clock alone
 //   clock                'fixed' (Date pinned, timers run) | 'install' (fully
@@ -47,7 +48,8 @@ function startServer() {
 //   path                 URL path + query to open (default '/')
 async function openApp(browser, base, opts = {}) {
     const {
-        admin = false, adminEmail = null, with2025 = false, todos = false, tugasan = false, rulesOpen = false, mobile = false, time = DEFAULT_TIME,
+        admin = false, adminEmail = null, with2025 = false, todos = false, tugasan = false, rulesOpen = false,
+        aset = false, asetRulesOpen = false, mobile = false, time = DEFAULT_TIME,
         clock = 'fixed', blockFirebase = false, dark = false, userAgent = undefined, path: urlPath = '/'
     } = opts;
     const ctx = await browser.newContext({
@@ -58,10 +60,11 @@ async function openApp(browser, base, opts = {}) {
         // A registered sw.js would serve later requests itself, around these routes
         serviceWorkers: 'block'
     });
-    await ctx.addInitScript(([a, w, t, g, r, e]) => {
+    await ctx.addInitScript(([a, w, t, g, r, e, s, so]) => {
         window.__ADMIN = a; window.__WITH2025 = w; window.__TODOS = t; window.__TUGASAN = g; window.__RULES_OPEN = r;
+        window.__ASET = s; window.__ASET_RULES_OPEN = so;
         if (e) window.__ADMIN_EMAIL = e;
-    }, [admin, with2025, todos, tugasan, rulesOpen, adminEmail]);
+    }, [admin, with2025, todos, tugasan, rulesOpen, adminEmail, aset, asetRulesOpen]);
     await ctx.route('**/*', async (route) => {
         const u = route.request().url();
         if (u === base + '/' || u.startsWith(base + '/index.html')) {

@@ -19,6 +19,14 @@
 //                     Johor's Maklum balas published (dokumen-awam/2026)
 //   window.__RULES_OPEN  the guest probe of `tugasan` is NOT refused, i.e.
 //                     the new firestore.rules are not deployed yet
+//   window.__ASET     seed the asset check (tab Aset): 8 assets in 3 rooms
+//                     (one inactive), cycle k-1 "Semakan 2/2026" active with
+//                     two checks, closed cycle k-0 "Semakan 1/2026"
+//   window.__ASET_RULES_OPEN  the guest probe of the aset rules is NOT refused
+// The aset collections are a small live store: set / update / delete (also
+// in batches) change it and fire every onSnapshot listener again, and each
+// is recorded in window.__aset [{ op, k, d, merge }]. window.__mockAset(op,
+// k, d) writes like the other verifier would, for realtime tests.
 // Writes to tugasan/* inside a transaction also update the seed, so the app
 // reads back what it saved (the KPI documents stay fixed).
 // signOut() leaves a sessionStorage marker so the reload after a logout comes
@@ -125,11 +133,84 @@
         DATA['tugasan/robot'] = { lastRun: '2026-10-29T04:05:00Z', ok: true, mesej: '' };
     }
 
+    // ---- Asset check seed (tab Aset). Names are made up. ----
+    const tsAt = (iso) => { const d = new Date(iso); return { toDate: () => new Date(d), seconds: Math.floor(d / 1000) }; };
+    if (window.__ASET) {
+        const A = (kod, keterangan, id_owner, owner, bilik, extra = {}) => {
+            DATA['aset/' + encodeURIComponent(kod)] = Object.assign({ kod_aset: kod, keterangan, id_owner, owner,
+                cost_centre: 'ALU0001000', cc_keterangan: 'Pusat Alumni', bangunan: 'PP', bilik, aktif: true, nota_tetap: '' }, extra);
+        };
+        A('003-PO110900225-I00003', 'KABINET FAIL (ALMARI)', 'K90001', 'Aminah Yusof', 'PP-AB-02-03');
+        A('003-PO110900225-I00007', 'KERUSI PENGARAH', 'K90001', 'Aminah Yusof', 'PP-AB-02-03');
+        A('030-PO160200151-A00001', 'NOTEBOOK ACER TRAVELMATE P6', 'K90002', 'Hafiz Rahman', 'PP-AB-02-04');
+        A('030-PO210700064-A00001', 'KOMPUTER ACER NITRO N50-610-10400W10D', 'K90003', 'Siti Nurhaliza Kamal', 'PP-AB-02-04');
+        A('KK/15/03/6940/107011', 'RAK CD', 'K90002', 'Hafiz Rahman', 'PP-AB-02-04');
+        A('003-PO191000312-I00001', 'RAK PAYUNG', '', '', 'PP-AS-02-14', { cost_centre: 'HEP0101000', cc_keterangan: 'HEP - Aktiviti Pelajar' });
+        A('003-PO191000312-I00002', 'RAK PAYUNG', '', '', 'PP-AS-02-14', { cost_centre: 'HEP0101000', cc_keterangan: 'HEP - Aktiviti Pelajar' });
+        A('051-JL140600757-I00099', 'TROLI LAMA', 'ASET_ADMIN', 'Asset Administrator', 'PP-AB-02-04', { aktif: false });
+        DATA['aset-bilik/PP-AB-02-03'] = { kod_bilik: 'PP-AB-02-03', nama: 'BILIK PENGARAH PUSAT ALUMNI' };
+        DATA['aset-bilik/PP-AB-02-04'] = { kod_bilik: 'PP-AB-02-04', nama: 'PEJABAT AM PUSAT ALUMNI' };
+        DATA['aset-bilik/PP-AS-02-14'] = { kod_bilik: 'PP-AS-02-14', nama: '' };
+        DATA['aset-kitaran/k-1'] = { nama: 'Semakan 2/2026', status: 'aktif', dibuka_pada: tsAt('2026-10-20T09:00:00'),
+            ditutup_pada: null, dibuka_oleh: 'fahman@upsi.edu.my' };
+        DATA['aset-kitaran/k-0'] = { nama: 'Semakan 1/2026', status: 'ditutup', dibuka_pada: tsAt('2026-04-01T09:00:00'),
+            ditutup_pada: tsAt('2026-05-15T17:00:00'), dibuka_oleh: 'fahman@upsi.edu.my' };
+        DATA['aset-tetapan/umum'] = { kitaran_aktif: 'k-1' };
+        const sem = (kid, kod, status, catatan, oleh, iso) => {
+            DATA[`aset-kitaran/${kid}/semakan/${encodeURIComponent(kod)}`] = { kod_aset: kod, bilik: DATA['aset/' + encodeURIComponent(kod)].bilik,
+                discan: true, status, catatan, discan_pada: tsAt(iso), discan_oleh: oleh, dikemaskini_pada: tsAt(iso), dikemaskini_oleh: oleh };
+        };
+        sem('k-1', '003-PO110900225-I00003', 'ASET DALAM KEADAAN BAIK', '', 'farhiah@upsi.edu.my', '2026-10-28T14:05:00');
+        sem('k-1', '030-PO210700064-A00001', 'ASET ROSAK', 'Skrin retak', 'fahman@upsi.edu.my', '2026-10-28T15:30:00');
+        sem('k-0', '003-PO110900225-I00003', 'ASET DALAM KEADAAN BAIK', '', 'fahman@upsi.edu.my', '2026-04-10T10:00:00');
+        sem('k-0', '003-PO191000312-I00001', 'STICKER PUDAR', '', 'fahman@upsi.edu.my', '2026-04-10T10:20:00');
+    }
+
     window.__writes = [];
     window.__batchData = [];
     window.__tx = [];
     window.__audit = [];
     window.__persist = [];
+    window.__aset = [];
+
+    // ---- Live store for the aset collections ----
+    const isAsetKey = (k) => /^aset(-[a-z]+)?\//.test(k);
+    const asetListeners = new Set();
+    // serverTimestamp(): a sentinel that becomes "now" in the aset store and
+    // null in every JSON copy (as before for the other recorded writes)
+    const SERVER_TS = { __serverTs: true, toJSON: () => null };
+    const materialize = (d) => {
+        const o = {};
+        Object.keys(d || {}).forEach(f => { o[f] = d[f] === SERVER_TS ? tsAt(new Date().toISOString()) : d[f]; });
+        return o;
+    };
+    function asetWrite(op, k, d, opts) {
+        const merge = !!(opts && opts.merge);
+        window.__aset.push({ op, k, d: d ? JSON.parse(JSON.stringify(d)) : null, merge });
+        if (op === 'delete') delete DATA[k];
+        else if (op === 'update') {
+            if (!DATA[k]) { const e = new Error('No document to update'); e.code = 'not-found'; throw e; }
+            DATA[k] = Object.assign({}, DATA[k], materialize(d));
+        } else DATA[k] = merge ? Object.assign({}, DATA[k], materialize(d)) : materialize(d);
+        setTimeout(() => asetListeners.forEach(fn => fn()), 0);
+    }
+    window.__mockAset = (op, k, d) => asetWrite(op, k, d, { merge: op === 'set' });
+    const listen = (fire) => { asetListeners.add(fire); setTimeout(fire, 100); return () => asetListeners.delete(fire); };
+    const asetDocRef = (k) => ({
+        _k: k,
+        get: async () => snap(k),
+        onSnapshot: (cb) => listen(() => cb(snap(k))),
+        set: async (d, o) => asetWrite('set', k, d, o),
+        update: async (d) => asetWrite('update', k, d),
+        delete: async () => asetWrite('delete', k)
+    });
+    const colSnap = (ck) => {
+        const docs = Object.keys(DATA)
+            .filter(k => k.startsWith(ck + '/') && !k.slice(ck.length + 1).includes('/'))
+            .sort()
+            .map(k => ({ id: k.slice(ck.length + 1), data: () => DATA[k], metadata: { hasPendingWrites: false } }));
+        return { docs, size: docs.length, empty: !docs.length };
+    };
 
     const key = (path, id) => path.replace(/^artifacts\/[^/]+\/public\/data\//, '') + '/' + id;
     const snap = (k) => ({ exists: !!DATA[k], data: () => DATA[k], id: k });
@@ -142,6 +223,14 @@
 
     const firestore = () => ({
         collection: (p) => {
+            const ck = key(p, '').slice(0, -1);
+            if (isAsetKey(ck + '/')) {
+                return {
+                    doc: (id) => asetDocRef(ck + '/' + id),
+                    get: async () => colSnap(ck),
+                    onSnapshot: (cb) => listen(() => cb(colSnap(ck)))
+                };
+            }
             const base = {
                 doc: (id) => docRef(key(p, id)),
                 add: async (d) => { window.__audit.push(JSON.parse(JSON.stringify(d))); }
@@ -173,13 +262,22 @@
         batch: () => {
             const pending = [];
             const data = [];
+            const aset = [];
             return {
-                set(ref, d) { pending.push(ref._k); data.push({ k: ref._k, d: JSON.parse(JSON.stringify(d)) }); },
-                commit: async () => { window.__writes.push(...pending); window.__batchData.push(...data); }
+                set(ref, d, o) {
+                    if (isAsetKey(ref._k)) { aset.push(['set', ref._k, d, o]); return; }
+                    pending.push(ref._k); data.push({ k: ref._k, d: JSON.parse(JSON.stringify(d)) });
+                },
+                update(ref, d) { if (isAsetKey(ref._k)) aset.push(['update', ref._k, d]); },
+                delete(ref) { if (isAsetKey(ref._k)) aset.push(['delete', ref._k]); },
+                commit: async () => {
+                    window.__writes.push(...pending); window.__batchData.push(...data);
+                    aset.forEach(([op, k, d, o]) => asetWrite(op, k, d, o));
+                }
             };
         }
     });
-    firestore.FieldValue = { delete: () => null, serverTimestamp: () => null };
+    firestore.FieldValue = { delete: () => null, serverTimestamp: () => SERVER_TS };
 
     const signedOut = (() => { try { return !!sessionStorage.getItem('mockSignedOut'); } catch (_) { return false; } })();
     const user = (window.__ADMIN && !signedOut)
@@ -206,8 +304,9 @@
     // tugasan/staf through it as a guest. Deployed rules refuse that read.
     const apps = {};
     const probeFirestore = () => ({
-        collection: () => ({ doc: () => ({ get: async () => {
-            if (window.__RULES_OPEN) return snap('tugasan/staf');
+        collection: (p) => ({ doc: () => ({ get: async () => {
+            const open = /\/aset/.test(p) ? window.__ASET_RULES_OPEN : window.__RULES_OPEN;
+            if (open) return snap('tugasan/staf');
             const err = new Error('Missing or insufficient permissions.');
             err.code = 'permission-denied';
             throw err;

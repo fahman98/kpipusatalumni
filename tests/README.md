@@ -24,4 +24,7 @@ cloud, Playwright sudah dipasang. Di komputer sendiri:
   tarikh ini.
 - Data contoh: 6 KPI tahun 2026 (nilai terkumpul), Takwim campuran format
   lama dan baharu, dan 36 rekod log audit.
+- Tab Aset: bendera `aset` (data contoh: 8 aset dalam 3 bilik, nama rekaan)
+  dan `asetRulesOpen`. Ujian membaca QR di skrin dengan `jsqr` (seperti
+  kamera telefon) untuk memastikan QR mengandungi kod aset mentah sahaja.
 - Folder ini tidak di-deploy ke Vercel (lihat `.vercelignore`).

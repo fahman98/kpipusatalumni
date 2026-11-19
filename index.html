@@ -58,8 +58,8 @@
     <link rel="apple-touch-icon" href="./images/apple-touch-icon.png">
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="style.css?v=7.5">
-    <link rel="stylesheet" href="tailwind.css?v=24">
+    <link rel="stylesheet" href="style.css?v=7.6">
+    <link rel="stylesheet" href="tailwind.css?v=25">
 </head>
 
 <body class="bg-gray-100 relative overflow-x-hidden">
@@ -176,6 +176,10 @@
                 <button class="main-nav-tab tugasan-nav hidden" data-view="tugasan" role="tab" aria-selected="false">
                     <i class="ph-duotone ph-clipboard-text" aria-hidden="true"></i>Tugasan
                     <span class="tugasan-nav-badge hidden"></span>
+                </button>
+                <!-- Aset accounts only (aset-view.js syncAsetNav) -->
+                <button class="main-nav-tab aset-nav hidden" data-view="aset" role="tab" aria-selected="false">
+                    <i class="ph-duotone ph-qr-code" aria-hidden="true"></i>Aset
                 </button>
             </nav>
 
@@ -518,6 +522,9 @@
 
         <!-- ===================== VIEW: TUGASAN (admin only) ===================== -->
         <div id="view-tugasan" class="hidden"></div>
+
+        <!-- ===================== VIEW: ASET (aset accounts only) ===================== -->
+        <div id="view-aset" class="hidden"></div>
 
         <footer class="mt-10 pt-5 border-t border-gray-200 mb-12 text-center">
 
@@ -1190,6 +1197,11 @@
                     <span class="bottom-nav-icon-wrap"><i class="ph-duotone ph-clipboard-text" aria-hidden="true"></i><span class="tugasan-nav-badge hidden"></span></span>
                     <span>Tugasan</span>
                 </button>
+                <button class="bottom-nav-tab aset-nav hidden flex-1 flex flex-col items-center justify-center gap-0.5 py-2"
+                    data-view="aset" aria-selected="false">
+                    <i class="ph-duotone ph-qr-code" aria-hidden="true"></i>
+                    <span>Aset</span>
+                </button>
             </div>
         </nav>
 
@@ -1202,7 +1214,7 @@
         </div>
 
         <!-- Load Main Script as Module -->
-        <script type="module" src="js/main.js?v=8.3"></script>
+        <script type="module" src="js/main.js?v=8.4"></script>
 </body>
 
 </html>

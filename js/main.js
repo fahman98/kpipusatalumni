@@ -48,7 +48,8 @@ import { initTakwim } from './takwim.js';
 import { initPenjanaan } from './penjanaan.js';
 import { initTugasan, syncTugasanNav } from './tugasan-view.js';
 import { statusTier, statusHex, setPaceContext, getPaceFraction, kpiStatusPct, isPacedKpi, quarterStarted, STATUS_LABEL } from './status.js';
-import { isAdminUser } from './auth.js';
+import { isAdminUser, isAsetUser, canSignIn } from './auth.js';
+import { initAset, syncAsetNav } from './aset-view.js';
 import { openHistory } from './history.js';
 import { initWelcome } from './welcome.js';
 
@@ -103,7 +104,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const viewTakwim = getEl('view-takwim');
     const viewPenjanaan = getEl('view-penjanaan');
     const viewTugasan = getEl('view-tugasan');
+    const viewAset = getEl('view-aset');
     let currentView = 'dashboard';
+    // Signed-in account allowed into the Aset tab (auth.js ASET_EMAILS):
+    // the admins and the aset-only account. Not an edit mode for KPI data.
+    let asetUser = null;
     let activeStatusFilter = 'all';
 
     const bulkEditModal = getEl('bulk-edit-modal');
@@ -563,7 +568,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // reconnect events (which re-fire onAuthStateChanged with the same user
     // type) don't tear down and re-create the live Firestore listener — the
     // mechanism that caused the N→N-1 quarter navigation bug.
-    let _lastAuthType = null; // 'anon' | 'admin'
+    let _lastAuthType = null; // 'anon' | 'admin' | 'aset'
 
     function initializeApp() {
         firebase.auth().onAuthStateChanged(async (user) => {
@@ -599,7 +604,9 @@ document.addEventListener('DOMContentLoaded', () => {
             // Semakan ini mesti berada SEBELUM repeat-fire guard di bawah:
             // akaun bukan-admin dikira 'anon', jadi guard itu akan return awal
             // dan kita takkan sempat menolaknya.
-            if (user && !user.isAnonymous && !isAdminUser(user)) {
+            // An aset-only account (auth.js ASET_EMAILS) is allowed too: it sees
+            // the public dashboard plus the Aset tab, never the admin tools.
+            if (user && !user.isAnonymous && !canSignIn(user)) {
                 console.warn('Akaun bukan admin ditolak:', user.email);
                 try {
                     await firebase.auth().signOut();
@@ -618,7 +625,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // that re-subscription can briefly surface the PREVIOUS quarter's
             // data — the N→N-1 jump. Skip the reload when the auth type is
             // unchanged; a real login/logout still flips the type and reloads.
-            const newAuthType = isAdminUser(user) ? 'admin' : 'anon';
+            const newAuthType = isAdminUser(user) ? 'admin' : isAsetUser(user) ? 'aset' : 'anon';
             if (_lastAuthType !== null && newAuthType === _lastAuthType) return;
             _lastAuthType = newAuthType;
 
@@ -630,6 +637,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (yearSelector) {
                 setApiYear(yearSelector.value);
             }
+
+            asetUser = isAsetUser(user) ? user : null;
+            syncAsetNav(!!asetUser);
 
             if (isAdminUser(user)) {
                 // ADMIN MODE
@@ -658,7 +668,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // Hide admin specific elements immediately
                 if (adminSetupActions) adminSetupActions.classList.add('hidden');
-                stopIdleLogout();
+
+                if (asetUser) {
+                    // ASET-ONLY MODE: the public dashboard plus the Aset tab.
+                    // Signed in, so it gets a logout button, a session that ends
+                    // with the browser, and the same idle logout as the admin.
+                    if (modeIndicator) modeIndicator.innerHTML = '<span class="inline-flex items-center bg-amber-100 text-amber-800 text-xs font-semibold px-2 md:px-2.5 py-1 rounded-full border border-amber-200 whitespace-nowrap"><i class="ph-duotone ph-qr-code md:mr-1"></i><span class="hidden md:inline">Mod Aset</span></span>';
+                    if (adminLogoutBtn) adminLogoutBtn.classList.remove('hidden');
+                    if (adminLoginBtn) adminLoginBtn.classList.add('hidden');
+                    showToastNotification(`Selamat datang (${user.email}). Tab Aset kini dibuka untuk akaun ini.`, 'success');
+                    firebase.auth().setPersistence(firebase.auth.Auth.Persistence.SESSION)
+                        .catch((err) => console.warn('setPersistence(SESSION) failed:', err));
+                    startIdleLogout();
+                } else {
+                    stopIdleLogout();
+                }
 
                 // Explain an automatic sign-out once, after its reload
                 try {
@@ -688,18 +712,23 @@ document.addEventListener('DOMContentLoaded', () => {
             // Admin only (tugasan-view.js); a guest lands back on the dashboard
             if (isEditMode && viewTugasan) initTugasan(viewTugasan, true, selectedYear);
             else switchView('dashboard');
+        } else if (currentView === 'aset') {
+            if (asetUser && viewAset) initAset(viewAset, asetUser.email);
+            else switchView('dashboard');
         }
     }
 
     function switchView(view) {
-        if (!['dashboard', 'takwim', 'penjanaan', 'tugasan'].includes(view)) view = 'dashboard';
+        if (!['dashboard', 'takwim', 'penjanaan', 'tugasan', 'aset'].includes(view)) view = 'dashboard';
         if (view === 'tugasan' && !isEditMode) view = 'dashboard';
+        if (view === 'aset' && !asetUser) view = 'dashboard';
         currentView = view;
 
         if (viewDashboard) viewDashboard.classList.toggle('hidden', view !== 'dashboard');
         if (viewTakwim) viewTakwim.classList.toggle('hidden', view !== 'takwim');
         if (viewPenjanaan) viewPenjanaan.classList.toggle('hidden', view !== 'penjanaan');
         if (viewTugasan) viewTugasan.classList.toggle('hidden', view !== 'tugasan');
+        if (viewAset) viewAset.classList.toggle('hidden', view !== 'aset');
 
         if (mainNav) {
             mainNav.querySelectorAll('.main-nav-tab').forEach(tab => {
@@ -721,6 +750,8 @@ document.addEventListener('DOMContentLoaded', () => {
             initPenjanaan(viewPenjanaan, isEditMode, selectedYear);
         } else if (view === 'tugasan' && viewTugasan) {
             initTugasan(viewTugasan, isEditMode, selectedYear);
+        } else if (view === 'aset' && viewAset) {
+            initAset(viewAset, asetUser.email);
         } else if (view === 'dashboard' && isEditMode) {
             // Records may have been added on the other tabs
             refreshAdminTodo(selectedYear, isEditMode);

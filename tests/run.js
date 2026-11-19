@@ -10,6 +10,8 @@ const path = require('path');
 const assert = require('assert/strict');
 const { chromium } = require('playwright');
 const { startServer, openApp } = require('./harness');
+const { PNG } = require('pngjs');
+const jsQR = require('jsqr');
 
 const SHOTS = process.argv.includes('--shots');
 const filters = process.argv.slice(2).filter(a => !a.startsWith('--'));
@@ -30,6 +32,26 @@ const noWrites = async (page) => {
     const w = await page.evaluate(() => ({ tx: window.__tx.length, batch: window.__writes.length, audit: window.__audit.length }));
     assert.deepEqual(w, { tx: 0, batch: 0, audit: 0 }, 'expected no writes');
 };
+
+// ---- Tab Aset helpers ----
+const FARHIAH = { admin: true, adminEmail: 'farhiah@upsi.edu.my', aset: true };
+const FAHMAN = { admin: true, adminEmail: 'fahman@upsi.edu.my', aset: true };
+const asetOps = (page) => page.evaluate(() => window.__aset);
+const openAsetTab = async (page, mobile = false) => {
+    await page.click(`${mobile ? '#bottom-nav' : '#main-nav'} [data-view=aset]`);
+    await page.waitForTimeout(700);
+};
+const asetScreen = async (page, screen) => {
+    await page.click(`#view-aset .asv-tabs [data-screen=${screen}]`);
+    await page.waitForTimeout(500);
+};
+// Reads the QR on screen the way a phone camera would: screenshot, decode
+const readQr = async (page, sel = '#aset-qr .asq-qr') => {
+    const png = PNG.sync.read(await page.locator(sel).screenshot());
+    const code = jsQR(new Uint8ClampedArray(png.data), png.width, png.height);
+    return code ? code.data : null;
+};
+const ASET_CSV_HEADER = 'kod_aset,keterangan,id_owner,owner,cost_centre,cc_keterangan,bangunan,bilik,nama_bilik,muka_surat';
 
 const scenarios = {
     // Status judged against the year-to-date pace (Q1 on 29/10/2026 = 25%)
@@ -142,7 +164,7 @@ const scenarios = {
                 const clipped = cs.textOverflow === 'ellipsis' || cs.webkitLineClamp !== 'none';
                 return clipped && (el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1);
             }).map(el => el.innerText.trim().slice(0, 60)));
-            for (const v of admin ? ['dashboard', 'takwim', 'penjanaan', 'tugasan'] : ['dashboard', 'takwim', 'penjanaan']) {
+            for (const v of admin ? ['dashboard', 'takwim', 'penjanaan', 'tugasan', 'aset'] : ['dashboard', 'takwim', 'penjanaan']) {
                 await page.click(`#bottom-nav [data-view=${v}]`); await page.waitForTimeout(1300);
                 assert.deepEqual(await cutText(), [], `${admin ? 'admin' : 'guest'} ${v}: text cut off`);
             }
@@ -1246,6 +1268,336 @@ const scenarios = {
         assert.equal(await page.isVisible('#view-takwim'), true);
         assert.equal(await page.isVisible('#view-dashboard'), false);
         assert.equal(await page.getAttribute('#bottom-nav [data-view=takwim]', 'aria-selected'), 'true');
+        await ctx.close();
+    },
+
+    // ===================== TAB ASET =====================
+    // Who sees the tab: guests never; farhiah@ (aset only) sees it without
+    // any admin tools; the admins see it beside Tugasan; anyone else is out
+    async 'aset access by role'() {
+        let { ctx, page } = await open({ aset: true });
+        assert.equal(await page.isVisible('#main-nav [data-view=aset]'), false);
+        await page.evaluate(() => window.switchView('aset')); await page.waitForTimeout(300);
+        assert.equal(await page.isVisible('#view-aset'), false);
+        assert.equal(await page.isVisible('#view-dashboard'), true);
+        await ctx.close();
+
+        ({ ctx, page } = await open(FARHIAH));
+        assert.match(await toast(page), /Selamat datang \(farhiah@upsi\.edu\.my\)/);
+        assert.equal(await page.isVisible('#main-nav [data-view=aset]'), true);
+        assert.equal(await page.isVisible('#main-nav [data-view=tugasan]'), false);
+        assert.equal(await isAdminOn(page), true, 'signed in: logout button shown');
+        assert.match(await page.textContent('#mode-indicator'), /Mod Aset/);
+        assert.equal(await page.evaluate(() => [...document.querySelectorAll('.edit-kpi-btn, .settings-btn')].filter(b => b.offsetParent).length), 0,
+            'no admin KPI tools for the aset account');
+        assert.ok((await page.evaluate(() => window.__persist)).includes('session'));
+        await page.evaluate(() => window.switchView('tugasan')); await page.waitForTimeout(300);
+        assert.equal(await page.isVisible('#view-tugasan'), false);
+        await openAsetTab(page);
+        assert.match(await page.textContent('#view-aset .asv-progress'), /2 \/ 7 diimbas/);
+        assert.match(await page.textContent('#view-aset .asv-lead'), /Semakan 2\/2026/);
+        await shot(page, 'aset-rooms', true);
+        await noWrites(page);
+        assert.deepEqual(await asetOps(page), []);
+        await ctx.close();
+
+        ({ ctx, page } = await open(FAHMAN));
+        assert.equal(await page.isVisible('#main-nav [data-view=aset]'), true);
+        assert.equal(await page.isVisible('#main-nav [data-view=tugasan]'), true);
+        await ctx.close();
+
+        ({ ctx, page } = await open({ admin: true, adminEmail: 'orang@upsi.edu.my' }));
+        assert.match(await toast(page), /tiada kebenaran/);
+        assert.equal(await page.isVisible('#main-nav [data-view=aset]'), false);
+        await ctx.close();
+    },
+
+    // The core: opening a QR marks the asset (Batal undoes), status and
+    // catatan save at once, LAIN-LAIN needs catatan, Seterusnya walks the
+    // room, an already-checked asset keeps who / when. The QR must hold the
+    // raw asset code only, including the odd KK/... code (doc id encoded).
+    async 'aset qr mode'() {
+        const { ctx, page } = await open(FARHIAH);
+        await openAsetTab(page);
+        await page.click('#view-aset [data-room="PP-AB-02-04"]'); await page.waitForTimeout(400);
+        assert.match(await page.textContent('#view-aset'), /Belum diimbas \(2\)/);
+        assert.match(await page.textContent('#view-aset'), /Sudah diimbas \(1\)/);
+        assert.match(await page.textContent('#view-aset .asv-assets.is-done'), /ASET ROSAK · 28\/10\/2026 15:30 · Fahman/);
+        await shot(page, 'aset-room', true);
+
+        const semKey = (kod) => `aset-kitaran/k-1/semakan/${encodeURIComponent(kod)}`;
+        await page.click('[data-open="030-PO160200151-A00001"]'); await page.waitForTimeout(600);
+        assert.equal(await page.isVisible('#aset-qr'), true);
+        assert.equal(await readQr(page), '030-PO160200151-A00001');
+        assert.equal(await page.textContent('#asq-kod'), '030-PO160200151-A00001');
+        const qrSize = await page.$eval('#aset-qr .asq-qr', el => el.getBoundingClientRect().width);
+        assert.ok(qrSize >= 0.7 * 900 - 1, `QR ${qrSize}px is under 70% of the screen height`);
+        let ops = await asetOps(page);
+        assert.equal(ops.length, 1);
+        assert.equal(ops[0].op, 'set'); assert.equal(ops[0].k, semKey('030-PO160200151-A00001'));
+        assert.equal(ops[0].d.discan, true); assert.equal(ops[0].d.status, 'ASET DALAM KEADAAN BAIK');
+        assert.equal(ops[0].d.discan_oleh, 'farhiah@upsi.edu.my'); assert.equal(ops[0].d.kod_aset, '030-PO160200151-A00001');
+        assert.equal(await page.isVisible('#aset-qr .asq-toast'), true);
+        await shot(page, 'aset-qr-desktop');
+
+        // Batal: the record is deleted, back to not checked
+        await page.click('#aset-qr [data-q=undo]'); await page.waitForTimeout(300);
+        ops = await asetOps(page);
+        assert.deepEqual([ops[1].op, ops[1].k], ['delete', semKey('030-PO160200151-A00001')]);
+        assert.match(await page.textContent('#aset-qr .asq-banner'), /belum diimbas/);
+        assert.equal(await page.isDisabled('#aset-qr [data-status="ASET ROSAK"]'), true);
+        await page.click('#aset-qr [data-q=remark]'); await page.waitForTimeout(300);
+        assert.equal((await asetOps(page)).length, 3);
+
+        // Status saves at once; LAIN-LAIN waits for catatan and blocks Seterusnya
+        await page.click('#aset-qr [data-status="ASET ROSAK"]'); await page.waitForTimeout(300);
+        ops = await asetOps(page);
+        assert.deepEqual([ops[3].op, ops[3].merge, ops[3].d.status], ['set', true, 'ASET ROSAK']);
+        assert.equal(ops[3].d.discan_pada, undefined, 'a status change never rewrites discan_pada');
+        await page.click('#aset-qr [data-status="LAIN-LAIN"]'); await page.waitForTimeout(300);
+        assert.equal((await asetOps(page)).length, 4, 'LAIN-LAIN without catatan is not saved');
+        assert.match(await page.textContent('#aset-qr .asq-err'), /Catatan wajib/);
+        await page.click('#aset-qr [data-q=next]'); await page.waitForTimeout(300);
+        assert.equal(await page.textContent('#asq-kod'), '030-PO160200151-A00001', 'blocked until catatan is filled');
+        await page.fill('#asq-note', 'Dipinjam ke bilik mesyuarat'); await page.waitForTimeout(1000);
+        ops = await asetOps(page);
+        assert.deepEqual([ops[4].d.status, ops[4].d.catatan], ['LAIN-LAIN', 'Dipinjam ke bilik mesyuarat']);
+
+        // Seterusnya: the next asset not yet checked, the KK/... code
+        await page.click('#aset-qr [data-q=next]'); await page.waitForTimeout(600);
+        assert.equal(await page.textContent('#asq-kod'), 'KK/15/03/6940/107011');
+        assert.equal(await readQr(page), 'KK/15/03/6940/107011');
+        ops = await asetOps(page);
+        assert.equal(ops[5].k, 'aset-kitaran/k-1/semakan/KK%2F15%2F03%2F6940%2F107011');
+        assert.equal(ops[5].d.kod_aset, 'KK/15/03/6940/107011');
+
+        // Nothing left in the room: back to the room list
+        await page.click('#aset-qr [data-q=next]'); await page.waitForTimeout(800);
+        assert.equal(await page.isVisible('#aset-qr'), false);
+        assert.equal(await toast(page), 'Bilik ini sudah selesai.');
+        assert.match(await page.textContent('#view-aset [data-room="PP-AB-02-04"]'), /Selesai\s*3 \/ 3/);
+        assert.match(await page.textContent('#view-aset .asv-progress'), /4 \/ 7 diimbas/);
+
+        // Already checked: who and when stay, nothing is written, no toast
+        await page.click('#view-aset [data-room="PP-AB-02-03"]'); await page.waitForTimeout(300);
+        const before = (await asetOps(page)).length;
+        await page.click('[data-open="003-PO110900225-I00003"]'); await page.waitForTimeout(500);
+        assert.equal(await page.textContent('#aset-qr .asq-banner'), 'Sudah diimbas pada 28/10/2026 14:05 oleh Farhiah');
+        assert.equal(await page.isVisible('#aset-qr .asq-toast'), false);
+        assert.equal((await asetOps(page)).length, before);
+        await page.keyboard.press('Escape'); await page.waitForTimeout(400);
+        assert.equal(await page.isVisible('#aset-qr'), false);
+
+        // Realtime: the other verifier ticks a Rak Payung; it shows here
+        await page.click('#view-aset .asv-back'); await page.waitForTimeout(300);
+        await page.evaluate(() => window.__mockAset('set', 'aset-kitaran/k-1/semakan/003-PO191000312-I00002', {
+            kod_aset: '003-PO191000312-I00002', bilik: 'PP-AS-02-14', discan: true, status: 'STICKER HILANG/TIADA', catatan: '',
+            discan_oleh: 'fahman@upsi.edu.my' }));
+        await page.waitForTimeout(500);
+        assert.match(await page.textContent('#view-aset [data-room="PP-AS-02-14"]'), /1 \/ 2/);
+        assert.deepEqual(page.__errors, []);
+        await noWrites(page);
+        await ctx.close();
+    },
+
+    // Phone: QR fills 70% of the width, buttons stay reachable, no clipping
+    async 'aset qr mode on phone'() {
+        const { ctx, page } = await open(Object.assign({ mobile: true }, FARHIAH));
+        await openAsetTab(page, true);
+        await page.click('#view-aset [data-room="PP-AS-02-14"]'); await page.waitForTimeout(400);
+        await page.click('[data-open="003-PO191000312-I00001"]'); await page.waitForTimeout(600);
+        const box = await page.$eval('#aset-qr .asq-qr', el => el.getBoundingClientRect().width);
+        assert.ok(box >= 0.7 * 390 - 1 && box <= 390, `QR ${box}px on a 390px phone`);
+        assert.equal(await readQr(page), '003-PO191000312-I00001');
+        assert.equal(await page.isVisible('#aset-qr [data-q=next]'), true);
+        assert.match(await page.textContent('#aset-qr .asq-meta'), /\(tiada owner\) · PP-AS-02-14/);
+        await shot(page, 'aset-qr-phone');
+        // Android Back closes Mod QR, not the app
+        await page.goBack(); await page.waitForTimeout(400);
+        assert.equal(await page.isVisible('#aset-qr'), false);
+        assert.equal(await page.isVisible('#view-aset'), true);
+        await ctx.close();
+    },
+
+    // Global search, Ringkasan counts per cycle and the CSV export
+    async 'aset search summary export'() {
+        const { ctx, page } = await open(FARHIAH);
+        await openAsetTab(page);
+        await page.fill('#asv-search', 'payung'); await page.waitForTimeout(300);
+        assert.equal(await page.$$eval('#view-aset .asv-dyn .asv-asset', b => b.length), 2);
+        await page.fill('#asv-search', '107011'); await page.waitForTimeout(300);
+        assert.equal(await page.$$eval('#view-aset .asv-dyn .asv-asset', b => b.length), 1);
+        await page.fill('#asv-search', 'hafiz'); await page.waitForTimeout(300);
+        assert.equal(await page.$$eval('#view-aset .asv-dyn .asv-asset', b => b.length), 2, 'search by owner');
+        await page.fill('#asv-search', ''); await page.waitForTimeout(300);
+        await page.click('#view-aset [data-filter=belum]'); await page.waitForTimeout(200);
+        assert.equal(await page.$$eval('#view-aset .asv-room', b => b.length), 3);
+
+        await asetScreen(page, 'ringkasan');
+        const count = (status) => page.$eval(`#view-aset .asv-table`, (t, s) =>
+            [...t.querySelectorAll('tr')].find(r => r.cells[0] && r.cells[0].textContent === s).cells[1].textContent, status);
+        assert.equal(await count('ASET DALAM KEADAAN BAIK'), '1');
+        assert.equal(await count('ASET ROSAK'), '1');
+        assert.equal(await count('BELUM DIIMBAS'), '5');
+        assert.match(await page.textContent('#view-aset .asv-problems'), /Skrin retak/);
+        await shot(page, 'aset-summary', true);
+        const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#view-aset [data-act=export]')]);
+        fs.mkdirSync(DL_DIR, { recursive: true });
+        const file = path.join(DL_DIR, dl.suggestedFilename());
+        await dl.saveAs(file);
+        assert.equal(dl.suggestedFilename(), 'semakan-aset-semakan-2-2026.csv');
+        const csv = fs.readFileSync(file, 'utf8');
+        assert.equal(csv.charCodeAt(0), 0xFEFF, 'BOM for Excel');
+        const lines = csv.slice(1).trim().split('\r\n');
+        assert.equal(lines[0], 'kod_aset,keterangan,owner,bilik,status,catatan,discan_pada,discan_oleh');
+        assert.equal(lines.length, 8);
+        assert.ok(lines.includes('030-PO210700064-A00001,KOMPUTER ACER NITRO N50-610-10400W10D,Siti Nurhaliza Kamal,PP-AB-02-04,ASET ROSAK,Skrin retak,28/10/2026 15:30,fahman@upsi.edu.my'));
+        assert.ok(lines.includes('KK/15/03/6940/107011,RAK CD,Hafiz Rahman,PP-AB-02-04,BELUM DIIMBAS,,,'));
+
+        // An older, closed cycle
+        await page.selectOption('#asv-summary-kitaran', 'k-0'); await page.waitForTimeout(500);
+        assert.equal(await count('STICKER PUDAR'), '1');
+        assert.match(await page.textContent('#view-aset .asv-progress'), /2 \/ 7 diimbas/);
+        assert.match(await page.textContent('#view-aset'), /ditutup pada 15\/05\/2026 17:00/);
+        assert.deepEqual(await asetOps(page), []);
+        await ctx.close();
+    },
+
+    // Import: diff preview first, upsert, missing assets marked inactive
+    // (never deleted), new rooms created, the OCR junk room name dropped
+    async 'aset import'() {
+        const { ctx, page } = await open(FAHMAN);
+        await openAsetTab(page);
+        await asetScreen(page, 'pentadbiran');
+        assert.match(await page.textContent('#view-aset .asv-note'), /Peraturan keselamatan aset aktif/);
+
+        const bad = [ASET_CSV_HEADER.replace(',nama_bilik', ''), 'A-1,X,,,,,PP,PP-AB-02-03,1'].join('\n');
+        await page.setInputFiles('#asv-file', { name: 'salah.csv', mimeType: 'text/csv', buffer: Buffer.from(bad) });
+        await page.waitForTimeout(400);
+        assert.match(await page.textContent('#view-aset'), /Lajur tiada dalam fail: nama_bilik/);
+
+        const junk = 'NEW ASSETCODE _| OLD ASSET CODE DESCRIPTION ASSETOWNER| = = = OWNER  \u2014_| COST CENTRE DESCRIPTION';
+        const csv = '\uFEFF' + [ASET_CSV_HEADER,
+            '030-PO160200151-A00001,NOTEBOOK ACER TRAVELMATE P6,K90002,Hafiz Rahman,ALU0001000,Pusat Alumni,PP,PP-AB-02-04,PEJABAT AM PUSAT ALUMNI,5',
+            '030-PO210700064-A00001,KOMPUTER ACER NITRO N50-610-10400W10D,K90003,Siti Nurhaliza Kamal,ALU0001000,Pusat Alumni,PP,PP-AB-02-03,BILIK PENGARAH PUSAT ALUMNI,5',
+            'KK/15/03/6940/107011,RAK CD,K90002,Hafiz Rahman,ALU0001000,Pusat Alumni,PP,PP-AB-02-04,PEJABAT AM PUSAT ALUMNI,7',
+            '051-JL140600757-I00099,TROLI LAMA,ASET_ADMIN,Asset Administrator,ALU0001000,Pusat Alumni,PP,PP-AB-02-04,PEJABAT AM PUSAT ALUMNI,7',
+            `005-PO230300085-I00001,PENGHAWA DINGIN 1HP,,,ALU0001000,Pusat Alumni,PP,PP-AD-02-19,${junk},22`,
+            '005-PO131100279-I00002,"PANASONIC 39"" LED TV, DINDING",ASET_ADMIN_P.ALUMNI,ASSET ADMINISTRATION FOR PUSAT ALUMNI,ALU0001000,Pusat Alumni,PP,PP-AD-02-19,,22'
+        ].join('\r\n') + '\r\n';
+        await page.setInputFiles('#asv-file', { name: 'kewpa7.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) });
+        await page.waitForTimeout(400);
+        assert.match(await page.textContent('#view-aset .asv-preview-sum'),
+            /2 baharu, 2 berubah,\s+4 tiada dalam CSV, 1 bilik baharu, 2 tiada perubahan/);
+        assert.match(await page.textContent('#view-aset .asv-preview'), /Bilik: PP-AB-02-04\s*PP-AB-02-03/);
+        assert.match(await page.textContent('#view-aset .asv-preview'), /Diaktifkan semula/);
+        await shot(page, 'aset-import-preview', true);
+        assert.deepEqual(await asetOps(page), [], 'nothing written before confirming');
+
+        await page.click('#view-aset [data-act=import-run]'); await page.waitForTimeout(300);
+        await page.click('#confirm-modal-ok-btn'); await page.waitForTimeout(800);
+        const ops = await asetOps(page);
+        assert.equal(ops.length, 9);
+        assert.equal(ops.filter(o => o.op === 'delete').length, 0, 'an import never deletes');
+        const byKey = Object.fromEntries(ops.map(o => [o.k, o]));
+        assert.equal(byKey['aset/005-PO131100279-I00002'].d.keterangan, 'PANASONIC 39" LED TV, DINDING');
+        assert.equal(byKey['aset/005-PO131100279-I00002'].d.aktif, true);
+        assert.equal(byKey['aset/030-PO210700064-A00001'].d.bilik, 'PP-AB-02-03');
+        assert.equal(byKey['aset/030-PO210700064-A00001'].merge, true, 'merge keeps nota_tetap');
+        assert.deepEqual([byKey['aset/051-JL140600757-I00099'].d.aktif], [true]);
+        assert.deepEqual(['aset/003-PO110900225-I00003', 'aset/003-PO110900225-I00007', 'aset/003-PO191000312-I00001', 'aset/003-PO191000312-I00002']
+            .map(k => [byKey[k].op, byKey[k].d.aktif]), Array(4).fill(['update', false]));
+        assert.deepEqual(byKey['aset-bilik/PP-AD-02-19'].d, { kod_bilik: 'PP-AD-02-19', nama: '' });
+        assert.match(await toast(page), /Import selesai: 9 rekod/);
+        await asetScreen(page, 'bilik');
+        assert.match(await page.textContent('#view-aset .asv-progress'), /1 \/ 6 diimbas/);
+        assert.equal(await page.isVisible('#view-aset [data-room="PP-AD-02-19"]'), true);
+        await noWrites(page);
+        await ctx.close();
+    },
+
+    // Until the new firestore.rules are published, nothing goes in
+    async 'aset rules not deployed'() {
+        const { ctx, page } = await open(Object.assign({ asetRulesOpen: true }, FAHMAN));
+        await openAsetTab(page);
+        await asetScreen(page, 'pentadbiran');
+        await page.waitForTimeout(300);
+        assert.match(await page.textContent('#view-aset .asv-note'), /belum diterbitkan/);
+        assert.equal(await page.isDisabled('#view-aset [data-act=open-kitaran]'), true);
+        assert.equal(await page.isDisabled('#view-aset [data-act=close-kitaran]'), true);
+        const csv = [ASET_CSV_HEADER, 'X-1,MEJA,,,ALU0001000,Pusat Alumni,PP,PP-AB-02-03,,1'].join('\n');
+        await page.setInputFiles('#asv-file', { name: 'a.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) });
+        await page.waitForTimeout(400);
+        assert.equal(await page.isDisabled('#view-aset [data-act=import-run]'), true);
+        assert.deepEqual(await asetOps(page), []);
+        await ctx.close();
+    },
+
+    // Opening a cycle closes the active one in the same batch; closing it
+    // leaves Mod QR read-only
+    async 'aset cycles'() {
+        const { ctx, page } = await open(FAHMAN);
+        await openAsetTab(page);
+        await asetScreen(page, 'pentadbiran');
+        assert.equal(await page.inputValue('#asv-kit-name'), '', 'the suggestion "Semakan 2/2026" is already used');
+        await page.fill('#asv-kit-name', 'semakan 2/2026');
+        await page.click('#view-aset [data-act=open-kitaran]'); await page.waitForTimeout(300);
+        assert.equal(await toast(page), 'Nama kitaran ini sudah digunakan.');
+        await page.fill('#asv-kit-name', 'Semakan Khas 2026');
+        await page.click('#view-aset [data-act=open-kitaran]'); await page.waitForTimeout(300);
+        assert.match(await page.textContent('#confirm-modal-message'), /Semakan 2\/2026 akan ditutup/);
+        await page.click('#confirm-modal-ok-btn'); await page.waitForTimeout(800);
+        let ops = await asetOps(page);
+        assert.deepEqual(ops.map(o => [o.op, o.k]), [
+            ['set', 'aset-kitaran/k-20261029-100000'], ['update', 'aset-kitaran/k-1'], ['set', 'aset-tetapan/umum']]);
+        assert.deepEqual([ops[0].d.nama, ops[0].d.status, ops[0].d.dibuka_oleh], ['Semakan Khas 2026', 'aktif', 'fahman@upsi.edu.my']);
+        assert.equal(ops[1].d.status, 'ditutup');
+        assert.equal(ops[2].d.kitaran_aktif, 'k-20261029-100000');
+        assert.match(await page.textContent('#view-aset .asv-lead'), /Semakan Khas 2026/);
+        await asetScreen(page, 'bilik');
+        assert.match(await page.textContent('#view-aset .asv-progress'), /0 \/ 7 diimbas/);
+
+        await asetScreen(page, 'pentadbiran');
+        await page.click('#view-aset [data-act=close-kitaran]'); await page.waitForTimeout(300);
+        await page.click('#confirm-modal-ok-btn'); await page.waitForTimeout(800);
+        ops = await asetOps(page);
+        assert.deepEqual(ops.slice(3).map(o => [o.op, o.k, o.d.status || o.d.kitaran_aktif]), [
+            ['update', 'aset-kitaran/k-20261029-100000', 'ditutup'], ['set', 'aset-tetapan/umum', null]]);
+        await asetScreen(page, 'bilik');
+        assert.match(await page.textContent('#view-aset .asv-nokit'), /Tiada kitaran semakan aktif/);
+        await page.fill('#asv-search', 'rak cd'); await page.waitForTimeout(300);
+        await page.click('#view-aset .asv-dyn [data-open]'); await page.waitForTimeout(500);
+        assert.match(await page.textContent('#aset-qr .asq-banner'), /rujukan sahaja/);
+        assert.equal(await readQr(page), 'KK/15/03/6940/107011');
+        assert.equal((await asetOps(page)).length, 5, 'read-only: nothing marked');
+        await ctx.close();
+    },
+
+    // Room names can be filled in (the report left three rooms unnamed)
+    async 'aset room names and print'() {
+        const { ctx, page } = await open(FARHIAH);
+        await openAsetTab(page);
+        await asetScreen(page, 'pentadbiran');
+        await page.fill('[data-bilik-input="PP-AS-02-14"]', 'PEJABAT MAJLIS PERWAKILAN PELAJAR');
+        await page.click('#view-aset [data-act=save-bilik][data-room="PP-AS-02-14"]'); await page.waitForTimeout(400);
+        const ops = await asetOps(page);
+        assert.deepEqual(ops.map(o => [o.op, o.k, o.d.nama, o.merge]),
+            [['set', 'aset-bilik/PP-AS-02-14', 'PEJABAT MAJLIS PERWAKILAN PELAJAR', true]]);
+
+        // Cetak: one section per room, QR per asset, print styles hide the app
+        await asetScreen(page, 'cetak');
+        await page.evaluate(() => { window.print = () => { window.__printed = true; }; });
+        await page.click('#view-aset [data-act=print]'); await page.waitForTimeout(500);
+        assert.equal(await page.evaluate(() => window.__printed), true);
+        assert.equal(await page.$$eval('#aset-print-root .asp-room', s => s.length), 3);
+        assert.equal(await page.$$eval('#aset-print-root .asp-qr svg', s => s.length), 7);
+        assert.match(await page.textContent('#aset-print-root .asp-room:nth-child(3) h2'), /PP-AS-02-14 · PEJABAT MAJLIS PERWAKILAN PELAJAR/);
+        await page.emulateMedia({ media: 'print' });
+        assert.equal(await page.isVisible('#aset-print-root'), true);
+        assert.equal(await page.isVisible('#app-header'), false);
+        assert.equal(await page.isVisible('#view-aset'), false);
+        assert.equal(await readQr(page, '#aset-print-root .asp-room:nth-child(2) tr:nth-child(3) .asp-qr'), 'KK/15/03/6940/107011');
+        await shot(page, 'aset-print', true);
         await ctx.close();
     },
 

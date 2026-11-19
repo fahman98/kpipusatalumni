@@ -1,6 +1,6 @@
 // --- JS/ADMIN.JS ---
 import { closeModal, showLoading, showToastNotification } from './ui.js';
-import { isAdminUser } from './auth.js';
+import { canSignIn } from './auth.js';
 
 let failedAttempts = 0;
 let isLocked = false;
@@ -185,11 +185,12 @@ export function handleAdminLogin() {
         .then(() => firebase.auth().signInWithEmailAndPassword(email, password))
         .then((userCredential) => {
             // Firebase menerima MANA-MANA akaun sah dalam projek ini. Hanya
-            // email admin yang layak — tolak yang lain di sini supaya pengguna
-            // dapat sebab yang jelas, bukan ditendang senyap oleh main.js.
-            if (!isAdminUser(userCredential.user)) {
+            // email admin dan akaun aset yang layak; tolak yang lain di sini
+            // supaya pengguna dapat sebab yang jelas, bukan ditendang senyap
+            // oleh main.js.
+            if (!canSignIn(userCredential.user)) {
                 firebase.auth().signOut().catch(() => {});
-                registerFailure('Akaun ini tiada kebenaran admin.');
+                registerFailure('Akaun ini tiada kebenaran.');
                 return;
             }
 
