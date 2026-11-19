@@ -20,7 +20,7 @@ descriptions of PR #2 to #8.
 - The owner cannot easily re-enter lost data. Never write to live Firestore
   from a session, and never press reset / delete in a live app.
 - Test with `tests/` (see `tests/README.md`): `cd tests && npm install`
-  once, then `node run.js` (33 scenarios, ~5 min) against `mock-firebase.js`,
+  once, then `node run.js` (41 scenarios, ~6 min) against `mock-firebase.js`,
   which records every write instead of sending it. Clock pinned to
   29/10/2026. Add a scenario to `tests/run.js` for each behaviour change;
   extend the mock's seed data rather than touching live data. The proxy
@@ -51,6 +51,14 @@ descriptions of PR #2 to #8.
   `firestore.rules`). A new admin email must exist in Firebase Auth
   before the rules naming it are published (else anyone could sign up
   with it). Owner chose to keep alumni@ so the unit never loses access.
+  Same file: `ASET_EMAILS` (alumni@, fahman@, `farhiah@upsi.edu.my`) for
+  the Aset tab, mirrored in rules `isAset()`.
+- Tab Aset (19/11/2026): `js/aset.js` plain logic (status list, CSV parse /
+  export, import diff), `js/aset-api.js` EVERY aset Firestore read/write
+  (kept out of api.js), `js/aset-view.js` the tab, Mod QR and print.
+  `js/vendor/qrcode.js` = qrcode-generator 1.4.4 (MIT) vendored unchanged,
+  loaded on first use, precached for offline; Tailwind scans `js/*.js` only
+  so vendor words never become classes.
 
 ## Data model (`artifacts/{appId}/public/data/...`)
 - `kpi-{year}/q1..q4` `{ title, subtitle, kpis: [...], footerDate }`. Values
@@ -68,6 +76,16 @@ descriptions of PR #2 to #8.
   and `tugasan/staf` `{ staf: [{ id, nama, emel }] }`: ADMIN-ONLY read and
   write (rules `isPrivate`), never inside the public KPI docs. `key` =
   `id:{item.id}`, or `n:{name}|{tarikh}` for records saved without an id.
+- Asset check (private, rules `isAset`; all names in `isPrivate`):
+  `aset/{encodeURIComponent(kod_aset)}` master `{ kod_aset, keterangan,
+  id_owner, owner, cost_centre, cc_keterangan, bangunan, bilik, aktif,
+  nota_tetap, dikemaskini_pada }` (changed only by an import; never
+  deleted, missing ones get `aktif: false`); `aset-bilik/{kod}` `{ kod_bilik,
+  nama }`; `aset-kitaran/{k-YYYYMMDD-HHmmss}` `{ nama, status aktif|ditutup,
+  dibuka_pada, ditutup_pada, dibuka_oleh }` with `semakan/{assetDocId}`
+  `{ kod_aset, bilik, discan, status, catatan, discan_pada, discan_oleh,
+  dikemaskini_pada, dikemaskini_oleh }` (exists only once opened in that
+  cycle); `aset-tetapan/umum` `{ kitaran_aktif }`. One active cycle.
 - `meta/{year}` `{ label }` last-updated footer. `audit-logs/{auto}` admin
   read-only, append-only. Since 29/10/2026 entries carry `deleted` / `before`
   snapshots and `oldValue`; older ones only ids.
@@ -204,6 +222,42 @@ descriptions of PR #2 to #8.
   hidden card's own buttons (details, chart, admin edit / settings /
   description), so every handler keeps one implementation. Cards carry
   `data-kpi-id`.
+
+## Tab Aset (semakan aset alih, owner 19/11/2026)
+- Why: the verifiers scan asset labels with the UPSI asset app, but labels
+  hide behind furniture or fade. The tab shows a QR of the asset code on a
+  laptop / tablet for the phone to scan, and remembers what is done. It
+  does NOT replace the UPSI system and never talks to it.
+- Users: alumni@, fahman@ (admins) and farhiah@ (aset only: public
+  dashboard + Aset tab, badge "Mod Aset", logout, SESSION persistence and
+  idle logout like the admin, no admin tools, cannot write KPI data). Login
+  is the same footer form; `canSignIn()` lets either kind in.
+- QR = the raw `kod_aset` only (no prefix / URL / spaces), level M, quiet
+  zone 4, SVG, >= 70% of the smaller screen side and >= 260px. Tested with
+  the UPSI app 18/11/2026 for `030-PO160200151-A00001`; odd codes
+  (`PO250400032-00005`, `KK/15/03/6940/107011`) not yet tried in the app.
+  Doc ids are `encodeURIComponent(kod)`; the QR always comes from the field.
+- Statuses (`ASET_STATUS`, same spelling as the UPSI app, mirrored in rules
+  `validSemakan`): BAIK is the default; LAIN-LAIN needs catatan (not saved
+  without it; Seterusnya / Tutup wait).
+- Mod QR: opening an unchecked asset marks it at once (set, not awaited, so
+  it works offline) with a 6 s "Batal" (deletes the record); an already
+  checked asset only shows "Sudah diimbas pada ... oleh ...". Status /
+  catatan save immediately. Seterusnya = next unchecked in the room's
+  kod order; none left -> "Bilik ini sudah selesai" and back to the rooms.
+  Wake Lock while open; Back / Escape close it; no active cycle = read only.
+- Pentadbiran: import CSV (columns of the KEW.PA-7 extract; preview of new
+  / changed / missing / new rooms before writing; recomputed at confirm;
+  batches of 450; OCR header text in `nama_bilik` is dropped), open / close
+  cycles, room names. Import and cycle changes are refused until a guest
+  read of `aset-tetapan/umum` is denied (`checkAsetRules`), i.e. the rules
+  are live, and need a connection.
+- Ringkasan per cycle + CSV export with BOM (unchecked rows say BELUM
+  DIIMBAS). Cetak: A4, one room per page, 3 cm QR, check box.
+- The real KEW.PA-7 CSV (staff names) is NOT in the repo: the owner imports
+  it through Pentadbiran. Test data uses made-up names (mock flag `aset`).
+- Not built from the original standalone spec: hash routing, SDK v10
+  (this app is SDK 8), Google sign-in (email + password here).
 
 ## Before every push
 1. Rebuild Tailwind when any class changes in `index.html` or `js/`:

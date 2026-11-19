@@ -20,3 +20,21 @@ export function isAdminUser(user) {
     if (!user || user.isAnonymous) return false;
     return ADMIN_EMAILS.includes((user.email || '').trim().toLowerCase());
 }
+
+// Semakan aset (tab Aset): akaun yang boleh membaca dan menulis data aset.
+// Ini peranan berasingan daripada admin: farhiah@ hanya nampak dashboard
+// seperti orang awam ditambah tab Aset, dan tidak boleh mengubah data KPI.
+// Mesti selari dengan fungsi isAset() dalam firestore.rules. Akaun baharu
+// mesti DICIPTA dalam Firebase Authentication SEBELUM rules yang menamakannya
+// diterbitkan, kalau tidak sesiapa boleh mendaftar dengan emel itu.
+export const ASET_EMAILS = ['alumni@upsi.edu.my', 'fahman@upsi.edu.my', 'farhiah@upsi.edu.my'];
+
+export function isAsetUser(user) {
+    if (!user || user.isAnonymous) return false;
+    return ASET_EMAILS.includes((user.email || '').trim().toLowerCase());
+}
+
+// Boleh log masuk langsung? (admin, atau pengguna aset sahaja)
+export function canSignIn(user) {
+    return isAdminUser(user) || isAsetUser(user);
+}

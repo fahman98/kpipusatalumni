@@ -14,6 +14,8 @@ rules_version = '2';
 //         ├─ kpi-{year}/{q1..q4}      ← KPI dashboard
 //         ├─ takwim-{year}/main       ← activity calendar
 //         ├─ tugasan/{year}, staf     ← document tasks per programme (admin only)
+//         ├─ aset, aset-bilik,        ← asset checking (aset accounts only)
+//         │  aset-kitaran/{id}/semakan, aset-tetapan
 //         └─ audit-logs/{autoId}      ← admin action trail
 //
 // Deploy: Firebase Console → Firestore Database → Rules → paste → Publish
@@ -33,6 +35,28 @@ service cloud.firestore {
         && request.auth.token.email in ['alumni@upsi.edu.my', 'fahman@upsi.edu.my'];
     }
 
+    // Accounts that run the asset check (tab Aset; mirrors js/auth.js
+    // ASET_EMAILS). farhiah@ is an aset account only, NOT an admin: she can
+    // read and write the aset collections and nothing else. As above, a new
+    // address must already exist in Firebase Authentication before these
+    // rules are published.
+    function isAset() {
+      return request.auth != null
+        && request.auth.token.email in ['alumni@upsi.edu.my', 'fahman@upsi.edu.my', 'farhiah@upsi.edu.my'];
+    }
+
+    // A check record must carry one of the asset app's verification remarks
+    // (js/aset.js ASET_STATUS), spelled exactly as in the UPSI app.
+    function validSemakan() {
+      return request.resource.data.status in [
+        'ASET DALAM KEADAAN BAIK', 'ASET TIADA DI LOKASI', 'ASET ROSAK',
+        'ASET DALAM PROSES PELUPUSAN', 'ASET SUDAH LUPUS',
+        'ASET DALAM PROSES BAIK PULIH', 'LOKASI TIDAK DIKEMASKINI',
+        'PEMILIK ASET TIDAK DIKEMASKINI', 'STICKER HILANG/TIADA',
+        'STICKER PUDAR', 'LAIN-LAIN'
+      ];
+    }
+
     // Shape guard for the collections the dashboard renders: the list field the
     // client reads must exist and be a list. Every current writer already sends
     // it; meta / any other collection is exempt.
@@ -42,7 +66,8 @@ service cloud.firestore {
 
     // Collections that are never public; each has its own rule below.
     function isPrivate(collection) {
-      return collection == 'audit-logs' || collection == 'tugasan';
+      return collection == 'audit-logs' || collection == 'tugasan'
+        || collection.matches('aset(-[a-z]+)?');
     }
 
     function kpiShape(collection) {
@@ -77,9 +102,30 @@ service cloud.firestore {
         allow read, write: if isAdmin();
       }
 
+      // ----- Asset check: aset accounts only (read AND write) ---------
+      // Staff names and asset lists are internal. The app checks that these
+      // rules are live (a guest read must be refused) before it imports data
+      // or opens a check cycle.
+      match /aset/{docId} {
+        allow read, write: if isAset();
+      }
+      match /aset-bilik/{docId} {
+        allow read, write: if isAset();
+      }
+      match /aset-tetapan/{docId} {
+        allow read, write: if isAset();
+      }
+      match /aset-kitaran/{kitaranId} {
+        allow read, write: if isAset();
+        match /semakan/{docId} {
+          allow read, delete: if isAset();
+          allow create, update: if isAset() && validSemakan();
+        }
+      }
+
       // ----- KPI (kpi-YYYY), Takwim (takwim-YYYY) & any other public -----
       // collection: anyone may read; only the admin may write.
-      // (audit-logs and tugasan are excluded here: each is governed solely by
+      // (audit-logs, tugasan and the aset collections are excluded here: each is governed solely by
       // its own rule above.)
       match /{collection}/{docId} {
         allow read:  if !isPrivate(collection);
